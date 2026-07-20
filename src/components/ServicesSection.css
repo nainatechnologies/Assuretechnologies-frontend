@@ -1,0 +1,117 @@
+/* ─── Services Section Container ─────────────────────────────────────────── */
+.services-section {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 80px 24px;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.services-header {
+  text-align: center;
+  margin-bottom: 56px;
+}
+
+.services-header h2 {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: #111827;
+  margin: 0 0 16px;
+  letter-spacing: -0.5px;
+}
+
+.services-divider {
+  width: 60px;
+  height: 4px;
+  background-color: #1a73e8;
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+
+.services-header p {
+  font-size: 1.1rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* ─── Grid Layout ─────────────────────────────────────────────────────── */
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+/* ─── Service Card ────────────────────────────────────────────────────── */
+.service-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 32px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  cursor: pointer;
+}
+
+.service-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.05);
+  border-color: #d1d5db;
+}
+
+.service-icon {
+  font-size: 2.5rem;
+  color: #1a73e8;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 64px;
+  width: 64px;
+  background: #f0f4f8;
+  border-radius: 16px;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.service-card:hover .service-icon {
+  background: #1a73e8;
+  color: #ffffff;
+}
+
+.service-label {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 8px;
+}
+
+.service-title {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ─── Responsive ──────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .services-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .services-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .services-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .services-header h2 {
+    font-size: 1.85rem;
+  }
+}

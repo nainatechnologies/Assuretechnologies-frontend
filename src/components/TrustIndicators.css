@@ -1,0 +1,66 @@
+/* ─── Trust Indicators ───────────────────────────────────────── */
+.ti-section {
+  background: #ffffff;
+  border-top: 1px solid #e8e8e8;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.ti-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.ti-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+}
+
+.ti-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #e8f5e9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  color: #2e7d32;
+  flex-shrink: 0;
+}
+
+.ti-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0 0 2px;
+}
+
+.ti-desc {
+  font-size: 0.78rem;
+  color: #888;
+  margin: 0;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .ti-container {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .ti-card {
+    flex: 0 0 calc(50% - 8px);
+  }
+}
+
+@media (max-width: 480px) {
+  .ti-card {
+    flex: 0 0 100%;
+  }
+}

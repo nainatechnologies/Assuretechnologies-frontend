@@ -1,0 +1,152 @@
+/* ─── Book Technician Section ────────────────────────────────── */
+.bt-section {
+  background: #f1f3f6;
+  padding: 60px 0;
+}
+
+.bt-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.bt-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.bt-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #1a1a2e;
+  margin-bottom: 10px;
+  letter-spacing: -0.5px;
+}
+
+.bt-subtitle {
+  font-size: 1.05rem;
+  color: #555;
+}
+
+.bt-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+/* ─── Card Design (Top Products Style) ──────────────────────── */
+.bt-card {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid #f0f0f0;
+  border-radius: 4px;
+  padding: 16px;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.bt-card:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.bt-card-img-wrapper {
+  width: 100%;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.bt-card-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+  transition: transform 0.3s ease;
+}
+
+.bt-card:hover .bt-card-img {
+  transform: scale(1.08);
+}
+
+.bt-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.bt-card-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.bt-card-desc {
+  font-size: 0.8rem;
+  color: #666;
+  line-height: 1.4;
+  margin: 0 0 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.8em;
+}
+
+/* ─── Footer with Rating and Button ──────────────────────────── */
+.bt-card-footer {
+  margin-top: auto;
+  display: flex;
+}
+
+.bt-card-btn {
+  background: #0d47a1;
+  color: #ffffff;
+  border: none;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 10px 0;
+  border-radius: 4px;
+  transition: background 0.2s;
+  width: 100%;
+  text-align: center;
+  display: inline-block;
+}
+
+.bt-card:hover .bt-card-btn {
+  background: #fb8c00;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .bt-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .bt-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  
+  .bt-card-img-wrapper {
+    height: 140px;
+  }
+}
+
+@media (max-width: 480px) {
+  .bt-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .bt-card-img-wrapper {
+    height: 180px;
+  }
+}

@@ -1,0 +1,113 @@
+/* ─── Testimonials Section ───────────────────────────────────── */
+.tm-section {
+  background: #f9fafb;
+  padding: 48px 0;
+}
+
+.tm-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.tm-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.tm-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 8px;
+}
+
+.tm-subtitle {
+  font-size: 0.95rem;
+  color: #666;
+}
+
+.tm-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.tm-card {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 28px 24px;
+  border: 1px solid #e8e8e8;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: box-shadow 0.2s;
+}
+
+.tm-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.tm-quote-icon {
+  font-size: 1.2rem;
+  color: #bbdefb;
+}
+
+.tm-text {
+  font-size: 0.9rem;
+  color: #555;
+  line-height: 1.65;
+  margin: 0;
+  flex: 1;
+}
+
+.tm-stars {
+  display: flex;
+  gap: 2px;
+}
+
+.tm-star {
+  font-size: 0.85rem;
+  color: #f9a825;
+}
+
+.tm-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.tm-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #0d47a1;
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tm-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin: 0;
+}
+
+.tm-role {
+  font-size: 0.75rem;
+  color: #999;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 991px) {
+  .tm-grid {
+    grid-template-columns: 1fr;
+  }
+}
