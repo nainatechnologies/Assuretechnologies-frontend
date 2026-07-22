@@ -47,6 +47,11 @@
   font-size: 1.3rem;
   margin-bottom: 6px;
   color: #0d47a1;
+  max-height: 24px;
+  opacity: 1;
+  transform: scale(1);
+  transition: all 0.3s ease;
+  overflow: hidden;
 }
 
 .cat-strip-label {
@@ -54,12 +59,26 @@
   font-weight: 600;
   white-space: nowrap;
   text-align: center;
+  transition: all 0.2s;
+}
+
+/* ─── Scrolled State ────────────────────────────────────────────── */
+.cat-strip.cat-strip-scrolled .cat-strip-icon {
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: 0;
+  transform: scale(0);
+}
+
+.cat-strip.cat-strip-scrolled .cat-strip-item {
+  padding: 10px 14px;
 }
 
 /* ─── Responsive ─────────────────────────────────────────────────── */
 @media (max-width: 991px) {
   .cat-strip {
-    top: 0; /* Below collapsed navbar */
+    top: 0;
+    /* Below collapsed navbar */
   }
 
   .cat-strip-inner {

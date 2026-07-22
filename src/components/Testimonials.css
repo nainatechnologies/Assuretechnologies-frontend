@@ -1,7 +1,8 @@
 /* ─── Testimonials Section ───────────────────────────────────── */
 .tm-section {
-  background: #f9fafb;
-  padding: 48px 0;
+  background: #ffffff;
+  padding: 56px 0;
+  overflow: hidden; /* Hide horizontal scroll */
 }
 
 .tm-container {
@@ -12,63 +13,125 @@
 
 .tm-header {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 40px;
 }
 
 .tm-title {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1.8rem;
+  font-weight: 800;
   color: #1a1a2e;
-  margin-bottom: 8px;
+  margin: 0 0 8px;
+  letter-spacing: -0.5px;
 }
 
 .tm-subtitle {
   font-size: 0.95rem;
   color: #666;
+  margin: 0;
 }
 
-.tm-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-}
-
-.tm-card {
-  background: #ffffff;
-  border-radius: 8px;
-  padding: 28px 24px;
-  border: 1px solid #e8e8e8;
+/* ─── Marquee Layout ─────────────────────────────────────────── */
+.tm-marquee-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 24px;
+  width: 100vw;
+  margin-left: calc(-50vw + 50%); /* Break out of container for full width */
+}
+
+.tm-marquee {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+}
+
+/* Add subtle gradient fades on the edges of the marquee */
+.tm-marquee::before,
+.tm-marquee::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100px;
+  z-index: 2;
+  pointer-events: none;
+}
+.tm-marquee::before {
+  left: 0;
+  background: linear-gradient(to right, rgba(255,255,255,1), rgba(255,255,255,0));
+}
+.tm-marquee::after {
+  right: 0;
+  background: linear-gradient(to left, rgba(255,255,255,1), rgba(255,255,255,0));
+}
+
+.tm-marquee-content {
+  display: flex;
+  gap: 24px;
+  padding-left: 24px;
+  width: max-content;
+}
+
+/* Animations */
+.tm-scroll-left .tm-marquee-content {
+  animation: scroll-left 45s linear infinite;
+}
+
+.tm-scroll-right .tm-marquee-content {
+  animation: scroll-right 45s linear infinite;
+}
+
+/* Pause on hover */
+.tm-marquee-content:hover {
+  animation-play-state: paused;
+}
+
+@keyframes scroll-left {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(calc(-50% - 12px)); } /* 50% of the content width + half the gap */
+}
+
+@keyframes scroll-right {
+  0% { transform: translateX(calc(-50% - 12px)); }
+  100% { transform: translateX(0); }
+}
+
+/* ─── Card Design (Pronto Style) ─────────────────────────────── */
+.tm-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #eaeaea;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 340px; /* Fixed width for uniform scrolling */
+  flex-shrink: 0;
   transition: box-shadow 0.2s;
 }
 
 .tm-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-}
-
-.tm-quote-icon {
-  font-size: 1.2rem;
-  color: #bbdefb;
-}
-
-.tm-text {
-  font-size: 0.9rem;
-  color: #555;
-  line-height: 1.65;
-  margin: 0;
-  flex: 1;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
 }
 
 .tm-stars {
   display: flex;
-  gap: 2px;
+  gap: 4px;
 }
 
 .tm-star {
-  font-size: 0.85rem;
-  color: #f9a825;
+  font-size: 1rem;
+  color: #0d47a1; /* Brand blue */
+}
+
+.tm-text {
+  font-size: 0.95rem;
+  color: #4a4a4a;
+  line-height: 1.6;
+  margin: 0;
+  flex: 1;
+  font-weight: 500;
 }
 
 .tm-author {
@@ -76,15 +139,14 @@
   align-items: center;
   gap: 12px;
   padding-top: 12px;
-  border-top: 1px solid #f0f0f0;
 }
 
 .tm-avatar {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: #0d47a1;
-  color: #ffffff;
+  background: #e3f2fd; /* Light blue */
+  color: #0d47a1;      /* Dark blue */
   font-size: 0.85rem;
   font-weight: 700;
   display: flex;
@@ -95,19 +157,34 @@
 
 .tm-name {
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 700;
   color: #1a1a2e;
   margin: 0;
+  line-height: 1.2;
 }
 
 .tm-role {
   font-size: 0.75rem;
-  color: #999;
+  color: #888;
 }
 
 /* ─── Responsive ─────────────────────────────────────────────── */
-@media (max-width: 991px) {
-  .tm-grid {
-    grid-template-columns: 1fr;
+@media (max-width: 768px) {
+  .tm-section {
+    padding: 40px 0;
+  }
+  
+  .tm-card {
+    width: 280px;
+    padding: 20px;
+  }
+  
+  .tm-text {
+    font-size: 0.88rem;
+  }
+  
+  .tm-marquee::before,
+  .tm-marquee::after {
+    width: 40px;
   }
 }

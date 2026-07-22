@@ -1,0 +1,160 @@
+.auth-page-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 150px);
+  background-color: #f8fafc;
+  padding: 40px 20px;
+}
+
+.auth-card {
+  background: white;
+  width: 100%;
+  max-width: 450px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  padding: 40px;
+  text-align: center;
+}
+
+.auth-title {
+  color: #1e293b;
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin-bottom: 30px;
+  margin-top: 0;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  text-align: left;
+}
+
+.auth-input-group {
+  position: relative;
+  width: 100%;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #b7bfc9;
+  border-radius: 8px;
+  font-size: 1rem;
+  color: #334155;
+  outline: none;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.auth-input::placeholder {
+  color: #94a3b8;
+}
+
+.auth-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.auth-password-toggle {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-password-toggle:hover {
+  color: #475569;
+}
+
+.auth-forgot-password {
+  text-align: right;
+  margin-top: -10px;
+}
+
+.auth-forgot-password a {
+  color: #0D47A1;
+  font-size: 0.9rem;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.auth-forgot-password a:hover {
+  text-decoration: underline;
+}
+
+.auth-submit-btn {
+  background-color: #0D47A1;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 14px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 10px;
+}
+
+.auth-submit-btn:hover {
+  background-color: #1d4ed8;
+}
+
+.auth-footer {
+  margin-top: 30px;
+  font-size: 0.95rem;
+  color: #475569;
+}
+
+.auth-footer a {
+  color: #0D47A1;
+  text-decoration: none;
+  font-weight: 500;
+  margin-left: 5px;
+}
+
+.auth-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Specific to Register OTP view */
+.otp-message {
+  color: #475569;
+  margin-bottom: 25px;
+  line-height: 1.5;
+}
+
+.otp-message strong {
+  color: #1e293b;
+}
+
+.auth-resend {
+  text-align: center;
+  margin-top: 15px;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.auth-resend button {
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 5px;
+}
+
+.auth-resend button:hover {
+  text-decoration: underline;
+}

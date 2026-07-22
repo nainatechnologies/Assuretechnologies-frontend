@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   FaNetworkWired, FaRobot, FaLeaf, FaVideo, FaPhone,
@@ -8,27 +9,37 @@ import {
 import './CategoryStrip.css';
 
 const categories = [
-  { label: 'Networking',     icon: <FaNetworkWired />,  slug: 'Networking' },
-  { label: 'Automation',     icon: <FaRobot />,         slug: 'Automation' },
-  { label: 'AgriTech',       icon: <FaLeaf />,          slug: 'AgriTech' },
-  { label: 'Surveillance',   icon: <FaVideo />,         slug: 'Surveillance' },
-  { label: 'Telephony',      icon: <FaPhone />,         slug: 'Telephony' },
-  { label: 'Intercom',       icon: <FaHeadset />,       slug: 'Intercom' },
-  { label: 'Biometrics',     icon: <FaFingerprint />,   slug: 'Biometrics' },
-  { label: 'Communication',  icon: <FaSatelliteDish />, slug: 'Communication' },
-  { label: 'Infrastructure', icon: <FaServer />,        slug: 'Infrastructure' },
-  { label: 'IT Support',     icon: <FaLaptop />,        slug: 'IT Support' },
-  { label: 'Solar',          icon: <FaSun />,           slug: 'Solar' },
-  { label: 'IIoT',           icon: <FaIndustry />,      slug: 'IIoT' },
-  { label: 'Security',       icon: <FaShieldAlt />,     slug: 'Security' },
-  { label: 'Sensors',        icon: <FaMicrochip />,     slug: 'Sensors' },
-  { label: 'Agriculture',    icon: <FaSeedling />,      slug: 'Agriculture' },
-  { label: 'Fiber Optics',   icon: <FaBolt />,          slug: 'Fiber Optics' },
+  { label: 'Networking', icon: <FaNetworkWired />, slug: 'Networking' },
+  { label: 'Automation', icon: <FaRobot />, slug: 'Automation' },
+  { label: 'AgriTech', icon: <FaLeaf />, slug: 'AgriTech' },
+  { label: 'Surveillance', icon: <FaVideo />, slug: 'Surveillance' },
+  { label: 'Telephony', icon: <FaPhone />, slug: 'Telephony' },
+  { label: 'Intercom', icon: <FaHeadset />, slug: 'Intercom' },
+  { label: 'Biometrics', icon: <FaFingerprint />, slug: 'Biometrics' },
+  { label: 'Communication', icon: <FaSatelliteDish />, slug: 'Communication' },
+  { label: 'Infrastructure', icon: <FaServer />, slug: 'Infrastructure' },
+  { label: 'IT Support', icon: <FaLaptop />, slug: 'IT Support' },
+  { label: 'Solar', icon: <FaSun />, slug: 'Solar' },
+  { label: 'IIoT', icon: <FaIndustry />, slug: 'IIoT' },
+  { label: 'Security', icon: <FaShieldAlt />, slug: 'Security' },
+  { label: 'Sensors', icon: <FaMicrochip />, slug: 'Sensors' },
+  { label: 'Agriculture', icon: <FaSeedling />, slug: 'Agriculture' },
+  { label: 'Fiber Optics', icon: <FaBolt />, slug: 'Fiber Optics' },
 ];
 
 export function CategoryStrip() {
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
-    <div className="cat-strip">
+    <div className={`cat-strip ${isScrolled ? 'cat-strip-scrolled' : ''}`}>
       <div className="cat-strip-inner">
         {categories.map(cat => (
           <Link

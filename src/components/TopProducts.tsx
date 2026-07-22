@@ -1,22 +1,8 @@
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { FaStar, FaStarHalfAlt, FaChevronLeft, FaChevronRight, FaPlus, FaMinus } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaPlus, FaMinus, FaShoppingCart } from 'react-icons/fa';
 import { PRODUCTS } from '../data/products';
 import './TopProducts.css';
-
-function StarRating({ rating }: { rating: number }) {
-  const stars = [];
-  for (let i = 1; i <= 5; i++) {
-    if (i <= Math.floor(rating)) {
-      stars.push(<FaStar key={i} className="star filled" />);
-    } else if (i - 0.5 <= rating) {
-      stars.push(<FaStarHalfAlt key={i} className="star filled" />);
-    } else {
-      stars.push(<FaStar key={i} className="star" />);
-    }
-  }
-  return <div className="star-rating">{stars}</div>;
-}
 
 // Pick top-rated products
 const topProducts = [...PRODUCTS]
@@ -72,31 +58,31 @@ export function TopProducts({ cart, setCart }: {
               <div className="tp-card-body">
                 <span className="tp-card-cat">{product.service}</span>
                 <h4 className="tp-card-name">{product.name}</h4>
-                <div className="tp-card-rating">
-                  <StarRating rating={product.rating} />
-                  <span className="tp-review-count">({product.reviewCount})</span>
-                </div>
-                <div className="tp-card-price">
-                  <span className="tp-price">₹{product.price.toLocaleString('en-IN')}</span>
-                  {product.originalPrice > product.price && (
-                    <span className="tp-original-price">₹{product.originalPrice.toLocaleString('en-IN')}</span>
+                
+                <div className="tp-card-price-row">
+                  <div className="tp-price-group">
+                    <span className="tp-price">₹{product.price.toLocaleString('en-IN')}</span>
+                    {product.originalPrice > product.price && (
+                      <span className="tp-original-price">₹{product.originalPrice.toLocaleString('en-IN')}</span>
+                    )}
+                  </div>
+
+                  {cart[product.id] ? (
+                    <div className="tp-qty-controls">
+                      <button className="tp-qty-btn" onClick={() => updateQuantity(product.id, -1)} aria-label="Decrease quantity">
+                        <FaMinus size={11} />
+                      </button>
+                      <span className="tp-qty-val">{cart[product.id]}</span>
+                      <button className="tp-qty-btn" onClick={() => updateQuantity(product.id, 1)} aria-label="Increase quantity">
+                        <FaPlus size={11} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button className="tp-add-btn" onClick={() => updateQuantity(product.id, 1)}>
+                      <FaShoppingCart size={16} title="Add to Cart" />
+                    </button>
                   )}
                 </div>
-                {cart[product.id] ? (
-                  <div className="tp-qty-controls">
-                    <button className="tp-qty-btn" onClick={() => updateQuantity(product.id, -1)} aria-label="Decrease quantity">
-                      <FaMinus />
-                    </button>
-                    <span className="tp-qty-val">{cart[product.id]}</span>
-                    <button className="tp-qty-btn" onClick={() => updateQuantity(product.id, 1)} aria-label="Increase quantity">
-                      <FaPlus />
-                    </button>
-                  </div>
-                ) : (
-                  <button className="tp-add-btn" onClick={() => updateQuantity(product.id, 1)}>
-                    Add to Cart
-                  </button>
-                )}
               </div>
             </div>
           ))}

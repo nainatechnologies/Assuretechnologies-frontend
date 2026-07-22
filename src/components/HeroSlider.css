@@ -6,7 +6,7 @@
 .hero-carousel {
   position: relative;
   width: 100%;
-  height: 420px;
+  height: 357px; /* Decreased by 15% (from 420px) */
   overflow: hidden;
 }
 
@@ -33,7 +33,7 @@
     90deg,
     rgba(0, 0, 0, 0.7) 0%,
     rgba(0, 0, 0, 0.35) 50%,
-    rgba(0, 0, 0, 0.1) 100%
+    rgba(0, 0, 0, 0.15) 100%
   );
 }
 
@@ -42,7 +42,7 @@
   z-index: 2;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 80px 48px;
+  padding: 60px 48px; /* Adjusted padding for shorter height */
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -122,7 +122,7 @@
   right: 20px;
 }
 
-/* ─── Dots ───────────────────────────────────────────────────── */
+/* ─── Dots (Snapdeal Style: Capsule container with grey dots & black active pill) ─── */
 .hero-dots {
   position: absolute;
   bottom: 20px;
@@ -130,33 +130,40 @@
   transform: translateX(-50%);
   z-index: 5;
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  padding: 6px 12px;
+  border-radius: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
 }
 
 .hero-dot {
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  background: transparent;
+  border: none;
+  background: #dddddd; /* Light grey for inactive */
   cursor: pointer;
-  transition: all 0.25s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
 }
 
 .hero-dot.active {
-  background: #ffffff;
-  border-color: #ffffff;
-  transform: scale(1.2);
+  width: 18px;
+  height: 6px;
+  border-radius: 3px;
+  background: #000000; /* Black active pill */
 }
 
 /* ─── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .hero-carousel {
-    height: 300px;
+    height: 255px; /* Decreased by 15% (from 300px) */
   }
 
   .hero-slide-content {
-    padding: 40px 24px;
+    padding: 30px 24px; /* Adjusted padding for shorter height */
   }
 
   .hero-slide-title {

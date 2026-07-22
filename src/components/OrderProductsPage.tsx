@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FaSearch, FaPlus, FaMinus, FaStar, FaStarHalfAlt, FaSortAmountDown, FaThLarge, FaListUl } from 'react-icons/fa';
+import { FaSearch, FaPlus, FaMinus, FaStar, FaStarHalfAlt, FaSortAmountDown, FaThLarge, FaListUl, FaCartPlus, FaShoppingBag, FaShoppingCart } from 'react-icons/fa';
 import { PRODUCTS, CATEGORIES } from '../data/products';
+import { SERVICES } from '../data/services';
 import './OrderProductsPage.css';
 
 interface OrderProductsProps {
@@ -35,6 +36,15 @@ export function OrderProductsPage({ cart, setCart }: OrderProductsProps) {
       prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
     );
   };
+
+  const filteredServices = useMemo(() => {
+    const q = search.toLowerCase();
+    return SERVICES.filter(s => {
+      const matchCat = selectedCats.length === 0 || selectedCats.includes(s.label);
+      const matchSearch = s.label.toLowerCase().includes(q) || s.title.toLowerCase().includes(q);
+      return matchCat && matchSearch;
+    });
+  }, [search, selectedCats]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -72,95 +82,38 @@ export function OrderProductsPage({ cart, setCart }: OrderProductsProps) {
     <div className="op-page">
       <div className="op-layout">
 
-        {/* ─── Sidebar Filters ──────────────────────────── */}
-        <aside className="op-sidebar">
-          <h3 className="op-sidebar-title">Filters</h3>
-
-          {/* Search */}
-          <div className="op-filter-group">
-            <div className="op-sidebar-search">
-              <FaSearch className="op-sidebar-search-icon" />
-              <input
-                type="text"
-                placeholder="Search products…"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Category Filter */}
-          <div className="op-filter-group">
-            <h4 className="op-filter-label">Category</h4>
-            {CATEGORIES.filter(c => c !== 'All').map(cat => (
-              <label key={cat} className="op-filter-checkbox">
-                <input
-                  type="checkbox"
-                  checked={selectedCats.includes(cat)}
-                  onChange={() => toggleCategory(cat)}
-                />
-                <span>{cat}</span>
-              </label>
-            ))}
-          </div>
-
-          {/* Rating Filter */}
-          <div className="op-filter-group">
-            <h4 className="op-filter-label">Customer Rating</h4>
-            {[4, 3, 2].map(r => (
-              <label key={r} className="op-filter-checkbox">
-                <input
-                  type="radio"
-                  name="rating"
-                  checked={minRating === r}
-                  onChange={() => setMinRating(r)}
-                />
-                <span>{r}★ & above</span>
-              </label>
-            ))}
-            <label className="op-filter-checkbox">
-              <input
-                type="radio"
-                name="rating"
-                checked={minRating === 0}
-                onChange={() => setMinRating(0)}
-              />
-              <span>All Ratings</span>
-            </label>
-          </div>
-        </aside>
 
         {/* ─── Main Content ─────────────────────────────── */}
         <main className="op-main">
-          {/* Toolbar */}
-          <div className="op-toolbar">
-            <span className="op-result-count">
-              Showing <strong>{filtered.length}</strong> products
-              {selectedCats.length > 0 && ` in ${selectedCats.join(', ')}`}
-            </span>
-            <div className="op-toolbar-right">
-              <div className="op-sort">
-                <FaSortAmountDown className="op-sort-icon" />
-                <select value={sort} onChange={e => setSort(e.target.value)}>
-                  <option value="popular">Popularity</option>
-                  <option value="price-low">Price: Low to High</option>
-                  <option value="price-high">Price: High to Low</option>
-                  <option value="rating">Rating</option>
-                  <option value="discount">Discount</option>
-                </select>
-              </div>
-              <div className="op-view-toggle">
-                <button className={viewMode === 'grid' ? 'active' : ''} onClick={() => setViewMode('grid')} aria-label="Grid view">
-                  <FaThLarge />
-                </button>
-                <button className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')} aria-label="List view">
-                  <FaListUl />
-                </button>
+
+
+          {/* Services Section */}
+          {(search || selectedCats.length > 0) && filteredServices.length > 0 && (
+            <div className="op-services-section">
+              <h3 className="op-section-title">Matching Services</h3>
+              <div className="op-services-list">
+                {filteredServices.map(service => (
+                  <div key={service.id} className="op-service-item">
+                    {service.img ? (
+                      <img src={service.img} alt={service.label} className="op-service-img" />
+                    ) : (
+                      <div className="op-service-icon">{service.icon}</div>
+                    )}
+                    <div className="op-service-info">
+                      <span className="op-service-label">{service.label}</span>
+                      <h4 className="op-service-title">{service.title}</h4>
+                    </div>
+                    <a href="/book-service" className="op-service-btn">Book Now</a>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
+          )}
 
           {/* Product Grid/List */}
+          <h3 className="op-section-title" style={{ marginTop: (search || selectedCats.length > 0) && filteredServices.length > 0 ? '24px' : '0' }}>
+            Products
+          </h3>
           <div className={`op-grid ${viewMode === 'list' ? 'op-list-view' : ''}`}>
             {filtered.length > 0 ? (
               filtered.map(product => (
@@ -175,36 +128,34 @@ export function OrderProductsPage({ cart, setCart }: OrderProductsProps) {
                     <span className="op-card-cat">{product.service}</span>
                     <h4 className="op-card-name">{product.name}</h4>
                     <p className="op-card-desc">{product.description}</p>
-                    <div className="op-card-rating">
-                      <span className="op-rating-badge">{product.rating}★</span>
-                      <span className="op-review-count">{product.reviewCount.toLocaleString()} ratings</span>
-                    </div>
+
                     <div className="op-card-price-row">
-                      <span className="op-price">₹{product.price.toLocaleString('en-IN')}</span>
-                      {product.originalPrice > product.price && (
-                        <>
+                      <div className="op-price-group">
+                        <span className="op-price">₹{product.price.toLocaleString('en-IN')}</span>
+                        {product.originalPrice > product.price && (
                           <span className="op-original-price">₹{product.originalPrice.toLocaleString('en-IN')}</span>
-                          <span className="op-discount-text">{product.discount}% off</span>
-                        </>
+                        )}
+                      </div>
+
+                      {!cart[product.id] ? (
+                        <button className="op-add-btn" onClick={() => updateQty(product.id, 1)} style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
+                          {/* <FaCartPlus size={16} title="FaCartPlus" />
+                          <FaShoppingBag size={16} title="FaShoppingBag" /> */}
+                          <FaShoppingCart size={16} title="FaShoppingCart" />
+                          {/* <FaPlus size={16} title="FaPlus" /> */}
+                        </button>
+                      ) : (
+                        <div className="op-qty">
+                          <button onClick={() => updateQty(product.id, -1)} aria-label="Decrease">
+                            <FaMinus size={11} />
+                          </button>
+                          <span>{cart[product.id]}</span>
+                          <button onClick={() => updateQty(product.id, 1)} aria-label="Increase">
+                            <FaPlus size={11} />
+                          </button>
+                        </div>
                       )}
                     </div>
-                  </div>
-                  <div className="op-card-footer">
-                    {!cart[product.id] ? (
-                      <button className="op-add-btn" onClick={() => updateQty(product.id, 1)}>
-                        Add to Cart
-                      </button>
-                    ) : (
-                      <div className="op-qty">
-                        <button onClick={() => updateQty(product.id, -1)} aria-label="Decrease">
-                          <FaMinus size={11} />
-                        </button>
-                        <span>{cart[product.id]}</span>
-                        <button onClick={() => updateQty(product.id, 1)} aria-label="Increase">
-                          <FaPlus size={11} />
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               ))
