@@ -193,3 +193,43 @@
     min-width: 100%;
   }
 }
+
+.order-status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-delivered {
+  background-color: #e6f4ea;
+  color: #137333;
+}
+
+.status-out-for-delivery {
+  background-color: #fef7e0;
+  color: #b06000;
+}
+
+.status-processing {
+  background-color: #e8f0fe;
+  color: #1967d2;
+}
+
+.status-cancelled {
+  background-color: #fce8e6;
+  color: #c5221f;
+}
+
+.status-shipped {
+  background-color: #f3e8fd;
+  color: #7b1fa2;
+}
+
+.status-refunded {
+  background-color: #f1f3f4;
+  color: #5f6368;
+}

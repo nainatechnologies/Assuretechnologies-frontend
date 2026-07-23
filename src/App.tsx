@@ -37,13 +37,14 @@ function HomePage({ cart, setCart }: {
 function App() {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState('Sai Kumar');
 
   // Calculate total items in cart
   const cartCount = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
 
   return (
     <>
-      <Navbar cartCount={cartCount} isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />
+      <Navbar cartCount={cartCount} isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} userName={userName} />
       <CategoryStrip />
       <Routes>
         <Route path="/" element={<HomePage cart={cart} setCart={setCart} />} />

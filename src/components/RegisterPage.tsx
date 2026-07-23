@@ -19,6 +19,16 @@ export function RegisterPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolea
     password: '',
     confirmPassword: ''
   });
+
+  const [errors, setErrors] = useState({
+    fullName: '',
+    mobileNumber: '',
+    emailAddress: '',
+    fullAddress: '',
+    pincode: '',
+    password: '',
+    confirmPassword: ''
+  });
   
   const [otp, setOtp] = useState('');
 
@@ -27,14 +37,67 @@ export function RegisterPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolea
       ...formData,
       [e.target.name]: e.target.value
     });
+    // Clear error for this field when typing
+    setErrors({
+      ...errors,
+      [e.target.name]: ''
+    });
   };
 
   const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      alert("Passwords don't match");
-      return;
+    
+    const newErrors = {
+      fullName: '',
+      mobileNumber: '',
+      emailAddress: '',
+      fullAddress: '',
+      pincode: '',
+      password: '',
+      confirmPassword: ''
+    };
+    let hasError = false;
+
+    if (!/^[a-zA-Z\s]{5,50}$/.test(formData.fullName.trim())) {
+      newErrors.fullName = "Letters and spaces only (5-50 chars)";
+      hasError = true;
     }
+
+    if (!/^\d{10}$/.test(formData.mobileNumber)) {
+      newErrors.mobileNumber = "Must be a valid 10-digit number";
+      hasError = true;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.emailAddress)) {
+      newErrors.emailAddress = "Please enter a valid email address";
+      hasError = true;
+    }
+
+    if (formData.fullAddress.trim().length < 5) {
+      newErrors.fullAddress = "Address must be at least 5 characters long";
+      hasError = true;
+    }
+
+    if (!/^\d{6}$/.test(formData.pincode)) {
+      newErrors.pincode = "Must be a 6-digit Pincode";
+      hasError = true;
+    }
+
+    if (formData.password.length < 6) {
+      newErrors.password = "Must be at least 6 characters long";
+      hasError = true;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords don't match";
+      hasError = true;
+    }
+
+    setErrors(newErrors);
+
+    if (hasError) return;
+
     // Move to OTP step
     setStep(2);
   };
@@ -56,17 +119,19 @@ export function RegisterPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolea
         <h2 className="auth-title">{step === 1 ? 'Register' : 'Verify Mobile Number'}</h2>
         
         {step === 1 && (
-          <form className="auth-form" onSubmit={handleRegisterSubmit}>
+          <form className="auth-form" onSubmit={handleRegisterSubmit} noValidate>
             <div className="auth-input-group">
               <input
                 type="text"
                 name="fullName"
-                className="auth-input"
+                className={`auth-input ${errors.fullName ? 'input-error' : ''}`}
                 placeholder="Full Name"
                 value={formData.fullName}
                 onChange={handleInputChange}
                 required
+                maxLength={50}
               />
+              {errors.fullName && <span className="error-text">{errors.fullName}</span>}
             </div>
             
             <div className="register-row">
@@ -74,23 +139,26 @@ export function RegisterPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolea
                 <input
                   type="tel"
                   name="mobileNumber"
-                  className="auth-input"
+                  className={`auth-input ${errors.mobileNumber ? 'input-error' : ''}`}
                   placeholder="Mobile Number"
                   value={formData.mobileNumber}
                   onChange={handleInputChange}
                   required
+                  maxLength={10}
                 />
+                {errors.mobileNumber && <span className="error-text">{errors.mobileNumber}</span>}
               </div>
               <div className="auth-input-group">
                 <input
                   type="email"
                   name="emailAddress"
-                  className="auth-input"
+                  className={`auth-input ${errors.emailAddress ? 'input-error' : ''}`}
                   placeholder="Email Address"
                   value={formData.emailAddress}
                   onChange={handleInputChange}
                   required
                 />
+                {errors.emailAddress && <span className="error-text">{errors.emailAddress}</span>}
               </div>
             </div>
 
@@ -98,24 +166,29 @@ export function RegisterPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolea
               <input
                 type="text"
                 name="fullAddress"
-                className="auth-input"
+                className={`auth-input ${errors.fullAddress ? 'input-error' : ''}`}
                 placeholder="Full Address"
                 value={formData.fullAddress}
                 onChange={handleInputChange}
                 required
+                minLength={5}
+                maxLength={200}
               />
+              {errors.fullAddress && <span className="error-text">{errors.fullAddress}</span>}
             </div>
 
             <div className="auth-input-group">
               <input
                 type="text"
                 name="pincode"
-                className="auth-input"
+                className={`auth-input ${errors.pincode ? 'input-error' : ''}`}
                 placeholder="Pincode"
                 value={formData.pincode}
                 onChange={handleInputChange}
                 required
+                maxLength={6}
               />
+              {errors.pincode && <span className="error-text">{errors.pincode}</span>}
             </div>
 
             <div className="register-row">
@@ -123,7 +196,7 @@ export function RegisterPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolea
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
-                  className="auth-input"
+                  className={`auth-input ${errors.password ? 'input-error' : ''}`}
                   placeholder="Password"
                   value={formData.password}
                   onChange={handleInputChange}
@@ -136,13 +209,14 @@ export function RegisterPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolea
                 >
                   {showPassword ? <FaEyeSlash /> : <FaEye />}
                 </button>
+                {errors.password && <span className="error-text">{errors.password}</span>}
               </div>
 
               <div className="auth-input-group">
                 <input
                   type={showConfirmPassword ? "text" : "password"}
                   name="confirmPassword"
-                  className="auth-input"
+                  className={`auth-input ${errors.confirmPassword ? 'input-error' : ''}`}
                   placeholder="Confirm Password"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
@@ -155,6 +229,7 @@ export function RegisterPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolea
                 >
                   {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
                 </button>
+                {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
               </div>
             </div>
 
@@ -165,7 +240,7 @@ export function RegisterPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolea
         )}
 
         {step === 2 && (
-          <form className="auth-form" onSubmit={handleOtpSubmit}>
+          <form className="auth-form" onSubmit={handleOtpSubmit} noValidate>
             <p className="otp-message">
               Please enter the OTP sent to <strong>{formData.mobileNumber}</strong>
             </p>

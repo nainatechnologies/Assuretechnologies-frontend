@@ -15,6 +15,7 @@ export function OrdersPage() {
       total: '₹16,500',
       shipTo: 'Shyam Matam',
       type: 'product',
+      status: 'Delivered',
       items: [
         {
           name: '4K Security Camera',
@@ -36,6 +37,7 @@ export function OrdersPage() {
       total: '₹2,300',
       shipTo: 'Shyam Matam',
       type: 'service',
+      status: 'Out for Delivery',
       items: [
         {
           name: 'CCTV Installation Service',
@@ -57,12 +59,29 @@ export function OrdersPage() {
       total: '₹8,999',
       shipTo: 'Shyam Matam',
       type: 'product',
+      status: 'Processing',
       items: [
         {
           name: 'Biometric Access Control System',
           qty: 1,
           image: 'https://images.unsplash.com/photo-1555861496-faa66cb20c27?w=300&q=80',
           returnStatus: 'Warranty valid until 05 June 2027',
+        }
+      ]
+    },
+    {
+      id: 'ORD-2023-0045',
+      date: 'May 12, 2026',
+      total: '₹4,500',
+      shipTo: 'Shyam Matam',
+      type: 'product',
+      status: 'Cancelled',
+      items: [
+        {
+          name: 'Smart Lock Pro',
+          qty: 1,
+          image: 'https://images.unsplash.com/photo-1558002038-1055907df827?w=300&q=80',
+          returnStatus: 'Refund processed to original payment method',
         }
       ]
     }
@@ -103,6 +122,11 @@ export function OrdersPage() {
             </div>
 
             <div className="order-body">
+              <div style={{ marginBottom: '16px' }}>
+                <span className={`order-status-badge status-${order.status.replace(/\s+/g, '-').toLowerCase()}`}>
+                  {order.status}
+                </span>
+              </div>
               {order.items.map((item, index) => (
                 <div key={index} className="order-item">
                   <div className="order-item-left">

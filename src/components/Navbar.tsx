@@ -140,11 +140,13 @@ function SearchBar({ isMobile }: { isMobile?: boolean }) {
 export function Navbar({ 
   cartCount = 0, 
   isLoggedIn = false, 
-  setIsLoggedIn 
+  setIsLoggedIn,
+  userName = ''
 }: { 
   cartCount?: number;
   isLoggedIn?: boolean;
   setIsLoggedIn?: (value: boolean) => void;
+  userName?: string;
 }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -209,7 +211,7 @@ export function Navbar({
               aria-label="Profile"
             >
               <FaUserCircle className="action-icon" />
-              <span className="action-text">Login</span>
+              <span className="action-text">{isLoggedIn && userName ? userName.split(' ')[0] : 'Login'}</span>
             </button>
             
             {isDropdownOpen && (

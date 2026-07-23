@@ -61,7 +61,7 @@
 .auth-password-toggle {
   position: absolute;
   right: 14px;
-  top: 50%;
+  top: 21px; /* changed from 50% so it stays aligned with input when error text appears */
   transform: translateY(-50%);
   background: none;
   border: none;
@@ -157,4 +157,22 @@
 
 .auth-resend button:hover {
   text-decoration: underline;
+}
+
+/* Input Validation Errors */
+.input-error {
+  border-color: #ef4444 !important;
+  background-color: #fef2f2;
+}
+.input-error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+.error-text {
+  color: #ef4444;
+  font-size: 0.75rem;
+  margin-top: 4px;
+  display: block;
+  text-align: left;
+  line-height: 1.2;
 }
