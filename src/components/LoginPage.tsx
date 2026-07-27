@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { authApi } from '../api/authApi';
+import { useAuth } from '../context/AuthContext';
 import './LoginPage.css';
 
-export function LoginPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolean) => void }) {
+export function LoginPage() {
+  const { login } = useAuth();
   const navigate = useNavigate();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -50,13 +53,17 @@ export function LoginPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolean) 
 
     if (hasError) return;
 
-    // Dummy login logic
+    // Dummy login logic utilizing API structure
     if (identifier === '9912345678' && password === '123456') {
-      if (setIsLoggedIn) setIsLoggedIn(true);
-      navigate('/');
+      authApi.login(identifier).then(() => {
+        login('mock-jwt-token-123', 'Sai Kumar');
+        navigate('/');
+      });
     } else if (identifier === 'admin@assure.com' && password === '123456') {
-      if (setIsLoggedIn) setIsLoggedIn(true);
-      navigate('/');
+      authApi.login(identifier).then(() => {
+        login('mock-jwt-token-admin', 'Admin User');
+        navigate('/');
+      });
     } else {
       alert('Invalid credentials. For testing, use 9912345678 and 123456');
     }

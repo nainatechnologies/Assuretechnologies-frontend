@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { authApi } from '../api/authApi';
+import { useAuth } from '../context/AuthContext';
 import './LoginPage.css'; // Reuse auth styles
 import './RegisterPage.css';
 
-export function RegisterPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolean) => void }) {
+export function RegisterPage() {
+  const { login } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<1 | 2>(1); // 1: Details, 2: OTP
   const [showPassword, setShowPassword] = useState(false);
@@ -16,8 +19,10 @@ export function RegisterPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolea
     emailAddress: '',
     fullAddress: '',
     pincode: '',
+    stateName: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    termsAccepted: false
   });
 
   const [errors, setErrors] = useState({
@@ -26,21 +31,27 @@ export function RegisterPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolea
     emailAddress: '',
     fullAddress: '',
     pincode: '',
+    stateName: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    termsAccepted: ''
   });
   
   const [otp, setOtp] = useState('');
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    const isCheckbox = type === 'checkbox';
+    const checked = isCheckbox ? (e.target as HTMLInputElement).checked : false;
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: isCheckbox ? checked : value
     });
     // Clear error for this field when typing
     setErrors({
       ...errors,
-      [e.target.name]: ''
+      [name]: ''
     });
   };
 
@@ -53,8 +64,10 @@ export function RegisterPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolea
       emailAddress: '',
       fullAddress: '',
       pincode: '',
+      stateName: '',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      termsAccepted: ''
     };
     let hasError = false;
 
@@ -84,6 +97,11 @@ export function RegisterPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolea
       hasError = true;
     }
 
+    if (!formData.stateName) {
+      newErrors.stateName = "Please select a state";
+      hasError = true;
+    }
+
     if (formData.password.length < 6) {
       newErrors.password = "Must be at least 6 characters long";
       hasError = true;
@@ -94,20 +112,29 @@ export function RegisterPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolea
       hasError = true;
     }
 
+    if (!formData.termsAccepted) {
+      newErrors.termsAccepted = "Please accept the terms and conditions to register";
+      hasError = true;
+    }
+
     setErrors(newErrors);
 
     if (hasError) return;
 
-    // Move to OTP step
-    setStep(2);
+    // Dummy register API call
+    authApi.register(formData).then(() => {
+      setStep(2);
+    });
   };
 
   const handleOtpSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (otp === '123456') {
-      alert('Registration successful!');
-      if (setIsLoggedIn) setIsLoggedIn(true);
-      navigate('/profile');
+      authApi.verifyOtp(formData.mobileNumber, otp).then((res) => {
+        alert('Registration successful!');
+        login(res.data.token, formData.fullName);
+        navigate('/profile');
+      });
     } else {
       alert('Invalid OTP. Please enter 123456');
     }
@@ -177,18 +204,35 @@ export function RegisterPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolea
               {errors.fullAddress && <span className="error-text">{errors.fullAddress}</span>}
             </div>
 
-            <div className="auth-input-group">
-              <input
-                type="text"
-                name="pincode"
-                className={`auth-input ${errors.pincode ? 'input-error' : ''}`}
-                placeholder="Pincode"
-                value={formData.pincode}
-                onChange={handleInputChange}
-                required
-                maxLength={6}
-              />
-              {errors.pincode && <span className="error-text">{errors.pincode}</span>}
+            <div className="register-row">
+              <div className="auth-input-group">
+                <input
+                  type="text"
+                  name="pincode"
+                  className={`auth-input ${errors.pincode ? 'input-error' : ''}`}
+                  placeholder="Pincode"
+                  value={formData.pincode}
+                  onChange={handleInputChange}
+                  required
+                  maxLength={6}
+                />
+                {errors.pincode && <span className="error-text">{errors.pincode}</span>}
+              </div>
+
+              <div className="auth-input-group">
+                <select
+                  name="stateName"
+                  className={`auth-input auth-select ${errors.stateName ? 'input-error' : ''}`}
+                  value={formData.stateName}
+                  onChange={handleInputChange as any}
+                  required
+                >
+                  <option value="" disabled>Select State</option>
+                  <option value="Andhra Pradesh">Andhra Pradesh</option>
+                  <option value="Telangana">Telangana</option>
+                </select>
+                {errors.stateName && <span className="error-text">{errors.stateName}</span>}
+              </div>
             </div>
 
             <div className="register-row">
@@ -231,6 +275,20 @@ export function RegisterPage({ setIsLoggedIn }: { setIsLoggedIn?: (value: boolea
                 </button>
                 {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
               </div>
+            </div>
+
+            <div className="auth-checkbox-group">
+              <label className="auth-checkbox-label">
+                <input
+                  type="checkbox"
+                  name="termsAccepted"
+                  checked={formData.termsAccepted}
+                  onChange={handleInputChange}
+                  required
+                />
+                <span>I agree to the <a href="#" target="_blank" rel="noopener noreferrer">Terms and Conditions</a></span>
+              </label>
+              {errors.termsAccepted && <span className="error-text" style={{ display: 'block', marginTop: '4px' }}>{errors.termsAccepted}</span>}
             </div>
 
             <button type="submit" className="auth-submit-btn">

@@ -272,6 +272,37 @@
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
+.booking-modal-body .form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.booking-modal-body .form-row > .form-group {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.booking-address-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.booking-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 8px;
+}
+
 .booking-modal-actions {
   padding: 20px 24px;
   border-top: 1px solid #e2e8f0;

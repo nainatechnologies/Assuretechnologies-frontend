@@ -4,6 +4,8 @@ import { FaUserCircle, FaShoppingCart, FaBars, FaTimes, FaDownload, FaSearch, Fa
 import { Logo } from './Logo';
 import { PRODUCTS, CATEGORIES } from '../data/products';
 import { SERVICES } from '../data/services';
+import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import './Navbar.css';
 
 function SearchBar({ isMobile }: { isMobile?: boolean }) {
@@ -137,17 +139,9 @@ function SearchBar({ isMobile }: { isMobile?: boolean }) {
   );
 }
 
-export function Navbar({ 
-  cartCount = 0, 
-  isLoggedIn = false, 
-  setIsLoggedIn,
-  userName = ''
-}: { 
-  cartCount?: number;
-  isLoggedIn?: boolean;
-  setIsLoggedIn?: (value: boolean) => void;
-  userName?: string;
-}) {
+export function Navbar() {
+  const { isLoggedIn, userName, logout } = useAuth();
+  const { cartCount } = useCart();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -226,7 +220,7 @@ export function Navbar({
                       style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}
                       onClick={() => {
                         setIsDropdownOpen(false);
-                        if (setIsLoggedIn) setIsLoggedIn(false);
+                        logout();
                         navigate('/');
                       }}
                     >

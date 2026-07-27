@@ -1,13 +1,15 @@
 import { useNavigate } from 'react-router-dom';
 import { FaUserAlt } from 'react-icons/fa';
+import { useAuth } from '../context/AuthContext';
 import './ProfilePage.css';
 
 export function ProfilePage() {
   const navigate = useNavigate();
+  const { userName } = useAuth();
 
   // Dummy user data based on registration fields
   const user = {
-    fullName: 'John Doe',
+    fullName: userName || 'Sai Kumar',
     mobileNumber: '9912345678',
     emailAddress: 'john.doe@example.com',
     fullAddress: '123 Tech Park, Innovation Hub',

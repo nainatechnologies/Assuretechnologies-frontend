@@ -63,8 +63,12 @@ export function BookServicePage() {
 
   const [date, setDate] = useState('');
   const [timeSlot, setTimeSlot] = useState('');
-  const [addressType, setAddressType] = useState('saved');
-  const [manualAddress, setManualAddress] = useState('');
+  const [pincode, setPincode] = useState('');
+  const [city, setCity] = useState('');
+  const [addressLine1, setAddressLine1] = useState('');
+  const [addressLine2, setAddressLine2] = useState('');
+  const [landmark, setLandmark] = useState('');
+  const [stateName, setStateName] = useState('');
   
   const [geolocation, setGeolocation] = useState('');
   const [mapPosition, setMapPosition] = useState<L.LatLngTuple | null>(null);
@@ -89,8 +93,12 @@ export function BookServicePage() {
     setSelectedService(null);
     setDate('');
     setTimeSlot('');
-    setAddressType('saved');
-    setManualAddress('');
+    setPincode('');
+    setCity('');
+    setAddressLine1('');
+    setAddressLine2('');
+    setLandmark('');
+    setStateName('');
     setGeolocation('');
     setMapPosition(null);
   };
@@ -117,8 +125,8 @@ export function BookServicePage() {
       alert('Please select a date and time slot.');
       return;
     }
-    if (addressType === 'manual' && !manualAddress.trim()) {
-      alert('Please enter your complete address.');
+    if (!pincode.trim() || !city.trim() || !addressLine1.trim() || !addressLine2.trim() || !stateName.trim()) {
+      alert('Please enter your complete address details (excluding optional landmark).');
       return;
     }
     alert(`Success! Your booking for ${selectedService} is confirmed.`);
@@ -191,25 +199,44 @@ export function BookServicePage() {
                 </select>
               </div>
 
-              <div className="form-group">
-                <label>Installation Address</label>
-                <select 
-                  value={addressType}
-                  onChange={e => setAddressType(e.target.value)}
-                >
-                  <option value="saved">Select saved address (123 Tech Park, Innovation Hub)</option>
-                  <option value="manual">Enter complete address manually</option>
-                </select>
+              <div className="booking-address-section">
+                <div className="booking-section-title">Installation Address</div>
                 
-                {addressType === 'manual' && (
-                  <textarea 
-                    placeholder="Enter complete address manually"
-                    value={manualAddress}
-                    onChange={e => setManualAddress(e.target.value)}
-                    rows={3}
-                    style={{ marginTop: '10px' }}
-                  />
-                )}
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Pincode</label>
+                    <input required type="text" value={pincode} onChange={e => setPincode(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label>Town/City</label>
+                    <input required type="text" value={city} onChange={e => setCity(e.target.value)} />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Flat, House no., Building, Company, Apartment</label>
+                  <input required type="text" value={addressLine1} onChange={e => setAddressLine1(e.target.value)} />
+                </div>
+
+                <div className="form-group">
+                  <label>Area, Street, Sector, Village</label>
+                  <input required type="text" value={addressLine2} onChange={e => setAddressLine2(e.target.value)} />
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Landmark</label>
+                    <input type="text" value={landmark} onChange={e => setLandmark(e.target.value)} placeholder="E.g. near apollo hospital" />
+                  </div>
+                  <div className="form-group">
+                    <label>State</label>
+                    <select required value={stateName} onChange={e => setStateName(e.target.value)}>
+                      <option value="" disabled>Select State</option>
+                      <option value="Andhra Pradesh">Andhra Pradesh</option>
+                      <option value="Telangana">Telangana</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
               <div className="form-group">

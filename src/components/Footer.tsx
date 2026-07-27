@@ -32,6 +32,7 @@ export function Footer() {
             <li><a href="/order-products">Products</a></li>
             <li><a href="/ventures">Ventures</a></li>
             <li><a href="#investors">Investors</a></li>
+            <li><a href="#careers">Careers</a></li>
           </ul>
         </div>
 

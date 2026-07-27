@@ -378,6 +378,288 @@
   background: #1565c0;
 }
 
+/* ─── Address Step ─────────────────────────────────────────────── */
+.address-step-container, .payment-step-container {
+  padding: 0;
+}
+
+.address-list {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.address-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 16px;
+  background: #ffffff;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.address-card.selected {
+  border-color: #2874f0;
+  background: #f5faff;
+}
+
+.address-radio-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.address-radio-label input[type="radio"] {
+  margin-top: 4px;
+  accent-color: #2874f0;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.address-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.address-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #1a1a2e;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.address-type-tag {
+  font-size: 0.65rem;
+  background: #f0f0f0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.address-phone {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.address-full {
+  font-size: 0.9rem;
+  color: #555;
+  line-height: 1.4;
+}
+
+.address-pin {
+  font-weight: 600;
+}
+
+.btn-deliver-here {
+  background: #fb641b;
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 2px;
+  cursor: pointer;
+  margin-top: 12px;
+  width: fit-content;
+  text-transform: uppercase;
+  box-shadow: 0 1px 2px 0 rgba(0,0,0,.2);
+}
+
+.add-new-address-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #2874f0;
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.add-new-address-btn:hover {
+  background: #f9f9f9;
+}
+
+.add-icon {
+  font-size: 0.8rem;
+}
+
+.new-address-form-container {
+  background: #f5faff;
+  border: 1px solid #e0e0e0;
+  padding: 20px;
+  border-radius: 4px;
+}
+
+.new-address-form-container h3 {
+  margin: 0 0 20px 0;
+  font-size: 1rem;
+  color: #2874f0;
+  text-transform: uppercase;
+}
+
+.new-address-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 0.8rem;
+  color: #888;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select {
+  padding: 10px 14px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+  background-color: #fff;
+  font-family: inherit;
+  box-sizing: border-box;
+  height: 42px;
+  width: 100%;
+  color: #333;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: #2874f0;
+}
+
+.form-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.btn-save-address {
+  background: #fb641b;
+  color: #fff;
+  border: none;
+  padding: 14px 24px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 2px;
+  cursor: pointer;
+  text-transform: uppercase;
+  box-shadow: 0 1px 2px 0 rgba(0,0,0,.2);
+}
+
+.btn-cancel-address {
+  background: transparent;
+  color: #2874f0;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.payment-options-list {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.payment-method-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 16px;
+  background: #ffffff;
+  transition: border-color 0.2s, background-color 0.2s;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.payment-method-card.selected {
+  border-color: #2874f0;
+  background: #f5faff;
+}
+
+.payment-method-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+}
+
+.payment-method-radio input[type="radio"] {
+  margin-top: 4px;
+  accent-color: #2874f0;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.payment-method-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.payment-method-title {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #1a1a2e;
+}
+
+.payment-method-desc {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.payment-action-area {
+  padding-left: 32px; /* indent to align with text */
+}
+
+.btn-confirm-order {
+  background: #fb641b;
+  color: #fff;
+  border: none;
+  padding: 14px 24px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 2px;
+  cursor: pointer;
+  text-transform: uppercase;
+  box-shadow: 0 1px 2px 0 rgba(0,0,0,.2);
+  width: fit-content;
+}
+
 /* ─── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 991px) {
   .cart-layout {

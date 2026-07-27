@@ -3,12 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { FaSearch, FaPlus, FaMinus, FaStar, FaStarHalfAlt, FaSortAmountDown, FaThLarge, FaListUl, FaCartPlus, FaShoppingBag, FaShoppingCart } from 'react-icons/fa';
 import { PRODUCTS, CATEGORIES } from '../data/products';
 import { SERVICES } from '../data/services';
+import { useCart } from '../context/CartContext';
 import './OrderProductsPage.css';
-
-interface OrderProductsProps {
-  cart: Record<string, number>;
-  setCart: React.Dispatch<React.SetStateAction<Record<string, number>>>;
-}
 
 function StarRating({ rating }: { rating: number }) {
   const stars = [];
@@ -20,7 +16,8 @@ function StarRating({ rating }: { rating: number }) {
   return <div className="op-star-row">{stars}</div>;
 }
 
-export function OrderProductsPage({ cart, setCart }: OrderProductsProps) {
+export function OrderProductsPage() {
+  const { cart, setCart } = useCart();
   const [searchParams] = useSearchParams();
   const initialCategory = searchParams.get('category') || 'All';
   const initialSearch = searchParams.get('q') || '';

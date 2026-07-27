@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { FaChevronLeft, FaChevronRight, FaPlus, FaMinus, FaShoppingCart } from 'react-icons/fa';
 import { PRODUCTS } from '../data/products';
+import { useCart } from '../context/CartContext';
 import './TopProducts.css';
 
 // Pick top-rated products
@@ -9,10 +10,8 @@ const topProducts = [...PRODUCTS]
   .sort((a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount)
   .slice(0, 10);
 
-export function TopProducts({ cart, setCart }: {
-  cart: Record<string, number>;
-  setCart: React.Dispatch<React.SetStateAction<Record<string, number>>>;
-}) {
+export function TopProducts() {
+  const { cart, setCart } = useCart();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scroll = (dir: 'left' | 'right') => {
