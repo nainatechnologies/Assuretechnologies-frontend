@@ -47,10 +47,14 @@ export function OrderDetailsPage() {
       ]
     },
     {
-      id: 'SRV-2023-0442',
+      id: 'SRV-2026-0004',
       date: 'July 20, 2026',
+      scheduledDate: '25 July 2026',
+      scheduledTime: '10:00 AM - 12:00 PM',
+      address: 'H.No 45, Gachibowli, Hyderabad, Telangana - 500032',
+      technician: null,
       total: '₹2,300',
-      shipTo: 'Shyam Matam\nSame Address...',
+      shipTo: 'Shyam Matam\nJMJ Sathvika Reddy Boys hostel, beside TGB Bank\nUppal Road, Laxma Reddy Colony, Road Number 2, dead-end\nHyderabad, TELANGANA 500039\nIndia',
       paymentMethod: 'Credit Card',
       summary: {
         itemsSubtotal: '₹2,300',
@@ -77,9 +81,17 @@ export function OrderDetailsPage() {
           price: '₹800',
           image: 'https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=300&q=80',
           returnStatus: 'Service scheduled for 25 July 2026',
-          type: 'service'
         }
-      ]
+      ],
+      progress: {
+        startDescription: 'Arrived on site, inspecting the wall structure before drilling.',
+        startPhotos: ['https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300&q=80'],
+        dailyUpdates: [
+          { date: '25 July 2026, 11:30 AM', text: 'Arrived at the location. Evaluated camera mounting points and started drilling.' },
+          { date: '25 July 2026, 04:15 PM', text: 'Completed wiring for the front yard and backyard cameras.' }
+        ],
+        completedPhotos: ['https://images.unsplash.com/photo-1557862921-37829c790f19?w=300&q=80', 'https://images.unsplash.com/photo-1555861496-faa66cb20c27?w=300&q=80']
+      }
     },
     {
       id: 'ORD-2023-0102',
@@ -111,6 +123,8 @@ export function OrderDetailsPage() {
 
   const orderDetails = allOrders.find(o => o.id === id) || allOrders[0];
 
+  const isService = orderDetails.id.startsWith('SRV');
+
   return (
     <div className="order-details-container">
       <div className="order-details-header">
@@ -130,9 +144,23 @@ export function OrderDetailsPage() {
       <div className="details-card">
         <div className="info-grid">
           <div className="info-col">
-            <h3>Shipping Address</h3>
-            <p className="info-text">{orderDetails.shipTo}</p>
+            <h3>{isService ? 'Service Address' : 'Shipping Address'}</h3>
+            <p className="info-text">{isService && (orderDetails as any).address ? (orderDetails as any).address : orderDetails.shipTo}</p>
           </div>
+          {isService && (orderDetails as any).scheduledDate && (
+            <div className="info-col">
+              <h3>Scheduled Slot</h3>
+              <p className="info-text" style={{ fontWeight: '500' }}>{(orderDetails as any).scheduledDate}</p>
+              <p className="info-text">{(orderDetails as any).scheduledTime}</p>
+            </div>
+          )}
+          {isService && (orderDetails as any).technician && (
+            <div className="info-col">
+              <h3>Assigned Technician</h3>
+              <p className="info-text" style={{ fontWeight: '500' }}>{(orderDetails as any).technician.name}</p>
+              <p className="info-text">{(orderDetails as any).technician.mobile}</p>
+            </div>
+          )}
           <div className="info-col">
             <h3>Payment Method</h3>
             <p className="info-text">{orderDetails.paymentMethod}</p>
@@ -181,6 +209,56 @@ export function OrderDetailsPage() {
           </div>
         ))}
       </div>
+
+      {isService && (orderDetails as any).progress && (
+        <div className="details-card" style={{ marginTop: '20px' }}>
+          <h2 className="item-title" style={{ padding: '0 20px', paddingTop: '20px' }}>Technician Progress</h2>
+          <div className="info-grid">
+            
+            {(orderDetails as any).progress.startPhotos?.length > 0 && (
+              <div className="info-col" style={{ gridColumn: '1 / -1' }}>
+                <h3>Start Work Info</h3>
+                {(orderDetails as any).progress.startDescription && (
+                  <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '4px', borderLeft: '4px solid #3b82f6', marginTop: '10px' }}>
+                    <div style={{ fontSize: '14px', color: '#334155' }}>{(orderDetails as any).progress.startDescription}</div>
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  {(orderDetails as any).progress.startPhotos.map((img: string, i: number) => (
+                    <img key={i} src={img} alt={`Start work ${i}`} style={{ width: '120px', height: '90px', objectFit: 'cover', borderRadius: '4px' }} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(orderDetails as any).progress.dailyUpdates?.length > 0 && (
+              <div className="info-col" style={{ gridColumn: '1 / -1', marginTop: '10px' }}>
+                <h3>Work Updates</h3>
+                <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {(orderDetails as any).progress.dailyUpdates.map((update: any, i: number) => (
+                    <div key={i} style={{ padding: '12px', background: '#f8fafc', borderRadius: '4px', borderLeft: '4px solid #10b981' }}>
+                      <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>{update.date}</div>
+                      <div style={{ fontSize: '14px', color: '#334155' }}>{update.text}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(orderDetails as any).progress.completedPhotos?.length > 0 && (
+              <div className="info-col" style={{ gridColumn: '1 / -1', marginTop: '10px' }}>
+                <h3>Completed Photos</h3>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  {(orderDetails as any).progress.completedPhotos.map((img: string, i: number) => (
+                    <img key={i} src={img} alt={`Completed work ${i}`} style={{ width: '120px', height: '90px', objectFit: 'cover', borderRadius: '4px' }} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

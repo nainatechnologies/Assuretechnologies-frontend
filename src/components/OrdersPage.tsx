@@ -17,6 +17,7 @@ const getStatusIcon = (status: string) => {
     case 'In Progress': return <FaSyncAlt className="spin" />;
     case 'Awaiting Approval': return <FaClock />;
     case 'Cancelled': return <FaTimesCircle />;
+    case 'Rejected': return <FaTimesCircle />;
     case 'Shipped': return <FaBoxOpen />;
     case 'Refunded': return <FaUndo />;
     default: return null;
@@ -60,7 +61,7 @@ export function OrdersPage() {
     const isService = order.type === 'service';
     const canCancel = isService
       ? ['Pending', 'Accepted'].includes(order.status)
-      : !['Out for Delivery', 'Delivered', 'Cancelled', 'Refunded'].includes(order.status);
+      : !['Out for Delivery', 'Delivered', 'Cancelled', 'Rejected'].includes(order.status);
 
     const canAcceptWork = isService && order.status === 'Awaiting Approval';
 
@@ -69,8 +70,8 @@ export function OrdersPage() {
         <div className={`order-header header-solid status-solid-${order.status.replace(/\s+/g, '-').toLowerCase()}`}>
           <div className="order-header-left">
             <div className="order-header-col">
-              <span className="order-header-label">Order Placed</span>
-              <span className="order-header-value">{order.date}</span>
+              <span className="order-header-label">{isService ? 'Scheduled For' : 'Order Placed'}</span>
+              <span className="order-header-value">{isService && order.scheduledDate ? `${order.scheduledDate}, ${order.scheduledTime}` : order.date}</span>
             </div>
             <div className="order-header-col">
               <span className="order-header-label">Total</span>
@@ -176,12 +177,12 @@ export function OrdersPage() {
                 <h2>Product Orders</h2>
                 <select value={productFilter} onChange={(e) => setProductFilter(e.target.value)} className="orders-filter">
                   <option value="All">All Statuses</option>
-                  <option value="Processing">Processing</option>
-                  <option value="Shipped">Shipped</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Accepted">Accepted</option>
                   <option value="Out for Delivery">Out for Delivery</option>
                   <option value="Delivered">Delivered</option>
+                  <option value="Rejected">Rejected</option>
                   <option value="Cancelled">Cancelled</option>
-                  <option value="Refunded">Refunded</option>
                 </select>
               </div>
               <div className="orders-list">
