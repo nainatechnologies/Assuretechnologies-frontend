@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { SERVICES } from '../data/services';
 import './BookServicePage.css';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
@@ -58,6 +59,13 @@ function MapUpdater({ center, zoom }: { center: L.LatLngTuple, zoom: number }) {
 }
 
 export function BookServicePage() {
+  const [searchParams] = useSearchParams();
+  const serviceQuery = searchParams.get('service');
+
+  const filteredServices = serviceQuery 
+    ? SERVICES.filter(s => s.label.toLowerCase() === serviceQuery.toLowerCase())
+    : SERVICES;
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<string | null>(null);
 
@@ -144,8 +152,9 @@ export function BookServicePage() {
 
       {/* Grid */}
       <div className="bs-grid">
-        {SERVICES.map(service => (
-          <div key={service.id} className="bs-card">
+        {filteredServices.length > 0 ? (
+          filteredServices.map(service => (
+            <div key={service.id} className="bs-card">
             {/* Image or Icon */}
             {service.img
               ? <img src={service.img} alt={service.label} className="bs-card-img" />
@@ -164,7 +173,12 @@ export function BookServicePage() {
               </button>
             </div>
           </div>
-        ))}
+          ))
+        ) : (
+          <div className="bs-no-results">
+            <p>No services found for "{serviceQuery}".</p>
+          </div>
+        )}
       </div>
 
       {/* Booking Modal */}

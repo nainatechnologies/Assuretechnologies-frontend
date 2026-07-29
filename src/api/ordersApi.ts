@@ -45,6 +45,8 @@ export const ordersApi = {
           shipTo: 'Shyam Matam',
           type: 'product',
           status: 'Out for Delivery',
+          transportName: 'Shiprocket',
+          trackingId: 'SR123456789',
           items: [
             {
               name: 'Outdoor PTZ Camera',
@@ -61,6 +63,8 @@ export const ordersApi = {
           shipTo: 'Shyam Matam',
           type: 'product',
           status: 'Delivered',
+          transportName: 'Blue Dart',
+          trackingId: 'BD987654321',
           items: [
             {
               name: '4K Security Camera',

@@ -147,6 +147,13 @@ export function OrderDetailsPage() {
             <h3>{isService ? 'Service Address' : 'Shipping Address'}</h3>
             <p className="info-text">{isService && (orderDetails as any).address ? (orderDetails as any).address : orderDetails.shipTo}</p>
           </div>
+          {!isService && (orderDetails as any).transportName && (
+            <div className="info-col">
+              <h3>Tracking Details</h3>
+              <p className="info-text" style={{ fontWeight: '500' }}>{(orderDetails as any).transportName}</p>
+              <p className="info-text">Track ID: {(orderDetails as any).trackingId}</p>
+            </div>
+          )}
           {isService && (orderDetails as any).scheduledDate && (
             <div className="info-col">
               <h3>Scheduled Slot</h3>

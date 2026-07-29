@@ -24,6 +24,12 @@ const getStatusIcon = (status: string) => {
   }
 };
 
+const getServiceDateLabel = (status: string) => {
+  if (status === 'Pending' || status === 'Awaiting Approval') return 'Requested For';
+  if (status === 'Cancelled' || status === 'Rejected') return 'Originally Requested';
+  return 'Scheduled For';
+};
+
 export function OrdersPage() {
   const { userName } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
@@ -70,7 +76,7 @@ export function OrdersPage() {
         <div className={`order-header header-solid status-solid-${order.status.replace(/\s+/g, '-').toLowerCase()}`}>
           <div className="order-header-left">
             <div className="order-header-col">
-              <span className="order-header-label">{isService ? 'Scheduled For' : 'Order Placed'}</span>
+              <span className="order-header-label">{isService ? getServiceDateLabel(order.status) : 'Order Placed'}</span>
               <span className="order-header-value">{isService && order.scheduledDate ? `${order.scheduledDate}, ${order.scheduledTime}` : order.date}</span>
             </div>
             <div className="order-header-col">
@@ -137,6 +143,17 @@ export function OrdersPage() {
               {getStatusIcon(order.status)}
               <span>{order.status}</span>
             </span>
+            {order.transportName && order.trackingId && (
+              <div style={{ fontSize: '13px', color: '#565959', display: 'flex', flexDirection: 'column', gap: '6px', background: '#f8fafc', padding: '10px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <FaTruck style={{ color: '#007185', fontSize: '14px' }} />
+                  <span style={{ fontWeight: '600', color: '#0f1111' }}>{order.transportName}</span>
+                </div>
+                <div style={{ marginLeft: '20px' }}>
+                  Track ID: <span style={{ fontWeight: '600', color: '#0f1111' }}>{order.trackingId}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
