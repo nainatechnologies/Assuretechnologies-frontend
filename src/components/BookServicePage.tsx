@@ -62,12 +62,17 @@ export function BookServicePage() {
   const [searchParams] = useSearchParams();
   const serviceQuery = searchParams.get('service');
 
+  const autoOpen = searchParams.get('autoOpen') === 'true';
+
   const filteredServices = serviceQuery 
     ? SERVICES.filter(s => s.label.toLowerCase() === serviceQuery.toLowerCase())
     : SERVICES;
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedService, setSelectedService] = useState<string | null>(null);
+  const initialModalOpen = autoOpen && filteredServices.length > 0;
+  const initialSelectedService = initialModalOpen ? filteredServices[0].title : null;
+
+  const [isModalOpen, setIsModalOpen] = useState(initialModalOpen);
+  const [selectedService, setSelectedService] = useState<string | null>(initialSelectedService);
 
   const [date, setDate] = useState('');
   const [timeSlot, setTimeSlot] = useState('');

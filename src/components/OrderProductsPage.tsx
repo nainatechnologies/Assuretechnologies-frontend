@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { FaSearch, FaPlus, FaMinus, FaStar, FaStarHalfAlt, FaSortAmountDown, FaThLarge, FaListUl, FaCartPlus, FaShoppingBag, FaShoppingCart } from 'react-icons/fa';
 import { PRODUCTS, CATEGORIES } from '../data/products';
 import { SERVICES } from '../data/services';
@@ -100,7 +100,7 @@ export function OrderProductsPage() {
                       <span className="op-service-label">{service.label}</span>
                       <h4 className="op-service-title">{service.title}</h4>
                     </div>
-                    <a href="/book-service" className="op-service-btn">Book Now</a>
+                    <Link to={`/book-service?service=${encodeURIComponent(service.label)}&autoOpen=true`} className="op-service-btn">Book Now</Link>
                   </div>
                 ))}
               </div>
