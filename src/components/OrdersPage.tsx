@@ -63,7 +63,7 @@ export function OrdersPage() {
     setOrders(orders.map(o => o.id === orderId ? { ...o, status: 'Completed' } : o));
   };
 
-  const renderOrder = (order: any) => {
+  const renderOrder = (order: any, index: number) => {
     const isService = order.type === 'service';
     const canCancel = isService
       ? ['Pending', 'Accepted'].includes(order.status)
@@ -72,7 +72,7 @@ export function OrdersPage() {
     const canAcceptWork = isService && order.status === 'Awaiting Approval';
 
     return (
-      <div key={order.id} className="order-card">
+      <div key={`${order.id}-${index}`} className="order-card">
         <div className={`order-header header-solid status-solid-${order.status.replace(/\s+/g, '-').toLowerCase()}`}>
           <div className="order-header-left">
             <div className="order-header-col">
@@ -90,7 +90,10 @@ export function OrdersPage() {
           </div>
           <div className="order-header-right">
             <div className="order-header-col">
-              <span className="order-header-label" style={{ color: '#565959', fontWeight: '400' }}>ORDER # {order.id}</span>
+              <span className="order-header-label" style={{ color: '#565959', fontWeight: '400', display: 'flex', alignItems: 'center' }}>
+                ORDER # {order.id}
+                {order.isDroneService && <span style={{ marginLeft: '8px', background: 'rgba(255, 255, 255, 0.25)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.5)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>DRONE SERVICE</span>}
+              </span>
               <div className="order-header-links">
                 <Link to={`/orders/${order.id}`} className="order-link">View order details</Link>
                 <span style={{ color: '#d5d9d9' }}>|</span>
@@ -132,7 +135,12 @@ export function OrdersPage() {
                   <img src={item.image} alt={item.name} className="order-item-image" style={{ objectFit: 'cover' }} />
                   <div className="order-item-details">
                     <Link to={`/orders/${order.id}`} className="order-item-name">{item.name} {item.qty > 1 ? `x${item.qty}` : ''}</Link>
-                    <span className="order-item-return" style={{ whiteSpace: 'pre-line' }}>{item.returnStatus}</span>
+                    {item.trackingId && (
+                      <span style={{ fontSize: '12px', color: '#007185', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                        <FaTruck style={{fontSize: '10px'}} /> {item.transportName} - Tracking: {item.trackingId}
+                      </span>
+                    )}
+                    <span className="order-item-return" style={{ whiteSpace: 'pre-line', marginTop: '2px' }}>{item.returnStatus}</span>
                   </div>
                 </div>
               </div>

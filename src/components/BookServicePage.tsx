@@ -11,16 +11,16 @@ import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
 let DefaultIcon = L.icon({
-    iconUrl: icon,
-    shadowUrl: iconShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41]
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
 function DraggableMarker({ position, setPosition }: { position: L.LatLngTuple, setPosition: (pos: L.LatLngTuple) => void }) {
   const markerRef = useRef<L.Marker>(null);
-  
+
   const eventHandlers = useMemo(
     () => ({
       dragend() {
@@ -64,7 +64,7 @@ export function BookServicePage() {
 
   const autoOpen = searchParams.get('autoOpen') === 'true';
 
-  const filteredServices = serviceQuery 
+  const filteredServices = serviceQuery
     ? SERVICES.filter(s => s.label.toLowerCase() === serviceQuery.toLowerCase())
     : SERVICES;
 
@@ -82,10 +82,18 @@ export function BookServicePage() {
   const [addressLine2, setAddressLine2] = useState('');
   const [landmark, setLandmark] = useState('');
   const [stateName, setStateName] = useState('');
-  
+
+  const [surveyNumber, setSurveyNumber] = useState('');
+  const [district, setDistrict] = useState('');
+  const [mandal, setMandal] = useState('');
+  const [village, setVillage] = useState('');
+  const [droneType, setDroneType] = useState('');
+
   const [geolocation, setGeolocation] = useState('');
   const [mapPosition, setMapPosition] = useState<L.LatLngTuple | null>(null);
   const [mapZoom, setMapZoom] = useState(13);
+
+  const isDroneService = selectedService?.toLowerCase().includes('drone');
 
   // Default fallback position (India roughly)
   const defaultPosition: L.LatLngTuple = [20.5937, 78.9629];
@@ -112,6 +120,11 @@ export function BookServicePage() {
     setAddressLine2('');
     setLandmark('');
     setStateName('');
+    setSurveyNumber('');
+    setDistrict('');
+    setMandal('');
+    setVillage('');
+    setDroneType('');
     setGeolocation('');
     setMapPosition(null);
   };
@@ -138,10 +151,19 @@ export function BookServicePage() {
       alert('Please select a date and time slot.');
       return;
     }
-    if (!pincode.trim() || !city.trim() || !addressLine1.trim() || !addressLine2.trim() || !stateName.trim()) {
-      alert('Please enter your complete address details (excluding optional landmark).');
-      return;
+
+    if (isDroneService) {
+      if (!surveyNumber.trim() || !district.trim() || !mandal.trim() || !village.trim() || !pincode.trim() || !droneType) {
+        alert('Please enter all farm land details, including pincode, and select a drone type.');
+        return;
+      }
+    } else {
+      if (!pincode.trim() || !city.trim() || !addressLine1.trim() || !addressLine2.trim() || !stateName.trim()) {
+        alert('Please enter your complete address details (excluding optional landmark).');
+        return;
+      }
     }
+
     alert(`Success! Your booking for ${selectedService} is confirmed.`);
     handleCloseModal();
   };
@@ -160,24 +182,24 @@ export function BookServicePage() {
         {filteredServices.length > 0 ? (
           filteredServices.map(service => (
             <div key={service.id} className="bs-card">
-            {/* Image or Icon */}
-            {service.img
-              ? <img src={service.img} alt={service.label} className="bs-card-img" />
-              : <div className="bs-card-icon">{service.icon}</div>
-            }
+              {/* Image or Icon */}
+              {service.img
+                ? <img src={service.img} alt={service.label} className="bs-card-img" />
+                : <div className="bs-card-icon">{service.icon}</div>
+              }
 
-            {/* Body */}
-            <div className="bs-card-body">
-              <span className="bs-card-label">{service.label}</span>
-              <h3 className="bs-card-title">{service.title}</h3>
-              <button 
-                className="bs-book-btn" 
-                onClick={() => handleBookNow(service.title)}
-              >
-                Book Now 
-              </button>
+              {/* Body */}
+              <div className="bs-card-body">
+                <span className="bs-card-label">{service.label}</span>
+                <h3 className="bs-card-title">{service.title}</h3>
+                <button
+                  className="bs-book-btn"
+                  onClick={() => handleBookNow(service.title)}
+                >
+                  Book Now
+                </button>
+              </div>
             </div>
-          </div>
           ))
         ) : (
           <div className="bs-no-results">
@@ -193,12 +215,12 @@ export function BookServicePage() {
             <div className="booking-modal-header">
               <h3>Book Service: {selectedService}</h3>
             </div>
-            
+
             <div className="booking-modal-body">
               <div className="form-group">
                 <label>Preferred Installation Date</label>
-                <input 
-                  type="date" 
+                <input
+                  type="date"
                   value={date}
                   onChange={e => setDate(e.target.value)}
                 />
@@ -206,7 +228,7 @@ export function BookServicePage() {
 
               <div className="form-group">
                 <label>Preferred Time Slot</label>
-                <select 
+                <select
                   value={timeSlot}
                   onChange={e => setTimeSlot(e.target.value)}
                 >
@@ -218,58 +240,102 @@ export function BookServicePage() {
                 </select>
               </div>
 
-              <div className="booking-address-section">
-                <div className="booking-section-title">Installation Address</div>
-                
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Pincode</label>
-                    <input required type="text" value={pincode} onChange={e => setPincode(e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label>Town/City</label>
-                    <input required type="text" value={city} onChange={e => setCity(e.target.value)} />
-                  </div>
-                </div>
+              {!isDroneService ? (
+                <div className="booking-address-section">
+                  <div className="booking-section-title">Installation Address</div>
 
-                <div className="form-group">
-                  <label>Flat, House no., Building, Company, Apartment</label>
-                  <input required type="text" value={addressLine1} onChange={e => setAddressLine1(e.target.value)} />
-                </div>
-
-                <div className="form-group">
-                  <label>Area, Street, Sector, Village</label>
-                  <input required type="text" value={addressLine2} onChange={e => setAddressLine2(e.target.value)} />
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Landmark</label>
-                    <input type="text" value={landmark} onChange={e => setLandmark(e.target.value)} placeholder="E.g. near apollo hospital" />
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Pincode</label>
+                      <input required type="text" value={pincode} onChange={e => setPincode(e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label>Town/City</label>
+                      <input required type="text" value={city} onChange={e => setCity(e.target.value)} />
+                    </div>
                   </div>
+
                   <div className="form-group">
-                    <label>State</label>
-                    <select required value={stateName} onChange={e => setStateName(e.target.value)}>
-                      <option value="" disabled>Select State</option>
-                      <option value="Andhra Pradesh">Andhra Pradesh</option>
-                      <option value="Telangana">Telangana</option>
-                    </select>
+                    <label>Flat, House no., Building, Company, Apartment</label>
+                    <input required type="text" value={addressLine1} onChange={e => setAddressLine1(e.target.value)} />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Area, Street, Sector, Village</label>
+                    <input required type="text" value={addressLine2} onChange={e => setAddressLine2(e.target.value)} />
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Landmark</label>
+                      <input type="text" value={landmark} onChange={e => setLandmark(e.target.value)} placeholder="E.g. near apollo hospital" />
+                    </div>
+                    <div className="form-group">
+                      <label>State</label>
+                      <select required value={stateName} onChange={e => setStateName(e.target.value)}>
+                        <option value="" disabled>Select State</option>
+                        <option value="Andhra Pradesh">Andhra Pradesh</option>
+                        <option value="Telangana">Telangana</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="booking-address-section drone-details-section">
+                  <div className="booking-section-title">Farm Land Details</div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Survey Number</label>
+                      <input required type="text" value={surveyNumber} onChange={e => setSurveyNumber(e.target.value)} placeholder="e.g. 123/A" />
+                    </div>
+                    <div className="form-group">
+                      <label>Drone Type</label>
+                      <select required value={droneType} onChange={e => setDroneType(e.target.value)}>
+                        <option value="" disabled>Select Drone Type</option>
+                        <option value="Standard Spray Drone (10L)">Standard Spray Drone (10L)</option>
+                        <option value="High-Capacity Drone (20L)">High-Capacity Drone (20L)</option>
+                        <option value="Granule Spreader Drone">Granule Spreader Drone</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>District</label>
+                      <input required type="text" value={district} onChange={e => setDistrict(e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label>Mandal</label>
+                      <input required type="text" value={mandal} onChange={e => setMandal(e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Village</label>
+                      <input required type="text" value={village} onChange={e => setVillage(e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label>Pincode</label>
+                      <input required type="text" value={pincode} onChange={e => setPincode(e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="form-group">
                 <label>Geolocation</label>
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  <input 
-                    type="text" 
-                    placeholder="Latitude, Longitude" 
-                    value={geolocation} 
-                    readOnly 
+                  <input
+                    type="text"
+                    placeholder="Latitude, Longitude"
+                    value={geolocation}
+                    readOnly
                     style={{ flex: 1, backgroundColor: '#f8fafc', color: '#64748b' }}
                   />
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={handleGetLocation}
                     style={{
                       padding: '10px 16px',
@@ -285,12 +351,12 @@ export function BookServicePage() {
                     Get Location
                   </button>
                 </div>
-                
+
                 {/* Map Display */}
                 <div style={{ height: '220px', marginTop: '10px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #cbd5e1', position: 'relative', zIndex: 1 }}>
-                  <MapContainer 
-                    center={mapPosition || defaultPosition} 
-                    zoom={mapPosition ? mapZoom : 4} 
+                  <MapContainer
+                    center={mapPosition || defaultPosition}
+                    zoom={mapPosition ? mapZoom : 4}
                     style={{ height: '100%', width: '100%' }}
                   >
                     <TileLayer

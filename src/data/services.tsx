@@ -20,6 +20,7 @@ export const SERVICES: Service[] = [
   { id: 1,  label: 'Networking',    title: 'Industrial Internet and Local Area Networking Solutions',              img: svcNetworking   },
   { id: 2,  label: 'Automation',    title: 'Home, Gate, Boom Barrier Automation and Solutions',                   img: svcAutomation   },
   { id: 3,  label: 'AgriTech',      title: 'Agriculture and Aquaculture IoT Tools and Automation',                img: svcAgritech     },
+  { id: 17, label: 'AgriTech',      title: 'Agriculture Drone Spraying Services',                                 img: 'https://images.unsplash.com/photo-1559884742-d6c4d7e23924?w=500&h=500&fit=crop' },
   { id: 4,  label: 'Surveillance',  title: 'CCTV Networking and AMC Contract',                                    img: svcSurveillance },
   { id: 5,  label: 'Telephony',     title: 'EPABX System',                                                        img: svcTelephony    },
   { id: 6,  label: 'Intercom',      title: 'Intercom System',                                                     img: svcIntercom     },

@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
-import { FaSyncAlt } from 'react-icons/fa';
+import { FaSyncAlt, FaTruck } from 'react-icons/fa';
 import './OrderDetailsPage.css';
 
 export function OrderDetailsPage() {
@@ -94,28 +94,80 @@ export function OrderDetailsPage() {
       }
     },
     {
-      id: 'ORD-2023-0102',
-      date: 'June 05, 2026',
-      total: '₹8,999',
+      id: 'ORD-2026-0001',
+      date: 'July 25, 2026',
+      total: '₹1,50,000',
       shipTo: 'Shyam Matam\nSame Address...',
       paymentMethod: 'Net Banking',
       summary: {
-        itemsSubtotal: '₹8,999',
+        itemsSubtotal: '₹1,50,000',
         shipping: '₹0.00',
         marketplaceFee: '₹0.00',
-        totalBeforePromo: '₹8,999',
+        totalBeforePromo: '₹1,50,000',
         promotionApplied: '₹0.00',
-        grandTotal: '₹8,999'
+        grandTotal: '₹1,50,000'
       },
       items: [
         {
           name: 'Biometric Access Control System',
-          qty: 1,
-          seller: 'Assure Technologies',
-          price: '₹8,999',
+          qty: 30,
+          seller: 'Vendor A',
+          price: '₹50,000',
           image: 'https://images.unsplash.com/photo-1555861496-faa66cb20c27?w=300&q=80',
-          returnStatus: 'Warranty valid until 05 June 2027',
+          returnStatus: 'Order is being packed',
+          type: 'product',
+          transportName: 'Blue Dart',
+          trackingId: 'BD111111'
+        },
+        {
+          name: 'Biometric Access Control System',
+          qty: 30,
+          seller: 'Vendor B',
+          price: '₹50,000',
+          image: 'https://images.unsplash.com/photo-1555861496-faa66cb20c27?w=300&q=80',
+          returnStatus: 'Out for Delivery',
+          type: 'product',
+          transportName: 'Shiprocket',
+          trackingId: 'SR222222'
+        },
+        {
+          name: 'Biometric Access Control System',
+          qty: 40,
+          seller: 'Vendor C',
+          price: '₹50,000',
+          image: 'https://images.unsplash.com/photo-1555861496-faa66cb20c27?w=300&q=80',
+          returnStatus: 'Awaiting vendor confirmation',
           type: 'product'
+        }
+      ]
+    },
+    {
+      id: 'DRN-2026-0001',
+      date: 'July 31, 2026',
+      scheduledDate: '02 Aug 2026',
+      scheduledTime: '09:00 AM - 11:00 AM',
+      address: 'Survey 123/A, Guntur, AP - 500001',
+      technician: null,
+      total: '₹4,500',
+      shipTo: 'Shyam Matam\nJMJ Sathvika Reddy Boys hostel, beside TGB Bank\nUppal Road, Laxma Reddy Colony, Road Number 2, dead-end\nHyderabad, TELANGANA 500039\nIndia',
+      paymentMethod: 'UPI',
+      summary: {
+        itemsSubtotal: '₹4,500',
+        shipping: '₹0.00',
+        marketplaceFee: '₹0.00',
+        totalBeforePromo: '₹4,500',
+        promotionApplied: '₹0.00',
+        grandTotal: '₹4,500'
+      },
+      items: [
+        {
+          name: 'Agriculture Drone Spray Services',
+          qty: 1,
+          seller: 'Assure Technologies Services',
+          price: '₹4,500',
+          image: 'https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=300&q=80',
+          returnStatus: 'Waiting for admin approval',
+          type: 'service'
         }
       ]
     }
@@ -123,7 +175,8 @@ export function OrderDetailsPage() {
 
   const orderDetails = allOrders.find(o => o.id === id) || allOrders[0];
 
-  const isService = orderDetails.id.startsWith('SRV');
+  const isService = orderDetails.id.startsWith('SRV') || orderDetails.id.startsWith('DRN');
+  const isDroneService = orderDetails.id.startsWith('DRN');
 
   return (
     <div className="order-details-container">
@@ -144,8 +197,8 @@ export function OrderDetailsPage() {
       <div className="details-card">
         <div className="info-grid">
           <div className="info-col">
-            <h3>{isService ? 'Service Address' : 'Shipping Address'}</h3>
-            <p className="info-text">{isService && (orderDetails as any).address ? (orderDetails as any).address : orderDetails.shipTo}</p>
+            <h3>{isDroneService ? 'Farm Land Details' : isService ? 'Service Address' : 'Shipping Address'}</h3>
+            <p className="info-text" style={{ whiteSpace: 'pre-wrap' }}>{isService && (orderDetails as any).address ? (orderDetails as any).address : orderDetails.shipTo}</p>
           </div>
           {!isService && (orderDetails as any).transportName && (
             <div className="info-col">
@@ -209,9 +262,13 @@ export function OrderDetailsPage() {
             <img src={item.image} alt={item.name} className="item-img" />
             <div className="item-info">
               <Link to="#" className="item-name">{item.name} {item.qty > 1 ? `x${item.qty}` : ''}</Link>
-              <div className="item-seller">Sold by: {item.seller}</div>
               <div className="item-price">{item.price}</div>
               <div className="item-return">{item.returnStatus}</div>
+              {(item as any).trackingId && (
+                  <div style={{ fontSize: '12px', color: '#007185', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                    <FaTruck style={{fontSize: '10px'}} /> {(item as any).transportName} - Tracking: {(item as any).trackingId}
+                  </div>
+              )}
             </div>
           </div>
         ))}

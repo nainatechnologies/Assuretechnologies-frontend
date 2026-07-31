@@ -9,16 +9,55 @@ export const ordersApi = {
         {
           id: 'ORD-2026-0001',
           date: 'July 25, 2026',
-          total: '₹8,999',
+          total: '₹50,000',
+          shipTo: 'Shyam Matam',
+          type: 'product',
+          status: 'Accepted',
+          transportName: 'Blue Dart',
+          trackingId: 'BD111111',
+          items: [
+            {
+              name: 'Biometric Access Control System',
+              qty: 30,
+              image: 'https://images.unsplash.com/photo-1555861496-faa66cb20c27?w=300&q=80',
+              returnStatus: 'Order is being packed',
+              vendor: 'Vendor A'
+            }
+          ]
+        },
+        {
+          id: 'ORD-2026-0001',
+          date: 'July 25, 2026',
+          total: '₹50,000',
+          shipTo: 'Shyam Matam',
+          type: 'product',
+          status: 'Accepted',
+          transportName: 'Shiprocket',
+          trackingId: 'SR222222',
+          items: [
+            {
+              name: 'Biometric Access Control System',
+              qty: 30,
+              image: 'https://images.unsplash.com/photo-1555861496-faa66cb20c27?w=300&q=80',
+              returnStatus: 'Out for Delivery',
+              vendor: 'Vendor B'
+            }
+          ]
+        },
+        {
+          id: 'ORD-2026-0001',
+          date: 'July 25, 2026',
+          total: '₹50,000',
           shipTo: 'Shyam Matam',
           type: 'product',
           status: 'Pending',
           items: [
             {
               name: 'Biometric Access Control System',
-              qty: 1,
+              qty: 40,
               image: 'https://images.unsplash.com/photo-1555861496-faa66cb20c27?w=300&q=80',
-              returnStatus: 'Awaiting admin confirmation',
+              returnStatus: 'Awaiting vendor confirmation',
+              vendor: 'Vendor C'
             }
           ]
         },
@@ -105,6 +144,20 @@ export const ordersApi = {
               returnStatus: 'Cancelled by user',
             }
           ]
+        },
+        {
+          id: 'DRN-2026-0001',
+          date: 'July 31, 2026',
+          scheduledDate: '02 Aug 2026',
+          scheduledTime: '09:00 AM - 11:00 AM',
+          address: 'Survey 123/A, Guntur, AP - 500001',
+          technician: null,
+          total: '₹4,500',
+          shipTo: 'Shyam Matam',
+          type: 'service',
+          isDroneService: true,
+          status: 'Pending',
+          items: [{ name: 'Agriculture Drone Spray Services', qty: 1, image: 'https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=300&q=80', returnStatus: 'Waiting for admin approval' }]
         },
         {
           id: 'SRV-2026-0001',
