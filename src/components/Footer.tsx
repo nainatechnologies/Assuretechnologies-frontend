@@ -1,4 +1,5 @@
 import { FaFacebook, FaInstagram, FaTwitter, FaYoutube, FaMapMarkerAlt, FaEnvelope, FaPhoneAlt } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
 import { Logo } from './Logo';
 import './Footer.css';
 
@@ -32,7 +33,7 @@ export function Footer() {
             <li><a href="/order-products">Products</a></li>
             <li><a href="/ventures">Ventures</a></li>
             <li><a href="#investors">Investors</a></li>
-            <li><a href="#careers">Careers</a></li>
+            <li><Link to="/career" target="_blank" rel="noopener noreferrer">Careers</Link></li>
           </ul>
         </div>
 

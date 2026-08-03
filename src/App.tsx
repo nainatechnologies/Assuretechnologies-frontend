@@ -17,6 +17,9 @@ import { ProfilePage } from './components/ProfilePage';
 import { OrdersPage } from './components/OrdersPage';
 import { OrderDetailsPage } from './components/OrderDetailsPage';
 import { EditProfilePage } from './components/EditProfilePage';
+import { CareersPage } from './components/CareersPage';
+import { JobDetailsPage } from './components/JobDetailsPage';
+import { JobApplicationFormPage } from './components/JobApplicationForm';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -39,6 +42,7 @@ function App() {
     <AuthProvider>
       <CartProvider>
         <Navbar />
+
         <CategoryStrip />
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -48,7 +52,10 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          
+          <Route path="/career" element={<CareersPage />} />
+          <Route path="/career/:id" element={<JobDetailsPage />} />
+          <Route path="/career/:id/apply" element={<JobApplicationFormPage />} />
+
           {/* Protected Routes */}
           <Route path="/profile" element={
             <ProtectedRoute>

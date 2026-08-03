@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   FaNetworkWired, FaRobot, FaLeaf, FaVideo, FaPhone,
   FaHeadset, FaFingerprint, FaSatelliteDish, FaServer,
@@ -29,6 +29,11 @@ const categories = [
 
 export function CategoryStrip() {
   const [isScrolled, setIsScrolled] = useState(false);
+  const location = useLocation();
+
+  if (location.pathname.startsWith('/career')) {
+    return null;
+  }
 
   useEffect(() => {
     const handleScroll = () => {
