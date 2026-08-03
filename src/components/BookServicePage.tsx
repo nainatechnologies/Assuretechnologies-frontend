@@ -88,12 +88,20 @@ export function BookServicePage() {
   const [mandal, setMandal] = useState('');
   const [village, setVillage] = useState('');
   const [droneType, setDroneType] = useState('');
+  const [tractorType, setTractorType] = useState('');
 
   const [geolocation, setGeolocation] = useState('');
   const [mapPosition, setMapPosition] = useState<L.LatLngTuple | null>(null);
   const [mapZoom, setMapZoom] = useState(13);
 
+  const [customResponses, setCustomResponses] = useState<Record<string, string>>({});
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  const selectedServiceObj = useMemo(() => SERVICES.find(s => s.title === selectedService), [selectedService]);
+
   const isDroneService = selectedService?.toLowerCase().includes('drone');
+  const isTractorService = selectedService?.toLowerCase().includes('tractor');
+  const isAgriService = isDroneService || isTractorService;
 
   // Default fallback position (India roughly)
   const defaultPosition: L.LatLngTuple = [20.5937, 78.9629];
@@ -125,8 +133,11 @@ export function BookServicePage() {
     setMandal('');
     setVillage('');
     setDroneType('');
+    setTractorType('');
     setGeolocation('');
     setMapPosition(null);
+    setCustomResponses({});
+    setIsProcessingPayment(false);
   };
 
   const handleGetLocation = () => {
@@ -152,9 +163,17 @@ export function BookServicePage() {
       return;
     }
 
-    if (isDroneService) {
-      if (!surveyNumber.trim() || !district.trim() || !mandal.trim() || !village.trim() || !pincode.trim() || !droneType) {
-        alert('Please enter all farm land details, including pincode, and select a drone type.');
+    if (isAgriService) {
+      if (!surveyNumber.trim() || !district.trim() || !mandal.trim() || !village.trim() || !pincode.trim()) {
+        alert('Please enter all farm land details, including pincode.');
+        return;
+      }
+      if (isDroneService && !droneType) {
+        alert('Please select a drone type.');
+        return;
+      }
+      if (isTractorService && !tractorType) {
+        alert('Please select a tractor type.');
         return;
       }
     } else {
@@ -164,8 +183,26 @@ export function BookServicePage() {
       }
     }
 
-    alert(`Success! Your booking for ${selectedService} is confirmed.`);
-    handleCloseModal();
+    if (selectedServiceObj?.customFields) {
+      for (const field of selectedServiceObj.customFields) {
+        if (field.required && !customResponses[field.id]?.trim()) {
+          alert(`Please fill out the required field: ${field.label}`);
+          return;
+        }
+      }
+    }
+
+    if (selectedServiceObj?.prebookingCharge && selectedServiceObj.prebookingCharge > 0) {
+      setIsProcessingPayment(true);
+      setTimeout(() => {
+        setIsProcessingPayment(false);
+        alert(`Payment of ₹${selectedServiceObj.prebookingCharge} Successful!\n\nYour booking for ${selectedService} is confirmed.\n\nCustom details captured: ${JSON.stringify(customResponses)}`);
+        handleCloseModal();
+      }, 1500);
+    } else {
+      alert(`Success! Your booking for ${selectedService} is confirmed.\n\nCustom details captured: ${JSON.stringify(customResponses)}`);
+      handleCloseModal();
+    }
   };
 
   return (
@@ -240,7 +277,7 @@ export function BookServicePage() {
                 </select>
               </div>
 
-              {!isDroneService ? (
+              {!isAgriService ? (
                 <div className="booking-address-section">
                   <div className="booking-section-title">Installation Address</div>
 
@@ -290,13 +327,29 @@ export function BookServicePage() {
                       <input required type="text" value={surveyNumber} onChange={e => setSurveyNumber(e.target.value)} placeholder="e.g. 123/A" />
                     </div>
                     <div className="form-group">
-                      <label>Drone Type</label>
-                      <select required value={droneType} onChange={e => setDroneType(e.target.value)}>
-                        <option value="" disabled>Select Drone Type</option>
-                        <option value="Standard Spray Drone (10L)">Standard Spray Drone (10L)</option>
-                        <option value="High-Capacity Drone (20L)">High-Capacity Drone (20L)</option>
-                        <option value="Granule Spreader Drone">Granule Spreader Drone</option>
-                      </select>
+                      {isDroneService ? (
+                        <>
+                          <label>Drone Type</label>
+                          <select required value={droneType} onChange={e => setDroneType(e.target.value)}>
+                            <option value="" disabled>Select Drone Type</option>
+                            <option value="Standard Spray Drone (10L)">Standard Spray Drone (10L)</option>
+                            <option value="High-Capacity Drone (20L)">High-Capacity Drone (20L)</option>
+                            <option value="Granule Spreader Drone">Granule Spreader Drone</option>
+                          </select>
+                        </>
+                      ) : (
+                        <>
+                          <label>Tractor Type / Attachment</label>
+                          <select required value={tractorType} onChange={e => setTractorType(e.target.value)}>
+                            <option value="" disabled>Select Tractor / Attachment</option>
+                            <option value="Mini Tractor (Below 20 HP)">Mini Tractor (Below 20 HP)</option>
+                            <option value="Utility Tractor (20-40 HP)">Utility Tractor (20-40 HP)</option>
+                            <option value="Heavy Duty Tractor (40+ HP)">Heavy Duty Tractor (40+ HP)</option>
+                            <option value="Tractor with Rotavator">Tractor with Rotavator</option>
+                            <option value="Tractor with Trailer">Tractor with Trailer</option>
+                          </select>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -320,6 +373,37 @@ export function BookServicePage() {
                       <label>Pincode</label>
                       <input required type="text" value={pincode} onChange={e => setPincode(e.target.value)} />
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedServiceObj?.customFields && selectedServiceObj.customFields.length > 0 && (
+                <div className="booking-address-section">
+                  <div className="booking-section-title">Additional Requirements</div>
+                  <div className="form-row" style={{ flexWrap: 'wrap' }}>
+                    {selectedServiceObj.customFields.map(field => (
+                      <div className="form-group" key={field.id} style={{ minWidth: '200px', flex: 1 }}>
+                        <label>{field.label} {field.required && '*'}</label>
+                        {field.type === 'dropdown' ? (
+                          <select
+                            required={field.required}
+                            value={customResponses[field.id] || ''}
+                            onChange={e => setCustomResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                          >
+                            <option value="" disabled>Select {field.label}</option>
+                            {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                          </select>
+                        ) : (
+                          <input
+                            type={field.type}
+                            required={field.required}
+                            value={customResponses[field.id] || ''}
+                            onChange={e => setCustomResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                            placeholder={`Enter ${field.label}`}
+                          />
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -376,11 +460,20 @@ export function BookServicePage() {
                 </p>
 
               </div>
+
+              {selectedServiceObj?.prebookingCharge && selectedServiceObj.prebookingCharge > 0 && (
+                <div style={{ padding: '15px', background: '#e0e7ff', borderRadius: '8px', border: '1px solid #c7d2fe', marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ color: '#3730a3', fontWeight: 600 }}>Prebooking Charge</div>
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#4338ca' }}>₹{selectedServiceObj.prebookingCharge}</div>
+                </div>
+              )}
             </div>
 
             <div className="booking-modal-actions">
-              <button className="btn-modal-cancel" onClick={handleCloseModal}>Cancel</button>
-              <button className="btn-modal-confirm" onClick={handleConfirmBooking}>Confirm Booking</button>
+              <button className="btn-modal-cancel" onClick={handleCloseModal} disabled={isProcessingPayment}>Cancel</button>
+              <button className="btn-modal-confirm" onClick={handleConfirmBooking} disabled={isProcessingPayment}>
+                {isProcessingPayment ? 'Processing...' : (selectedServiceObj?.prebookingCharge ? `Pay ₹${selectedServiceObj.prebookingCharge} & Book` : 'Confirm Booking')}
+              </button>
             </div>
           </div>
         </div>
