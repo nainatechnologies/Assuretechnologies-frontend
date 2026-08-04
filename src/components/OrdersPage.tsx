@@ -79,10 +79,12 @@ export function OrdersPage() {
               <span className="order-header-label">{isService ? getServiceDateLabel(order.status) : 'Order Placed'}</span>
               <span className="order-header-value">{isService && order.scheduledDate ? `${order.scheduledDate}, ${order.scheduledTime}` : order.date}</span>
             </div>
-            <div className="order-header-col">
-              <span className="order-header-label">Total</span>
-              <span className="order-header-value">{order.total}</span>
-            </div>
+            {!isService && (
+              <div className="order-header-col">
+                <span className="order-header-label">Total</span>
+                <span className="order-header-value">{order.total}</span>
+              </div>
+            )}
             <div className="order-header-col">
               <span className="order-header-label">Ship To</span>
               <span className="order-header-value" style={{ color: '#007185', cursor: 'pointer' }}>{userName || order.shipTo} ⌄</span>
@@ -90,9 +92,9 @@ export function OrdersPage() {
           </div>
           <div className="order-header-right">
             <div className="order-header-col">
-              <span className="order-header-label" style={{ color: '#565959', fontWeight: '400', display: 'flex', alignItems: 'center' }}>
+              <span className="order-header-label" style={{ color: '#565959', fontWeight: '400', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
                 ORDER # {order.id}
-                {order.isDroneService && <span style={{ marginLeft: '8px', background: 'rgba(255, 255, 255, 0.25)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.5)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>DRONE SERVICE</span>}
+                {order.isDroneService && <span style={{ background: 'rgba(255, 255, 255, 0.25)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.5)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>DRONE SERVICE</span>}
               </span>
               <div className="order-header-links">
                 <Link to={`/orders/${order.id}`} className="order-link">View order details</Link>
@@ -151,13 +153,29 @@ export function OrdersPage() {
               {getStatusIcon(order.status)}
               <span>{order.status}</span>
             </span>
+            {isService && (
+              <div style={{ marginTop: '12px', fontSize: '13px' }}>
+                <strong style={{ color: '#565959' }}>Payment Status: </strong>
+                {order.paymentStatus === 'Completed' ? (
+                  <span style={{ color: '#166534', fontWeight: 'bold' }}>Completed</span>
+                ) : (
+                  <span style={{ color: '#b45309', fontWeight: 'bold' }}>Pending</span>
+                )}
+              </div>
+            )}
             {order.transportName && order.trackingId && (
               <div style={{ fontSize: '13px', color: '#565959', display: 'flex', flexDirection: 'column', gap: '6px', background: '#f8fafc', padding: '10px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <FaTruck style={{ color: '#007185', fontSize: '14px' }} />
-                  <span style={{ fontWeight: '600', color: '#0f1111' }}>{order.transportName}</span>
+                  <FaTruck style={{ color: '#007185' }} />
+                  {order.trackingUrl ? (
+                    <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" style={{ fontWeight: '500', color: '#007185', textDecoration: 'underline' }}>
+                      {order.transportName}
+                    </a>
+                  ) : (
+                    <span style={{ fontWeight: '500', color: '#0f1111' }}>{order.transportName}</span>
+                  )}
                 </div>
-                <div style={{ marginLeft: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   Track ID: <span style={{ fontWeight: '600', color: '#0f1111' }}>{order.trackingId}</span>
                 </div>
               </div>

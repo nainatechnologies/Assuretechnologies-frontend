@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { FaSyncAlt, FaTruck } from 'react-icons/fa';
 import './OrderDetailsPage.css';
@@ -19,10 +20,7 @@ export function OrderDetailsPage() {
       paymentMethod: 'BHIM UPI',
       summary: {
         itemsSubtotal: '₹16,500',
-        shipping: '₹0.00',
-        marketplaceFee: '₹0.00',
-        totalBeforePromo: '₹16,500',
-        promotionApplied: '₹0.00',
+        shipping: 'Applicable',
         grandTotal: '₹16,500'
       },
       items: [
@@ -58,10 +56,6 @@ export function OrderDetailsPage() {
       paymentMethod: 'Credit Card',
       summary: {
         itemsSubtotal: '₹2,300',
-        shipping: '₹0.00',
-        marketplaceFee: '₹0.00',
-        totalBeforePromo: '₹2,300',
-        promotionApplied: '₹0.00',
         grandTotal: '₹2,300'
       },
       items: [
@@ -91,7 +85,11 @@ export function OrderDetailsPage() {
           { date: '25 July 2026, 04:15 PM', text: 'Completed wiring for the front yard and backyard cameras.' }
         ],
         completedPhotos: ['https://images.unsplash.com/photo-1557862921-37829c790f19?w=300&q=80', 'https://images.unsplash.com/photo-1555861496-faa66cb20c27?w=300&q=80']
-      }
+      },
+      extraItems: [
+        { description: 'Additional wiring (10m)', qty: 1, status: 'pending' },
+        { description: 'Extra camera mount', qty: 2, status: 'pending' }
+      ]
     },
     {
       id: 'ORD-2026-0001',
@@ -101,10 +99,7 @@ export function OrderDetailsPage() {
       paymentMethod: 'Net Banking',
       summary: {
         itemsSubtotal: '₹1,50,000',
-        shipping: '₹0.00',
-        marketplaceFee: '₹0.00',
-        totalBeforePromo: '₹1,50,000',
-        promotionApplied: '₹0.00',
+        shipping: 'Applicable',
         grandTotal: '₹1,50,000'
       },
       items: [
@@ -153,11 +148,9 @@ export function OrderDetailsPage() {
       paymentMethod: 'UPI',
       summary: {
         itemsSubtotal: '₹4,500',
-        shipping: '₹0.00',
-        marketplaceFee: '₹0.00',
-        totalBeforePromo: '₹4,500',
-        promotionApplied: '₹0.00',
-        grandTotal: '₹4,500'
+        prebookingPaid: '₹500',
+        grandTotal: '₹4,500',
+        balanceDue: '₹4,000'
       },
       items: [
         {
@@ -173,16 +166,43 @@ export function OrderDetailsPage() {
     }
   ];
 
-  const orderDetails = allOrders.find(o => o.id === id) || allOrders[0];
+  let orderDetails = allOrders.find(o => o.id === id);
+  if (!orderDetails) {
+    const isServiceType = id?.startsWith('SRV') || id?.startsWith('DRN');
+    orderDetails = isServiceType ? { ...allOrders[1], id: id || 'SRV-0000' } : { ...allOrders[0], id: id || 'ORD-0000' };
+  }
 
   const isService = orderDetails.id.startsWith('SRV') || orderDetails.id.startsWith('DRN');
   const isDroneService = orderDetails.id.startsWith('DRN');
+
+  // Add local state to handle extra items approval
+  const [extraItems, setExtraItems] = useState((orderDetails as any).extraItems || []);
+
+  const handleApproveExtra = () => {
+    setExtraItems(extraItems.map((item: any) => ({ ...item, status: 'approved' })));
+    alert('Extra items approved and will be added to the final invoice.');
+  };
+
+  const handleDeclineExtra = () => {
+    setExtraItems(extraItems.map((item: any) => ({ ...item, status: 'declined' })));
+    alert('Extra items declined.');
+  };
+
+  const pendingExtraItems = extraItems.filter((i: any) => i.status === 'pending');
+  const approvedExtraItems = extraItems.filter((i: any) => i.status === 'approved');
 
   return (
     <div className="order-details-container">
       <div className="order-details-header">
         <div>
-          <h1 className="order-details-title">Order Details</h1>
+          <h1 className="order-details-title">
+            Order Details
+            {(orderDetails as any).summary?.prebookingPaid && (
+              <span style={{ marginLeft: '12px', background: '#dcfce7', color: '#166534', padding: '4px 10px', borderRadius: '12px', fontSize: '14px', fontWeight: '600', verticalAlign: 'middle' }}>
+                Prebooking Paid ({(orderDetails as any).summary.prebookingPaid})
+              </span>
+            )}
+          </h1>
           <div className="order-details-meta">
             <span>Ordered on {orderDetails.date}</span>
             <span className="divider">|</span>
@@ -194,6 +214,42 @@ export function OrderDetailsPage() {
         </div>
       </div>
 
+      {pendingExtraItems.length > 0 && (
+        <div style={{ background: '#fffbeb', borderLeft: '4px solid #f59e0b', padding: '16px', borderRadius: '8px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{ color: '#b45309', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              Action Required: Extra Items Requested
+            </h3>
+            <p style={{ margin: '0', color: '#78350f', fontSize: '14px' }}>
+              The technician has requested to add the following items to your service:
+            </p>
+            <ul style={{ margin: '8px 0 0 20px', padding: '0', color: '#78350f', fontSize: '14px' }}>
+              {pendingExtraItems.map((item: any, idx: number) => (
+                <li key={idx}><strong>{item.qty}x</strong> {item.description}</li>
+              ))}
+            </ul>
+          </div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={handleDeclineExtra} style={{ background: 'transparent', border: '1px solid #b45309', color: '#b45309', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }}>Decline</button>
+            <button onClick={handleApproveExtra} style={{ background: '#f59e0b', border: 'none', color: 'white', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }}>Approve</button>
+          </div>
+        </div>
+      )}
+
+      {approvedExtraItems.length > 0 && (
+        <div style={{ background: '#ecfdf5', borderLeft: '4px solid #10b981', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
+          <h3 style={{ color: '#047857', margin: '0 0 8px 0' }}>Approved Extra Items</h3>
+          <p style={{ margin: '0', color: '#065f46', fontSize: '14px' }}>
+            You have approved the following extra items. They will be included in the final invoice:
+          </p>
+          <ul style={{ margin: '8px 0 0 20px', padding: '0', color: '#065f46', fontSize: '14px' }}>
+            {approvedExtraItems.map((item: any, idx: number) => (
+              <li key={idx}><strong>{item.qty}x</strong> {item.description}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="details-card">
         <div className="info-grid">
           <div className="info-col">
@@ -203,7 +259,15 @@ export function OrderDetailsPage() {
           {!isService && (orderDetails as any).transportName && (
             <div className="info-col">
               <h3>Tracking Details</h3>
-              <p className="info-text" style={{ fontWeight: '500' }}>{(orderDetails as any).transportName}</p>
+              <p className="info-text" style={{ fontWeight: '500' }}>
+                {(orderDetails as any).trackingUrl ? (
+                  <a href={(orderDetails as any).trackingUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#007185', textDecoration: 'underline' }}>
+                    {(orderDetails as any).transportName}
+                  </a>
+                ) : (
+                  (orderDetails as any).transportName
+                )}
+              </p>
               <p className="info-text">Track ID: {(orderDetails as any).trackingId}</p>
             </div>
           )}
@@ -223,35 +287,55 @@ export function OrderDetailsPage() {
           )}
           <div className="info-col">
             <h3>Payment Method</h3>
-            <p className="info-text">{orderDetails.paymentMethod}</p>
+            <p className="info-text">{orderDetails.paymentMethod || 'Manual Payment'}</p>
           </div>
-          <div className="info-col">
-            <h3>Order Summary</h3>
-            <div className="summary-row">
-              <span>Item(s) Subtotal:</span>
-              <span>{orderDetails.summary.itemsSubtotal}</span>
+          {isService && (
+            <div className="info-col">
+              <h3>Payment Status</h3>
+              <p className="info-text">
+                {(orderDetails as any).paymentStatus === 'Completed' ? (
+                  <span style={{ color: '#166534', fontWeight: 'bold' }}>Completed</span>
+                ) : (
+                  <span style={{ color: '#b45309', fontWeight: 'bold' }}>Pending</span>
+                )}
+              </p>
             </div>
-            <div className="summary-row">
-              <span>Shipping:</span>
-              <span>{orderDetails.summary.shipping}</span>
+          )}
+          {!isService ? (
+            <div className="info-col">
+              <h3>Order Summary</h3>
+              <div className="summary-row">
+                <span>Item(s) Subtotal:</span>
+                <span>{orderDetails.summary.itemsSubtotal}</span>
+              </div>
+              <div className="summary-row">
+                <span>Shipping:</span>
+                <span>{orderDetails.summary.shipping}</span>
+              </div>
+              <div className="summary-row summary-total">
+                <span>Grand Total:</span>
+                <span>{orderDetails.summary.grandTotal}</span>
+              </div>
             </div>
-            <div className="summary-row">
-              <span>Marketplace Fee:</span>
-              <span>{orderDetails.summary.marketplaceFee}</span>
+          ) : (
+            <div className="info-col">
+              <h3>Pricing Details</h3>
+              {(orderDetails.summary as any).prebookingPaid ? (
+                <>
+                  <div className="summary-row" style={{ color: '#166534', fontWeight: '500' }}>
+                    <span>Prebooking Paid:</span>
+                    <span>{(orderDetails.summary as any).prebookingPaid}</span>
+                  </div>
+                  <div className="summary-row" style={{ marginTop: '8px' }}>
+                    <span>Balance Due:</span>
+                    <span style={{ fontSize: '13px', color: '#565959', fontStyle: 'italic' }}>Billed manually</span>
+                  </div>
+                </>
+              ) : (
+                <p className="info-text">Cost will be billed manually after the technician completes the service.</p>
+              )}
             </div>
-            <div className="summary-row">
-              <span>Total:</span>
-              <span>{orderDetails.summary.totalBeforePromo}</span>
-            </div>
-            <div className="summary-row">
-              <span>Promotion Applied:</span>
-              <span>{orderDetails.summary.promotionApplied}</span>
-            </div>
-            <div className="summary-row summary-total">
-              <span>Grand Total:</span>
-              <span>{orderDetails.summary.grandTotal}</span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -262,12 +346,12 @@ export function OrderDetailsPage() {
             <img src={item.image} alt={item.name} className="item-img" />
             <div className="item-info">
               <Link to="#" className="item-name">{item.name} {item.qty > 1 ? `x${item.qty}` : ''}</Link>
-              <div className="item-price">{item.price}</div>
+              {!isService && <div className="item-price">{item.price}</div>}
               <div className="item-return">{item.returnStatus}</div>
               {(item as any).trackingId && (
-                  <div style={{ fontSize: '12px', color: '#007185', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-                    <FaTruck style={{fontSize: '10px'}} /> {(item as any).transportName} - Tracking: {(item as any).trackingId}
-                  </div>
+                <div style={{ fontSize: '12px', color: '#007185', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                  <FaTruck style={{ fontSize: '10px' }} /> {(item as any).transportName} - Tracking: {(item as any).trackingId}
+                </div>
               )}
             </div>
           </div>
@@ -278,7 +362,7 @@ export function OrderDetailsPage() {
         <div className="details-card" style={{ marginTop: '20px' }}>
           <h2 className="item-title" style={{ padding: '0 20px', paddingTop: '20px' }}>Technician Progress</h2>
           <div className="info-grid">
-            
+
             {(orderDetails as any).progress.startPhotos?.length > 0 && (
               <div className="info-col" style={{ gridColumn: '1 / -1' }}>
                 <h3>Start Work Info</h3>
