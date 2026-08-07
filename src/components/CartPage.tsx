@@ -23,7 +23,10 @@ export function CartPage() {
   const navigate = useNavigate();
 
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
-  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'Online'>('Online');
+  const [paymentMethod, setPaymentMethod] = useState<'Online'>('Online');
+  const [needsGstInvoice, setNeedsGstInvoice] = useState(false);
+  const [orderCompanyName, setOrderCompanyName] = useState('');
+  const [orderGstNumber, setOrderGstNumber] = useState('');
   const [addresses, setAddresses] = useState<Address[]>([
     {
       id: 'addr-1',
@@ -282,6 +285,46 @@ export function CartPage() {
             </div>
           ) : (
             <div className="payment-step-container">
+              <div className="cart-items-header" style={{ marginBottom: '16px' }}>
+                <h2>Billing Details</h2>
+              </div>
+              <div style={{ padding: '0 24px 24px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginBottom: needsGstInvoice ? '16px' : '0' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={needsGstInvoice}
+                    onChange={(e) => setNeedsGstInvoice(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <strong>I am a business and require a GST Invoice</strong>
+                </label>
+
+                {needsGstInvoice && (
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Company Name</label>
+                      <input 
+                        type="text" 
+                        required={needsGstInvoice}
+                        value={orderCompanyName} 
+                        onChange={e => setOrderCompanyName(e.target.value)} 
+                        placeholder="Enter your registered company name" 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>GST Number</label>
+                      <input 
+                        type="text" 
+                        required={needsGstInvoice}
+                        value={orderGstNumber} 
+                        onChange={e => setOrderGstNumber(e.target.value)} 
+                        placeholder="Enter 15-digit GSTIN" 
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="cart-items-header">
                 <h2>Payment Options</h2>
               </div>
@@ -308,27 +351,7 @@ export function CartPage() {
                   )}
                 </label>
 
-                <label className={`payment-method-card ${paymentMethod === 'COD' ? 'selected' : ''}`}>
-                  <div className="payment-method-radio">
-                    <input
-                      type="radio"
-                      name="payment_method"
-                      checked={paymentMethod === 'COD'}
-                      onChange={() => setPaymentMethod('COD')}
-                    />
-                    <div className="payment-method-info">
-                      <span className="payment-method-title">Cash on Delivery (COD)</span>
-                      <span className="payment-method-desc">Pay at your doorstep when receiving the order</span>
-                    </div>
-                  </div>
-                  {paymentMethod === 'COD' && (
-                    <div className="payment-action-area">
-                      <button className="btn-confirm-order" onClick={() => alert('Order Placed Successfully with COD!')}>
-                        Confirm Order
-                      </button>
-                    </div>
-                  )}
-                </label>
+
               </div>
             </div>
           )}

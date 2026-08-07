@@ -96,8 +96,14 @@ export function BookServicePage() {
 
   const [customResponses, setCustomResponses] = useState<Record<string, string>>({});
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [bookingQuantity, setBookingQuantity] = useState<number | ''>('');
 
   const selectedServiceObj = useMemo(() => SERVICES.find(s => s.title === selectedService), [selectedService]);
+
+  const bookingTotal = useMemo(() => {
+    if (!selectedServiceObj?.rate || !bookingQuantity) return 0;
+    return selectedServiceObj.rate * Number(bookingQuantity);
+  }, [selectedServiceObj, bookingQuantity]);
 
   const isDroneService = selectedService?.toLowerCase().includes('drone');
   const isTractorService = selectedService?.toLowerCase().includes('tractor');
@@ -138,6 +144,7 @@ export function BookServicePage() {
     setMapPosition(null);
     setCustomResponses({});
     setIsProcessingPayment(false);
+    setBookingQuantity('');
   };
 
   const handleGetLocation = () => {
@@ -192,15 +199,23 @@ export function BookServicePage() {
       }
     }
 
-    if (selectedServiceObj?.prebookingCharge && selectedServiceObj.prebookingCharge > 0) {
+    // Validate quantity for priced services
+    if (selectedServiceObj?.pricingUnitName && selectedServiceObj?.rate) {
+      if (!bookingQuantity || Number(bookingQuantity) <= 0) {
+        alert(`Please enter the number of ${selectedServiceObj.pricingUnitName.toLowerCase()}.`);
+        return;
+      }
+    }
+
+    if (bookingTotal > 0) {
       setIsProcessingPayment(true);
       setTimeout(() => {
         setIsProcessingPayment(false);
-        alert(`Payment of ₹${selectedServiceObj.prebookingCharge} Successful!\n\nYour booking for ${selectedService} is confirmed.\n\nCustom details captured: ${JSON.stringify(customResponses)}`);
+        alert(`Payment of ₹${bookingTotal.toLocaleString('en-IN')} Successful!\n\nYour booking for ${selectedService} is confirmed.`);
         handleCloseModal();
       }, 1500);
     } else {
-      alert(`Success! Your booking for ${selectedService} is confirmed.\n\nCustom details captured: ${JSON.stringify(customResponses)}`);
+      alert(`Success! Your booking for ${selectedService} is confirmed.`);
       handleCloseModal();
     }
   };
@@ -461,10 +476,31 @@ export function BookServicePage() {
 
               </div>
 
-              {selectedServiceObj?.prebookingCharge && selectedServiceObj.prebookingCharge > 0 && (
-                <div style={{ padding: '15px', background: '#e0e7ff', borderRadius: '8px', border: '1px solid #c7d2fe', marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ color: '#3730a3', fontWeight: 600 }}>Prebooking Charge</div>
-                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#4338ca' }}>₹{selectedServiceObj.prebookingCharge}</div>
+              {selectedServiceObj?.pricingUnitName && selectedServiceObj?.rate && (
+                <div style={{ marginTop: '20px' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '12px' }}>Service Pricing</h4>
+                  <div style={{ display: 'flex', gap: '15px', marginBottom: '12px' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', display: 'block' }}>
+                        Number of {selectedServiceObj.pricingUnitName} (₹{selectedServiceObj.rate}/{selectedServiceObj.pricingUnitName.toLowerCase()})
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        step="0.5"
+                        value={bookingQuantity}
+                        onChange={e => setBookingQuantity(e.target.value ? Number(e.target.value) : '')}
+                        placeholder={`e.g. 8`}
+                        style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                      />
+                    </div>
+                  </div>
+                  {bookingTotal > 0 && (
+                    <div style={{ padding: '15px', background: '#e0e7ff', borderRadius: '8px', border: '1px solid #c7d2fe', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ color: '#3730a3', fontWeight: 600 }}>Estimated Total</div>
+                      <div style={{ fontSize: '18px', fontWeight: 700, color: '#4338ca' }}>₹{bookingTotal.toLocaleString('en-IN')}</div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -472,7 +508,7 @@ export function BookServicePage() {
             <div className="booking-modal-actions">
               <button className="btn-modal-cancel" onClick={handleCloseModal} disabled={isProcessingPayment}>Cancel</button>
               <button className="btn-modal-confirm" onClick={handleConfirmBooking} disabled={isProcessingPayment}>
-                {isProcessingPayment ? 'Processing...' : (selectedServiceObj?.prebookingCharge ? `Pay ₹${selectedServiceObj.prebookingCharge} & Book` : 'Confirm Booking')}
+                {isProcessingPayment ? 'Processing...' : (bookingTotal > 0 ? `Pay ₹${bookingTotal.toLocaleString('en-IN')} & Book` : 'Confirm Booking')}
               </button>
             </div>
           </div>

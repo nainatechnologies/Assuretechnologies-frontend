@@ -23,7 +23,8 @@ export type Service = {
   img?: string;
   icon?: React.ReactNode;
   customFields?: CustomField[];
-  prebookingCharge?: number;
+  pricingUnitName?: string;
+  rate?: number;
 };
 
 export const SERVICES: Service[] = [
@@ -39,8 +40,8 @@ export const SERVICES: Service[] = [
   },
   { id: 2, label: 'Automation', title: 'Home, Gate, Boom Barrier Automation and Solutions', img: svcAutomation },
   { id: 3, label: 'AgriTech', title: 'Agriculture and Aquaculture IoT Tools and Automation', img: svcAgritech },
-  { id: 17, label: 'AgriTech', title: 'Agriculture Drone Spraying Services', img: svcAgritech, prebookingCharge: 500 },
-  { id: 18, label: 'AgriTech', title: 'Agriculture Tractor Services', img: svcAgritech },
+  { id: 17, label: 'AgriTech', title: 'Agriculture Drone Spraying Services', img: svcAgritech, pricingUnitName: 'Acres', rate: 400 },
+  { id: 18, label: 'AgriTech', title: 'Agriculture Tractor Services', img: svcAgritech, pricingUnitName: 'Hours', rate: 500 },
   { id: 4, label: 'Surveillance', title: 'CCTV Networking and AMC Contract', img: svcSurveillance },
   { id: 5, label: 'Telephony', title: 'EPABX System', img: svcTelephony },
   { id: 6, label: 'Intercom', title: 'Intercom System', img: svcIntercom },
