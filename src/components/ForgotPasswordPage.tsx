@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import Swal from 'sweetalert2';
+import API from '../services/api';
 import './LoginPage.css';
 
 export function ForgotPasswordPage() {
@@ -56,18 +58,47 @@ export function ForgotPasswordPage() {
 
     if (hasError) return;
 
-    // Simulate sending OTP
-    setStep(2);
+    // Determine if identifier is email or mobile
+    const payload = identifier.includes('@') 
+      ? { email: identifier } 
+      : { mobile: identifier };
+
+    API.post('/auth/customer/forgot-password', payload)
+      .then((res) => {
+        if (res.data.success) {
+          Swal.fire({
+            title: 'OTP Sent',
+            text: res.data.message || 'Please check your mobile/email.',
+            icon: 'info',
+            timer: 2000,
+            showConfirmButton: false
+          }).then(() => {
+            setStep(2);
+          });
+        }
+      })
+      .catch((err) => {
+        console.error('Forgot Password Error:', err);
+        setErrors({ ...errors, identifier: err.response?.data?.message || 'Error sending OTP' });
+      });
   };
 
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (otp === '123456') {
-      setStep(3);
-    } else {
-      setErrors({ ...errors, otp: 'Invalid OTP. Please enter 123456' });
-    }
+    const payload = identifier.includes('@') 
+      ? { email: identifier, otp } 
+      : { mobile: identifier, otp };
+
+    API.post('/auth/customer/verify-reset-otp', payload)
+      .then((res) => {
+        if (res.data.success) {
+          setStep(3);
+        }
+      })
+      .catch((err) => {
+        setErrors({ ...errors, otp: err.response?.data?.message || 'Invalid OTP' });
+      });
   };
 
   const handleResetPassword = (e: React.FormEvent) => {
@@ -93,8 +124,33 @@ export function ForgotPasswordPage() {
 
     if (hasError) return;
 
-    alert('Password reset successfully!');
-    navigate('/login');
+    const payload = identifier.includes('@') 
+      ? { email: identifier, otp, newPassword } 
+      : { mobile: identifier, otp, newPassword };
+
+    API.post('/auth/customer/reset-password', payload)
+      .then((res) => {
+        if (res.data.success) {
+          Swal.fire({
+            title: 'Success!',
+            text: 'Password reset successfully!',
+            icon: 'success',
+            timer: 1500,
+            showConfirmButton: false
+          }).then(() => {
+            navigate('/login');
+          });
+        }
+      })
+      .catch((err) => {
+        console.error('Reset Password Error:', err);
+        Swal.fire({
+          title: 'Reset Failed',
+          text: err.response?.data?.message || 'Failed to reset password',
+          icon: 'error',
+          confirmButtonColor: '#EF4444'
+        });
+      });
   };
 
   return (

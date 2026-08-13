@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
-import { authApi } from '../api/authApi';
+import Swal from 'sweetalert2';
+import API from '../services/api';
+import { loginUser } from '../services/auth';
 import { useAuth } from '../context/AuthContext';
 import './LoginPage.css'; // Reuse auth styles
 import './RegisterPage.css';
@@ -12,6 +14,7 @@ export function RegisterPage() {
   const [step, setStep] = useState<1 | 2>(1); // 1: Details, 2: OTP
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -121,23 +124,104 @@ export function RegisterPage() {
 
     if (hasError) return;
 
-    // Dummy register API call
-    authApi.register(formData).then(() => {
-      setStep(2);
-    });
+    setLoading(true);
+
+    const payload = {
+      full_name: formData.fullName,
+      mobile: formData.mobileNumber,
+      email: formData.emailAddress,
+      full_address: formData.fullAddress,
+      pincode: formData.pincode,
+      state_name: formData.stateName,
+      password: formData.password
+    };
+
+    API.post('/auth/customer/register', payload)
+      .then((res) => {
+        if (res.data.success) {
+          // Backend returned success and customerId, time for OTP
+          Swal.fire({
+            title: 'OTP Sent',
+            text: res.data.message || 'Please check your mobile for OTP.',
+            icon: 'info',
+            timer: 2000,
+            showConfirmButton: false
+          }).then(() => {
+            setStep(2); // Switch to OTP step
+          });
+        }
+      })
+      .catch((err) => {
+        console.error('Register Error:', err);
+        
+        // Handle field-level validation errors from backend
+        if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+          const serverErrors = { ...newErrors }; // start with empty errors
+          err.response.data.errors.forEach((e: any) => {
+            if (e.field === 'mobile') serverErrors.mobileNumber = e.message;
+            if (e.field === 'email') serverErrors.emailAddress = e.message;
+            if (e.field === 'full_name') serverErrors.fullName = e.message;
+            if (e.field === 'full_address') serverErrors.fullAddress = e.message;
+            if (e.field === 'pincode') serverErrors.pincode = e.message;
+            if (e.field === 'state_name') serverErrors.stateName = e.message;
+            if (e.field === 'password') serverErrors.password = e.message;
+          });
+          setErrors(serverErrors);
+          
+          // Show a quick toast or let the inline errors do the talking
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'error',
+            title: 'Please fix the errors below',
+            showConfirmButton: false,
+            timer: 3000
+          });
+        } else {
+          // Fallback to standard popup for other server errors
+          Swal.fire({
+            title: 'Registration Failed',
+            text: err.response?.data?.message || 'Server error',
+            icon: 'error',
+            confirmButtonColor: '#EF4444'
+          });
+        }
+      })
+      .finally(() => setLoading(false));
   };
 
   const handleOtpSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (otp === '123456') {
-      authApi.verifyOtp(formData.mobileNumber, otp).then((res) => {
-        alert('Registration successful!');
-        login(res.data.token, formData.fullName);
-        navigate('/profile');
-      });
-    } else {
-      alert('Invalid OTP. Please enter 123456');
+    if (otp.length !== 6) {
+      alert('Invalid OTP format. Please enter a 6-digit OTP.');
+      return;
     }
+    
+    API.post('/auth/customer/verify-otp', { mobile: formData.mobileNumber, otp })
+      .then((res) => {
+        if (res.data.success) {
+          loginUser(res.data.data.user);
+          login('auth-cookie-set', res.data.data.user.full_name || 'Customer');
+          
+          Swal.fire({
+            title: 'Registration Complete!',
+            text: 'You are now logged in.',
+            icon: 'success',
+            timer: 1500,
+            showConfirmButton: false
+          }).then(() => {
+            navigate('/');
+          });
+        }
+      })
+      .catch((err) => {
+        Swal.fire({
+          title: 'OTP Verification Failed',
+          text: err.response?.data?.message || 'Invalid OTP',
+          icon: 'error',
+          confirmButtonColor: '#EF4444'
+        });
+      });
   };
 
   return (
@@ -291,8 +375,8 @@ export function RegisterPage() {
               {errors.termsAccepted && <span className="error-text" style={{ display: 'block', marginTop: '4px' }}>{errors.termsAccepted}</span>}
             </div>
 
-            <button type="submit" className="auth-submit-btn">
-              Register
+            <button type="submit" className="auth-submit-btn" disabled={loading}>
+              {loading ? 'Registering...' : 'Register'}
             </button>
           </form>
         )}

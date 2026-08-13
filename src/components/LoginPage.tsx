@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
-import { authApi } from '../api/authApi';
+import Swal from 'sweetalert2';
+import API from '../services/api';
+import { loginUser } from '../services/auth';
 import { useAuth } from '../context/AuthContext';
 import './LoginPage.css';
 
@@ -11,6 +13,7 @@ export function LoginPage() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [errors, setErrors] = useState({
     identifier: '',
@@ -53,20 +56,41 @@ export function LoginPage() {
 
     if (hasError) return;
 
-    // Dummy login logic utilizing API structure
-    if (identifier === '9912345678' && password === '123456') {
-      authApi.login(identifier).then(() => {
-        login('mock-jwt-token-123', 'Sai Kumar');
-        navigate('/');
-      });
-    } else if (identifier === 'admin@assure.com' && password === '123456') {
-      authApi.login(identifier).then(() => {
-        login('mock-jwt-token-admin', 'Admin User');
-        navigate('/');
-      });
-    } else {
-      alert('Invalid credentials. For testing, use 9912345678 and 123456');
-    }
+    setLoading(true);
+    
+    // Determine if identifier is email or mobile
+    const payload = identifier.includes('@') 
+      ? { email: identifier, password } 
+      : { mobile: identifier, password };
+
+    API.post('/auth/customer/login', payload)
+      .then((res) => {
+        if (res.data.success) {
+          loginUser(res.data.data.user);
+          // Optional: still call your React context if it relies on something
+          login('auth-cookie-set', res.data.data.user.full_name || 'Customer');
+          
+          Swal.fire({
+            title: 'Success!',
+            text: 'Logged in successfully!',
+            icon: 'success',
+            timer: 1500,
+            showConfirmButton: false
+          }).then(() => {
+            navigate('/');
+          });
+        }
+      })
+      .catch((err) => {
+        console.error('Login Error:', err);
+        Swal.fire({
+          title: 'Login Failed',
+          text: err.response?.data?.message || 'Invalid credentials',
+          icon: 'error',
+          confirmButtonColor: '#EF4444'
+        });
+      })
+      .finally(() => setLoading(false));
   };
 
   return (
@@ -117,8 +141,8 @@ export function LoginPage() {
             <Link to="/forgot-password">Forgot Password?</Link>
           </div>
 
-          <button type="submit" className="auth-submit-btn">
-            Login
+          <button type="submit" className="auth-submit-btn" disabled={loading}>
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
