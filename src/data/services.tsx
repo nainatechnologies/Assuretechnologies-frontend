@@ -5,7 +5,6 @@ import svcAutomation from '../assets/svc_automation.png';
 import svcAgritech from '../assets/svc_agritech.png';
 import svcSurveillance from '../assets/svc_surveillance.png';
 import svcTelephony from '../assets/svc_telephony.png';
-import svcIntercom from '../assets/svc_intercom.png';
 import svcBiometrics from '../assets/svc_biometrics.png';
 
 export interface CustomField {
@@ -44,7 +43,7 @@ export const SERVICES: Service[] = [
   { id: 18, label: 'AgriTech', title: 'Agriculture Tractor Services', img: svcAgritech, pricingUnitName: 'Hours', rate: 500 },
   { id: 4, label: 'Surveillance', title: 'CCTV Networking and AMC Contract', img: svcSurveillance },
   { id: 5, label: 'Telephony', title: 'EPABX System', img: svcTelephony },
-  { id: 6, label: 'Intercom', title: 'Intercom System', img: svcIntercom },
+  { id: 6, label: 'Intercom', title: 'Intercom System', img: 'https://images.unsplash.com/photo-1596522527632-60195e50529d?w=500&h=500&fit=crop' },
   { id: 7, label: 'Biometrics', title: 'Biometric & Attendance System', img: svcBiometrics },
   { id: 8, label: 'Communication', title: 'Walkie Talkies, Signal Booster, Signal Jammer, Satellite Phone Solutions', img: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500&h=500&fit=crop' },
   { id: 9, label: 'Infrastructure', title: 'Server Racks and Cable Structuring', img: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=500&h=500&fit=crop' },

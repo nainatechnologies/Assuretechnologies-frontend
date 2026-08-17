@@ -38,12 +38,32 @@ export function OrdersPage() {
   const [serviceFilter, setServiceFilter] = useState('All');
   const [activeTab, setActiveTab] = useState<'products' | 'services'>('products');
 
+  
   useEffect(() => {
     ordersApi.fetchOrders().then(res => {
-      setOrders(res.data);
+      const mappedOrders = res.data.map((o: any) => ({
+        id: o.order_number,
+        rawId: o.id,
+        date: new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+        total: `₹${parseFloat(o.total_amount).toLocaleString('en-IN')}`,
+        shipTo: o.customer_name || (o.customer ? o.customer.full_name : 'Guest'),
+        type: 'product', // we assume product for now
+        status: o.status === 'NEW' ? 'Pending' : o.status === 'ACCEPTED' ? 'Accepted' : o.status === 'OUT_FOR_DELIVERY' ? 'Out for Delivery' : o.status === 'COMPLETED' ? 'Delivered' : o.status === 'CANCELLED' ? 'Cancelled' : o.status,
+        items: o.items ? o.items.map((i: any) => ({
+          name: i.product ? i.product.name : 'Unknown Product',
+          qty: i.qty,
+          image: 'https://placehold.co/300x200?text=Product',
+          returnStatus: 'Processing'
+        })) : []
+      }));
+      setOrders(mappedOrders);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
       setLoading(false);
     });
   }, []);
+
 
   const handleInvoiceDownload = (e: React.MouseEvent) => {
     e.preventDefault();

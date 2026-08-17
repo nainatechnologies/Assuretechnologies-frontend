@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { ordersApi } from '../api/ordersApi';
 import { Link, useParams } from 'react-router-dom';
 import { FaSyncAlt, FaTruck } from 'react-icons/fa';
 import './OrderDetailsPage.css';
@@ -11,166 +12,48 @@ export function OrderDetailsPage() {
     alert('Invoice download started...');
   };
 
-  const allOrders = [
-    {
-      id: 'ORD-2023-0891',
-      date: 'July 15, 2026',
-      total: '₹16,500',
-      shipTo: 'Shyam Matam\nJMJ Sathvika Reddy Boys hostel, beside TGB Bank\nUppal Road, Laxma Reddy Colony, Road Number 2, dead-end\nHyderabad, TELANGANA 500039\nIndia',
-      paymentMethod: 'BHIM UPI',
-      summary: {
-        itemsSubtotal: '₹16,500',
-        shipping: 'Applicable',
-        grandTotal: '₹16,500'
-      },
-      items: [
-        {
-          name: '4K Security Camera',
-          qty: 2,
-          seller: 'Assure Technologies',
-          price: '₹12,000',
-          image: 'https://images.unsplash.com/photo-1557862921-37829c790f19?w=300&q=80',
-          returnStatus: 'Warranty valid until 15 July 2027',
-          type: 'product'
-        },
-        {
-          name: 'Smart Video Doorbell',
-          qty: 1,
-          seller: 'Assure Technologies',
-          price: '₹4,500',
-          image: 'https://images.unsplash.com/photo-1555861496-faa66cb20c27?w=300&q=80',
-          returnStatus: 'Warranty valid until 15 July 2027',
-          type: 'product'
-        }
-      ]
-    },
-    {
-      id: 'SRV-2026-0004',
-      date: 'July 20, 2026',
-      scheduledDate: '25 July 2026',
-      scheduledTime: '10:00 AM - 12:00 PM',
-      address: 'H.No 45, Gachibowli, Hyderabad, Telangana - 500032',
-      technician: null,
-      total: '₹2,300',
-      shipTo: 'Shyam Matam\nJMJ Sathvika Reddy Boys hostel, beside TGB Bank\nUppal Road, Laxma Reddy Colony, Road Number 2, dead-end\nHyderabad, TELANGANA 500039\nIndia',
-      paymentMethod: 'Credit Card',
-      summary: {
-        itemsSubtotal: '₹2,300',
-        grandTotal: '₹2,300'
-      },
-      items: [
-        {
-          name: 'CCTV Installation Service',
-          qty: 1,
-          seller: 'Assure Technologies Services',
-          price: '₹1,500',
-          image: 'https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=300&q=80',
-          returnStatus: 'Service scheduled for 25 July 2026',
-          type: 'service'
-        },
-        {
-          name: 'Network Cabling',
-          qty: 1,
-          seller: 'Assure Technologies Services',
-          price: '₹800',
-          image: 'https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=300&q=80',
-          returnStatus: 'Service scheduled for 25 July 2026',
-        }
-      ],
-      progress: {
-        startDescription: 'Arrived on site, inspecting the wall structure before drilling.',
-        startPhotos: ['https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300&q=80'],
-        dailyUpdates: [
-          { date: '25 July 2026, 11:30 AM', text: 'Arrived at the location. Evaluated camera mounting points and started drilling.' },
-          { date: '25 July 2026, 04:15 PM', text: 'Completed wiring for the front yard and backyard cameras.' }
-        ],
-        completedPhotos: ['https://images.unsplash.com/photo-1557862921-37829c790f19?w=300&q=80', 'https://images.unsplash.com/photo-1555861496-faa66cb20c27?w=300&q=80']
-      },
-      extraItems: [
-        { description: 'Additional wiring (10m)', qty: 1, status: 'pending' },
-        { description: 'Extra camera mount', qty: 2, status: 'pending' }
-      ]
-    },
-    {
-      id: 'ORD-2026-0001',
-      date: 'July 25, 2026',
-      total: '₹1,50,000',
-      shipTo: 'Shyam Matam\nSame Address...',
-      paymentMethod: 'Net Banking',
-      summary: {
-        itemsSubtotal: '₹1,50,000',
-        shipping: 'Applicable',
-        grandTotal: '₹1,50,000'
-      },
-      items: [
-        {
-          name: 'Biometric Access Control System',
-          qty: 30,
-          seller: 'Vendor A',
-          price: '₹50,000',
-          image: 'https://images.unsplash.com/photo-1555861496-faa66cb20c27?w=300&q=80',
-          returnStatus: 'Order is being packed',
-          type: 'product',
-          transportName: 'Blue Dart',
-          trackingId: 'BD111111'
-        },
-        {
-          name: 'Biometric Access Control System',
-          qty: 30,
-          seller: 'Vendor B',
-          price: '₹50,000',
-          image: 'https://images.unsplash.com/photo-1555861496-faa66cb20c27?w=300&q=80',
-          returnStatus: 'Out for Delivery',
-          type: 'product',
-          transportName: 'Shiprocket',
-          trackingId: 'SR222222'
-        },
-        {
-          name: 'Biometric Access Control System',
-          qty: 40,
-          seller: 'Vendor C',
-          price: '₹50,000',
-          image: 'https://images.unsplash.com/photo-1555861496-faa66cb20c27?w=300&q=80',
-          returnStatus: 'Awaiting vendor confirmation',
-          type: 'product'
-        }
-      ]
-    },
-    {
-      id: 'DRN-2026-0001',
-      date: 'July 31, 2026',
-      scheduledDate: '02 Aug 2026',
-      scheduledTime: '09:00 AM - 11:00 AM',
-      address: 'Survey 123/A, Guntur, AP - 500001',
-      technician: null,
-      total: '₹4,500',
-      shipTo: 'Shyam Matam\nJMJ Sathvika Reddy Boys hostel, beside TGB Bank\nUppal Road, Laxma Reddy Colony, Road Number 2, dead-end\nHyderabad, TELANGANA 500039\nIndia',
-      paymentMethod: 'UPI',
-      summary: {
-        itemsSubtotal: '₹4,500',
-        prebookingPaid: '₹500',
-        grandTotal: '₹4,500',
-        balanceDue: '₹4,000'
-      },
-      items: [
-        {
-          name: 'Agriculture Drone Spray Services',
-          qty: 1,
-          seller: 'Assure Technologies Services',
-          price: '₹4,500',
-          image: 'https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=300&q=80',
-          returnStatus: 'Waiting for admin approval',
-          type: 'service'
-        }
-      ]
-    }
-  ];
+  
+  const [orderDetails, setOrderDetails] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  let orderDetails = allOrders.find(o => o.id === id);
-  if (!orderDetails) {
-    const isServiceType = id?.startsWith('SRV') || id?.startsWith('DRN');
-    orderDetails = isServiceType ? { ...allOrders[1], id: id || 'SRV-0000' } : { ...allOrders[0], id: id || 'ORD-0000' };
-  }
+  useEffect(() => {
+    if (id) {
+      ordersApi.fetchOrderById(id).then(res => {
+        const o = res.data;
+        const mapped = {
+          id: o.order_number,
+          date: new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+          total: `₹${parseFloat(o.total_amount).toLocaleString('en-IN')}`,
+          shipTo: o.customer_name || (o.customer ? o.customer.full_name : 'Guest'),
+          paymentMethod: 'Online Payment', // Assumed for now
+          status: o.status,
+          summary: {
+            itemsSubtotal: `₹${parseFloat(o.total_amount).toLocaleString('en-IN')}`,
+            shipping: 'Free',
+            grandTotal: `₹${parseFloat(o.total_amount).toLocaleString('en-IN')}`
+          },
+          items: o.items ? o.items.map((i: any) => ({
+            name: i.product ? i.product.name : 'Unknown Product',
+            qty: i.qty,
+            seller: i.vendor ? i.vendor.business_name : 'Assure Technologies',
+            price: `₹${parseFloat(i.price_at_purchase).toLocaleString('en-IN')}`,
+            image: 'https://placehold.co/300x200?text=Product',
+            returnStatus: 'Processing',
+            type: 'product'
+          })) : []
+        };
+        setOrderDetails(mapped);
+        setLoading(false);
+      }).catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+    }
+  }, [id]);
+
+  if (loading) return <div style={{padding: '40px', textAlign: 'center'}}>Loading...</div>;
+  if (!orderDetails) return <div style={{padding: '40px', textAlign: 'center'}}>Order not found.</div>;
+
 
   const isService = orderDetails.id.startsWith('SRV') || orderDetails.id.startsWith('DRN');
   const isDroneService = orderDetails.id.startsWith('DRN');

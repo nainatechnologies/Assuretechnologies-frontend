@@ -376,3 +376,32 @@
     font-size: 0.8rem;
   }
 }
+/* ─── Header Layout ───────────────────────────────────────────── */
+.op-header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.op-header-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+@media (max-width: 600px) {
+  .op-header-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+  .op-header-actions input {
+    flex: 1;
+    min-width: 150px;
+  }
+}

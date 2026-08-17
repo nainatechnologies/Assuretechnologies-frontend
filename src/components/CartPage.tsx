@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FaTrash, FaPlus, FaMinus, FaShieldAlt } from 'react-icons/fa';
-import { PRODUCTS } from '../data/products';
+import { productsApi } from '../api/productsApi';
+import { ordersApi } from '../api/ordersApi';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import './CartPage.css';
@@ -43,12 +44,58 @@ export function CartPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<string>('addr-1');
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
   const [newAddress, setNewAddress] = useState<Partial<Address>>({});
+
+  const [products, setProducts] = useState<any[]>([]);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const res = await productsApi.fetchProducts();
+        const formattedProducts = res.data.data.map((p: any) => {
+           const base = parseFloat(p.base_price) || 0;
+           const disc = parseFloat(p.discount) || 0;
+           return {
+             ...p,
+             originalPrice: base,
+             price: base - (base * (disc / 100)),
+             service: p.category || 'General',
+             image: p.banner ? (p.banner.startsWith('http') || p.banner.startsWith('blob:') ? p.banner : `http://localhost:5000${p.banner.startsWith('/') ? '' : '/'}${p.banner}`) : 'https://placehold.co/300x200?text=No+Image'
+           };
+        });
+        setProducts(formattedProducts);
+      } catch (err) {
+        console.error('Failed to fetch products', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadProducts();
+  }, []);
+
+  useEffect(() => {
+    if (products.length > 0) {
+      let hasInvalid = false;
+      const validCart = { ...cart };
+      Object.keys(validCart).forEach(id => {
+        if (!products.find(p => p.id === id)) {
+          delete validCart[id];
+          hasInvalid = true;
+        }
+      });
+      if (hasInvalid) {
+        setCart(validCart);
+      }
+    }
+  }, [products, cart, setCart]);
+
   const cartItems = useMemo(() => {
     return Object.entries(cart).map(([productId, quantity]) => {
-      const product = PRODUCTS.find(p => p.id === productId);
+      const product = products.find(p => p.id === productId);
       return { product, quantity };
     }).filter(item => item.product !== undefined);
-  }, [cart]);
+  }, [cart, products]);
 
   const subtotal = useMemo(() => {
     return cartItems.reduce((sum, item) => sum + (item.product!.price * item.quantity), 0);
@@ -99,9 +146,45 @@ export function CartPage() {
     setNewAddress({});
   };
 
+  
+  const submitOrder = async () => {
+    try {
+      setIsPlacingOrder(true);
+      const selectedAddr = addresses.find(a => a.id === selectedAddressId);
+      const addressString = selectedAddr ? `${selectedAddr.addressLine1}, ${selectedAddr.addressLine2}, ${selectedAddr.city}, ${selectedAddr.state} - ${selectedAddr.pincode}` : '';
+      const orderPayload = {
+        customer_name: selectedAddr ? selectedAddr.fullName : 'Guest',
+        customer_contact: selectedAddr ? selectedAddr.mobileNumber : '',
+        customer_address: addressString,
+        items: cartItems.map(ci => ({
+          product_id: ci.product.id,
+          qty: ci.quantity
+        }))
+      };
+      const res = await ordersApi.createOrder(orderPayload);
+      alert('Order placed successfully! Order Number: ' + res.data.order.order_number);
+      setCart({}); // clear cart
+      navigate('/orders');
+    } catch (err) {
+      console.error('Failed to place order', err);
+      alert('Failed to place order.');
+    } finally {
+      setIsPlacingOrder(false);
+    }
+  };
+
   const handleDeliverHere = () => {
     setCurrentStep(3); // Proceed to payment
   };
+
+  if (loading) {
+    return (
+      <div className="cart-empty-state">
+        <div className="cart-empty-icon">⏳</div>
+        <h2>Loading Cart...</h2>
+      </div>
+    );
+  }
 
   if (cartItems.length === 0) {
     return (
@@ -344,8 +427,8 @@ export function CartPage() {
                   </div>
                   {paymentMethod === 'Online' && (
                     <div className="payment-action-area">
-                      <button className="btn-confirm-order" onClick={() => alert('Order Placed Successfully via Online Payment!')}>
-                        Pay ₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2 })} & Place Order
+                      <button className="btn-confirm-order" onClick={submitOrder} disabled={isPlacingOrder}>
+                        {isPlacingOrder ? 'Processing...' : `Pay ₹${total.toLocaleString('en-IN', { minimumFractionDigits: 2 })} & Place Order`}
                       </button>
                     </div>
                   )}
