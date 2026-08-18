@@ -5,6 +5,7 @@ const BASE_URL = 'http://localhost:5000/api';
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -31,7 +32,7 @@ axiosInstance.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       // Clear token and redirect to login if session expired
       localStorage.removeItem('authToken');
-      window.location.href = '/login';
+      // window.location.href = '/login'; // Disabled to prevent infinite redirect loops
     }
     return Promise.reject(error);
   }

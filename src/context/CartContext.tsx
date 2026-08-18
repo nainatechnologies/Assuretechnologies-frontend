@@ -21,22 +21,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const fetchCart = async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem('authToken');
+      if (!token) throw new Error('No token');
       // Attempt to load from API. If auth fails, fallback to local storage could be added here, 
       // but the requirement is server-side cart.
       const res = await productsApi.getCart();
       const cartItems = res.data.cartItems || [];
       const newCart: Record<string, number> = {};
       cartItems.forEach((item: any) => {
-        newCart[item.product.id] = item.quantity;
+        if (item && item.product && item.product.id) {
+          newCart[item.product.id] = item.quantity;
+        }
       });
       setCart(newCart);
     } catch (err) {
       console.error('Failed to fetch cart', err);
       // Fallback to local storage if API fails (e.g. not logged in yet)
       const saved = localStorage.getItem('cart');
-      if (saved) {
-        setCart(JSON.parse(saved));
-      }
+      if (saved && saved !== 'undefined' && saved !== 'null') {
+        try { setCart(JSON.parse(saved) || {}); } catch(e) { setCart({}); }
+      } else { setCart({}); }
     } finally {
       setLoading(false);
     }
@@ -93,7 +97,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const cartCount = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
+  const cartCount = Object.values(cart || {}).reduce((sum, qty) => sum + qty, 0);
 
   return (
     <CartContext.Provider value={{ cart, cartCount, loading, addToCart, updateCartItem, removeFromCart, fetchCart, setCart }}>

@@ -5,6 +5,7 @@ import { productsApi } from '../api/productsApi';
 import { ordersApi } from '../api/ordersApi';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import API from '../services/api';
 import './CartPage.css';
 
 interface Address {
@@ -17,9 +18,10 @@ interface Address {
   landmark: string;
   city: string;
   state: string;
+  isDefault?: boolean;
 }
 export function CartPage() {
-  const { cart, setCart } = useCart();
+  const { cart, setCart, updateCartItem, removeFromCart } = useCart();
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
 
@@ -28,26 +30,37 @@ export function CartPage() {
   const [needsGstInvoice, setNeedsGstInvoice] = useState(false);
   const [orderCompanyName, setOrderCompanyName] = useState('');
   const [orderGstNumber, setOrderGstNumber] = useState('');
-  const [addresses, setAddresses] = useState<Address[]>([
-    {
-      id: 'addr-1',
-      fullName: 'Sai Kumar',
-      mobileNumber: '9912345678',
-      pincode: '500081',
-      addressLine1: '123 Tech Park, Innovation Hub',
-      addressLine2: 'Madhapur',
-      landmark: 'Near Cyber Towers',
-      city: 'Hyderabad',
-      state: 'Telangana',
-    }
-  ]);
-  const [selectedAddressId, setSelectedAddressId] = useState<string>('addr-1');
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
   const [newAddress, setNewAddress] = useState<Partial<Address>>({});
 
   const [products, setProducts] = useState<any[]>([]);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      API.get('/auth/customer/addresses').then(res => {
+        if (res.data.success) {
+          const mapped = res.data.data.map((a: any) => ({
+            id: a.id,
+            fullName: a.full_name,
+            mobileNumber: a.mobile_number,
+            pincode: a.pincode,
+            addressLine1: a.address_line1,
+            addressLine2: a.address_line2,
+            landmark: a.landmark,
+            city: a.city,
+            state: a.state,
+            isDefault: a.isDefault
+          }));
+          setAddresses(mapped);
+          if (mapped.length > 0) setSelectedAddressId(mapped[0].id);
+        }
+      }).catch(err => console.error('Failed to load addresses', err));
+    }
+  }, [isLoggedIn]);
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -109,23 +122,12 @@ export function CartPage() {
   const total = subtotal + tax;
 
   const updateQty = (id: string, delta: number) => {
-    setCart(prev => {
-      const next = (prev[id] || 0) + delta;
-      if (next <= 0) {
-        const copy = { ...prev };
-        delete copy[id];
-        return copy;
-      }
-      return { ...prev, [id]: next };
-    });
+    const next = (cart[id] || 0) + delta;
+    updateCartItem(id, next);
   };
 
   const removeItem = (id: string) => {
-    setCart(prev => {
-      const copy = { ...prev };
-      delete copy[id];
-      return copy;
-    });
+    removeFromCart(id);
   };
 
   const handlePlaceOrderClick = () => {
@@ -136,14 +138,42 @@ export function CartPage() {
     }
   };
 
-  const handleAddressSubmit = (e: React.FormEvent) => {
+  const handleAddressSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newId = `addr-${Date.now()}`;
-    const addedAddress = { ...newAddress, id: newId } as Address;
-    setAddresses(prev => [...prev, addedAddress]);
-    setSelectedAddressId(newId);
-    setShowNewAddressForm(false);
-    setNewAddress({});
+    try {
+      const payload = {
+        full_name: newAddress.fullName,
+        mobile_number: newAddress.mobileNumber,
+        pincode: newAddress.pincode,
+        address_line1: newAddress.addressLine1,
+        address_line2: newAddress.addressLine2,
+        landmark: newAddress.landmark,
+        city: newAddress.city,
+        state: newAddress.state
+      };
+      const res = await API.post('/auth/customer/addresses', payload);
+      if (res.data.success) {
+        const a = res.data.data;
+        const addedAddress: Address = {
+          id: a.id,
+          fullName: a.full_name,
+          mobileNumber: a.mobile_number,
+          pincode: a.pincode,
+          addressLine1: a.address_line1,
+          addressLine2: a.address_line2,
+          landmark: a.landmark,
+          city: a.city,
+          state: a.state
+        };
+        setAddresses(prev => [...prev, addedAddress]);
+        setSelectedAddressId(a.id);
+        setShowNewAddressForm(false);
+        setNewAddress({});
+      }
+    } catch (err) {
+      console.error('Failed to add address', err);
+      alert('Failed to save address.');
+    }
   };
 
   
@@ -156,6 +186,8 @@ export function CartPage() {
         customer_name: selectedAddr ? selectedAddr.fullName : 'Guest',
         customer_contact: selectedAddr ? selectedAddr.mobileNumber : '',
         customer_address: addressString,
+        company_name: needsGstInvoice ? orderCompanyName : undefined,
+        gst_number: needsGstInvoice ? orderGstNumber : undefined,
         items: cartItems.map(ci => ({
           product_id: ci.product.id,
           qty: ci.quantity
@@ -285,7 +317,7 @@ export function CartPage() {
                         onChange={() => setSelectedAddressId(addr.id)}
                       />
                       <div className="address-details">
-                        <span className="address-name">{addr.fullName} <span className="address-type-tag">Home</span></span>
+                        <span className="address-name">{addr.fullName} <span className="address-type-tag">{addr.isDefault ? 'Default' : 'Home'}</span></span>
                         <span className="address-phone">{addr.mobileNumber}</span>
                         <span className="address-full">
                           {addr.addressLine1}, {addr.addressLine2}, {addr.landmark ? `${addr.landmark}, ` : ''}

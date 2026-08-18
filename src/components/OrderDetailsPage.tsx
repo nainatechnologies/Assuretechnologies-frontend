@@ -27,8 +27,11 @@ export function OrderDetailsPage() {
           shipTo: o.customer_name || (o.customer ? o.customer.full_name : 'Guest'),
           paymentMethod: 'Online Payment', // Assumed for now
           status: o.status,
+          companyName: o.company_name || null,
+          gstNumber: o.gst_number || null,
           summary: {
-            itemsSubtotal: `₹${parseFloat(o.total_amount).toLocaleString('en-IN')}`,
+            itemsSubtotal: `₹${parseFloat(o.subtotal_amount || o.total_amount).toLocaleString('en-IN')}`,
+            tax: o.tax_amount ? `₹${parseFloat(o.tax_amount).toLocaleString('en-IN')}` : null,
             shipping: 'Free',
             grandTotal: `₹${parseFloat(o.total_amount).toLocaleString('en-IN')}`
           },
@@ -138,6 +141,13 @@ export function OrderDetailsPage() {
           <div className="info-col">
             <h3>{isDroneService ? 'Farm Land Details' : isService ? 'Service Address' : 'Shipping Address'}</h3>
             <p className="info-text" style={{ whiteSpace: 'pre-wrap' }}>{isService && (orderDetails as any).address ? (orderDetails as any).address : orderDetails.shipTo}</p>
+            {orderDetails.companyName && (
+              <div style={{ marginTop: '10px', fontSize: '14px', color: '#555' }}>
+                <strong>GST Details:</strong><br />
+                {orderDetails.companyName}<br />
+                GSTIN: {orderDetails.gstNumber}
+              </div>
+            )}
           </div>
           {!isService && (orderDetails as any).transportName && (
             <div className="info-col">
@@ -191,6 +201,12 @@ export function OrderDetailsPage() {
                 <span>Item(s) Subtotal:</span>
                 <span>{orderDetails.summary.itemsSubtotal}</span>
               </div>
+              {orderDetails.summary.tax && (
+              <div className="summary-row">
+                <span>Tax (18% GST):</span>
+                <span>{orderDetails.summary.tax}</span>
+              </div>
+              )}
               <div className="summary-row">
                 <span>Shipping:</span>
                 <span>{orderDetails.summary.shipping}</span>
