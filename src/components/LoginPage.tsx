@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import Swal from 'sweetalert2';
@@ -23,38 +23,8 @@ export function LoginPage() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     
-    let hasError = false;
     const newErrors = { identifier: '', password: '' };
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const mobileRegex = /^\d{10}$/;
-
-    if (!identifier.trim()) {
-      newErrors.identifier = "Please enter Email or Mobile Number";
-      hasError = true;
-    } else if (identifier.includes('@') || /[a-zA-Z]/.test(identifier)) {
-      if (!emailRegex.test(identifier)) {
-        newErrors.identifier = "Please enter a valid email address";
-        hasError = true;
-      }
-    } else {
-      if (!mobileRegex.test(identifier)) {
-        newErrors.identifier = "Please enter a valid 10-digit mobile number";
-        hasError = true;
-      }
-    }
-
-    if (!password) {
-      newErrors.password = "Please enter a password";
-      hasError = true;
-    } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters long";
-      hasError = true;
-    }
-
     setErrors(newErrors);
-
-    if (hasError) return;
 
     setLoading(true);
     
@@ -83,12 +53,30 @@ export function LoginPage() {
       })
       .catch((err) => {
         console.error('Login Error:', err);
-        Swal.fire({
-          title: 'Login Failed',
-          text: err.response?.data?.message || 'Invalid credentials',
-          icon: 'error',
-          confirmButtonColor: '#EF4444'
-        });
+        if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+          const serverErrors = { identifier: '', password: '' };
+          err.response.data.errors.forEach((e: any) => {
+            if (e.field === 'email' || e.field === 'mobile') serverErrors.identifier = e.message;
+            if (e.field === 'password') serverErrors.password = e.message;
+          });
+          setErrors(serverErrors);
+          
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'error',
+            title: 'Please fix the errors below',
+            showConfirmButton: false,
+            timer: 3000
+          });
+        } else {
+          Swal.fire({
+            title: 'Login Failed',
+            text: err.response?.data?.message || 'Invalid credentials',
+            icon: 'error',
+            confirmButtonColor: '#EF4444'
+          });
+        }
       })
       .finally(() => setLoading(false));
   };
@@ -153,3 +141,4 @@ export function LoginPage() {
     </div>
   );
 }
+

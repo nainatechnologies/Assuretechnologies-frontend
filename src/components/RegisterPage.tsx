@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import Swal from 'sweetalert2';
@@ -74,41 +74,7 @@ export function RegisterPage() {
     };
     let hasError = false;
 
-    if (!/^[a-zA-Z\s]{5,50}$/.test(formData.fullName.trim())) {
-      newErrors.fullName = "Letters and spaces only (5-50 chars)";
-      hasError = true;
-    }
 
-    if (!/^\d{10}$/.test(formData.mobileNumber)) {
-      newErrors.mobileNumber = "Must be a valid 10-digit number";
-      hasError = true;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.emailAddress)) {
-      newErrors.emailAddress = "Please enter a valid email address";
-      hasError = true;
-    }
-
-    if (formData.fullAddress.trim().length < 5) {
-      newErrors.fullAddress = "Address must be at least 5 characters long";
-      hasError = true;
-    }
-
-    if (!/^\d{6}$/.test(formData.pincode)) {
-      newErrors.pincode = "Must be a 6-digit Pincode";
-      hasError = true;
-    }
-
-    if (!formData.stateName) {
-      newErrors.stateName = "Please select a state";
-      hasError = true;
-    }
-
-    if (formData.password.length < 6) {
-      newErrors.password = "Must be at least 6 characters long";
-      hasError = true;
-    }
 
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = "Passwords don't match";
@@ -418,3 +384,4 @@ export function RegisterPage() {
     </div>
   );
 }
+

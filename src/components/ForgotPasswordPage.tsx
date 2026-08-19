@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import Swal from 'sweetalert2';
@@ -33,30 +33,8 @@ export function ForgotPasswordPage() {
   const handleSendOtp = (e: React.FormEvent) => {
     e.preventDefault();
     
-    let hasError = false;
     const newErrors = { ...errors, identifier: '' };
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const mobileRegex = /^\d{10}$/;
-
-    if (!identifier.trim()) {
-      newErrors.identifier = "Please enter Email or Mobile Number";
-      hasError = true;
-    } else if (identifier.includes('@') || /[a-zA-Z]/.test(identifier)) {
-      if (!emailRegex.test(identifier)) {
-        newErrors.identifier = "Please enter a valid email address";
-        hasError = true;
-      }
-    } else {
-      if (!mobileRegex.test(identifier)) {
-        newErrors.identifier = "Please enter a valid 10-digit mobile number";
-        hasError = true;
-      }
-    }
-
     setErrors(newErrors);
-
-    if (hasError) return;
 
     // Determine if identifier is email or mobile
     const payload = identifier.includes('@') 
@@ -79,7 +57,15 @@ export function ForgotPasswordPage() {
       })
       .catch((err) => {
         console.error('Forgot Password Error:', err);
-        setErrors({ ...errors, identifier: err.response?.data?.message || 'Error sending OTP' });
+        if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+          const serverErrors = { ...errors, identifier: '' };
+          err.response.data.errors.forEach((e: any) => {
+            if (e.field === 'email' || e.field === 'mobile') serverErrors.identifier = e.message;
+          });
+          setErrors(serverErrors);
+        } else {
+          setErrors({ ...errors, identifier: err.response?.data?.message || 'Error sending OTP' });
+        }
       });
   };
 
@@ -97,7 +83,15 @@ export function ForgotPasswordPage() {
         }
       })
       .catch((err) => {
-        setErrors({ ...errors, otp: err.response?.data?.message || 'Invalid OTP' });
+        if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+          const serverErrors = { ...errors, otp: '' };
+          err.response.data.errors.forEach((e: any) => {
+            if (e.field === 'otp') serverErrors.otp = e.message;
+          });
+          setErrors(serverErrors);
+        } else {
+          setErrors({ ...errors, otp: err.response?.data?.message || 'Invalid OTP' });
+        }
       });
   };
 
@@ -107,21 +101,12 @@ export function ForgotPasswordPage() {
     let hasError = false;
     const newErrors = { ...errors, newPassword: '', confirmPassword: '' };
 
-    if (!newPassword) {
-      newErrors.newPassword = "Please enter a password";
-      hasError = true;
-    } else if (newPassword.length < 6) {
-      newErrors.newPassword = "Password must be at least 6 characters long";
-      hasError = true;
-    }
-
     if (newPassword !== confirmPassword) {
       newErrors.confirmPassword = "Passwords don't match";
       hasError = true;
     }
 
     setErrors(newErrors);
-
     if (hasError) return;
 
     const payload = identifier.includes('@') 
@@ -144,12 +129,20 @@ export function ForgotPasswordPage() {
       })
       .catch((err) => {
         console.error('Reset Password Error:', err);
-        Swal.fire({
-          title: 'Reset Failed',
-          text: err.response?.data?.message || 'Failed to reset password',
-          icon: 'error',
-          confirmButtonColor: '#EF4444'
-        });
+        if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+          const serverErrors = { ...errors, newPassword: '' };
+          err.response.data.errors.forEach((e: any) => {
+            if (e.field === 'newPassword') serverErrors.newPassword = e.message;
+          });
+          setErrors(serverErrors);
+        } else {
+          Swal.fire({
+            title: 'Reset Failed',
+            text: err.response?.data?.message || 'Failed to reset password',
+            icon: 'error',
+            confirmButtonColor: '#EF4444'
+          });
+        }
       });
   };
 
@@ -285,3 +278,4 @@ export function ForgotPasswordPage() {
     </div>
   );
 }
+
