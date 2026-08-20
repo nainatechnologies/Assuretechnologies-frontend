@@ -493,7 +493,7 @@ export function CartPage() {
 
           <div className="summary-row">
             <span>Delivery</span>
-            <span className="free-delivery">FREE</span>
+            <span className="charges-applicable" style={{ color: "#b45309", fontWeight: "500", fontSize: "14px" }}>Charges Applicable</span>
           </div>
 
           <div className="summary-divider" />

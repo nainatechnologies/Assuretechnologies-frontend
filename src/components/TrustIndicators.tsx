@@ -1,8 +1,8 @@
-import { FaTruck, FaUserShield, FaCertificate, FaHeadset } from 'react-icons/fa';
+﻿import { FaTruck, FaUserShield, FaCertificate, FaHeadset } from 'react-icons/fa';
 import './TrustIndicators.css';
 
 const indicators = [
-  { icon: <FaTruck />,        title: 'Free Delivery',          desc: 'On orders above ₹5,000' },
+  { icon: <FaTruck />,        title: 'Pan India Delivery',          desc: 'Secure & reliable shipping' },
   { icon: <FaUserShield />,   title: 'Certified Technicians',  desc: 'Trained & background-verified' },
   { icon: <FaCertificate />,  title: 'Warranty Assured',       desc: 'On all products & installations' },
   { icon: <FaHeadset />,      title: '24/7 Support',           desc: 'Call, chat, or email anytime' },
