@@ -123,3 +123,13 @@
     gap: 20px;
   }
 }
+
+.form-group input[readonly],
+.form-group textarea[readonly] {
+  background-color: #f8f9fa;
+  cursor: default !important;
+  color: #64748b;
+}
+
+
+

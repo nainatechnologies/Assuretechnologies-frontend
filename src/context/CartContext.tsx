@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { productsApi } from '../api/productsApi';
+import { useAuth } from './AuthContext';
 
 interface CartContextType {
   cart: Record<string, number>;
@@ -15,8 +17,16 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [cart, setCart] = useState<Record<string, number>>({});
+  const [cart, setCart] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem('cart');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
   const [loading, setLoading] = useState(true);
+  const { isLoggedIn } = useAuth();
 
   const fetchCart = async () => {
     try {
@@ -36,24 +46,51 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setCart(newCart);
     } catch (err) {
       console.error('Failed to fetch cart', err);
-      // Fallback to local storage if API fails (e.g. not logged in yet)
-      const saved = localStorage.getItem('cart');
-      if (saved && saved !== 'undefined' && saved !== 'null') {
-        try { setCart(JSON.parse(saved) || {}); } catch(e) { setCart({}); }
-      } else { setCart({}); }
+      // Already initialized from local storage synchronously
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchCart();
-  }, []);
+    if (isLoggedIn) {
+      // Sync guest cart to backend if exists
+      const saved = localStorage.getItem('cart');
+      if (saved) {
+        try {
+          const localCart = JSON.parse(saved);
+          const promises = [];
+          for (const productId in localCart) {
+            if (localCart[productId] > 0) {
+              promises.push(productsApi.addToCart(productId, localCart[productId]));
+            }
+          }
+          if (promises.length > 0) {
+            Promise.allSettled(promises).then(() => {
+               localStorage.removeItem('cart');
+               fetchCart();
+            });
+            return;
+          } else {
+            localStorage.removeItem('cart');
+          }
+        } catch (e) {
+          localStorage.removeItem('cart');
+        }
+      }
+      fetchCart();
+    } else {
+      // Clear cart on logout
+      setCart({});
+    }
+  }, [isLoggedIn]);
 
-  // Sync to local storage for guest carts / fallback
+  // Sync to local storage ONLY for guest carts
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(cart));
-  }, [cart]);
+    if (!isLoggedIn) {
+      localStorage.setItem('cart', JSON.stringify(cart));
+    }
+  }, [cart, isLoggedIn]);
 
   const addToCart = async (productId: string, quantity: number = 1) => {
     try {
@@ -113,3 +150,7 @@ export function useCart() {
   }
   return context;
 }
+
+
+
+
