@@ -56,7 +56,7 @@ export function OrdersPage() {
         items: o.items ? o.items.map((i: any) => ({
           name: i.product ? i.product.name : 'Unknown Product',
           qty: i.qty,
-          image: 'https://placehold.co/300x200?text=Product',
+          image: i.product?.banner ? (i.product.banner.startsWith('http') || i.product.banner.startsWith('blob:') ? i.product.banner : `http://localhost:5000${i.product.banner.startsWith('/') ? '' : '/'}${i.product.banner}`) : 'https://placehold.co/300x200?text=Product',
           returnStatus: 'Processing',
           transportName: i.transport_name,
           trackingId: i.tracking_id,

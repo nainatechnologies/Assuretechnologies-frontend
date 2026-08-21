@@ -68,15 +68,49 @@
   border-radius: 6px;
   font-size: 14px;
   color: #0f172a;
+  background-color: #ffffff !important;
   outline: none;
   transition: border-color 0.2s;
   font-family: inherit;
 }
 
-.form-group input:focus,
-.form-group textarea:focus {
+/* Kill Chrome/Brave autofill background */
+.form-group input:-webkit-autofill,
+.form-group input:-webkit-autofill:hover,
+.form-group input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.form-group input:not([readonly]):focus,
+.form-group textarea:not([readonly]):focus {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Readonly fields - visually distinct gray */
+.form-group input[readonly],
+.form-group textarea[readonly] {
+  background-color: #e9ecef !important;
+  cursor: default !important;
+  color: #6c757d !important;
+  border-color: #dee2e6 !important;
+}
+
+/* Kill Chrome/Brave autofill on readonly too */
+.form-group input[readonly]:-webkit-autofill,
+.form-group input[readonly]:-webkit-autofill:hover,
+.form-group input[readonly]:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #e9ecef inset !important;
+  -webkit-text-fill-color: #6c757d !important;
+}
+
+.form-group input[readonly]:focus,
+.form-group textarea[readonly]:focus {
+  border-color: #dee2e6 !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .form-group textarea {

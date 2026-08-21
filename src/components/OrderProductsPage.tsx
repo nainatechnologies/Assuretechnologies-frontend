@@ -16,13 +16,17 @@ export function OrderProductsPage() {
 
   const [searchParams] = useSearchParams();
   const initialSearch = searchParams.get('q') || '';
+  const initialCategory = searchParams.get('category') || '';
   const [search, setSearch] = useState(initialSearch);
+  const [category, setCategory] = useState(initialCategory);
   const [sort, setSort] = useState('popular');
   const [viewMode] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
     const q = searchParams.get('q') || '';
+    const cat = searchParams.get('category') || '';
     setSearch(q);
+    setCategory(cat);
   }, [searchParams]);
 
   const loadProducts = async (isLoadMore = false) => {
@@ -38,6 +42,7 @@ export function OrderProductsPage() {
         page: currentPage,
         limit: 12,
         search,
+        category,
         sort
       });
 
@@ -67,7 +72,7 @@ export function OrderProductsPage() {
       loadProducts(false);
     }, 300);
     return () => clearTimeout(timeoutId);
-  }, [search, sort]);
+  }, [search, category, sort]);
 
   const updateQty = async (id: string, delta: number) => {
     const currentQty = cart[id] || 0;
@@ -139,7 +144,7 @@ export function OrderProductsPage() {
                       <img src={product.image} alt={product.name} loading="lazy" />
                     </div>
                     <div className="op-card-body">
-                      <span className="op-card-cat">{product.service}</span>
+                      <span className="op-card-cat">{product.category || product.service}</span>
                       <h4 className="op-card-name">{product.name}</h4>
                       <p className="op-card-desc">{product.description}</p>
 

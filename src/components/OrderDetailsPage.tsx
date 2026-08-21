@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { ordersApi } from "../api/ordersApi";
 import { Link, useParams } from "react-router-dom";
 import { FaSyncAlt, FaTruck } from "react-icons/fa";
@@ -23,7 +23,7 @@ export function OrderDetailsPage() {
         const mapped = {
           id: o.order_number,
           date: new Date(o.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
-          total: `₹${parseFloat(o.total_amount).toLocaleString("en-IN")}`,
+          total: `?${parseFloat(o.total_amount).toLocaleString("en-IN")}`,
           shipTo: o.customer_name || (o.customer ? o.customer.full_name : "Guest"),
           address: o.customer_address || "No address provided",
           paymentMethod: "Online Payment", // Assumed for now
@@ -31,17 +31,17 @@ export function OrderDetailsPage() {
           companyName: o.company_name || null,
           gstNumber: o.gst_number || null,
           summary: {
-            itemsSubtotal: `₹${parseFloat(o.subtotal_amount || o.total_amount).toLocaleString("en-IN")}`,
-            tax: o.tax_amount ? `₹${parseFloat(o.tax_amount).toLocaleString("en-IN")}` : null,
+            itemsSubtotal: `?${parseFloat(o.subtotal_amount || o.total_amount).toLocaleString("en-IN")}`,
+            tax: o.tax_amount ? `?${parseFloat(o.tax_amount).toLocaleString("en-IN")}` : null,
             shipping: "Charges Applicable",
-            grandTotal: `₹${parseFloat(o.total_amount).toLocaleString("en-IN")}`
+            grandTotal: `?${parseFloat(o.total_amount).toLocaleString("en-IN")}`
           },
           items: o.items ? o.items.map((i: any) => ({
             name: i.product ? i.product.name : "Unknown Product",
             qty: i.qty,
             seller: i.vendor ? i.vendor.business_name : "Assure Technologies",
-            price: `₹${parseFloat(i.price).toLocaleString("en-IN")}`,
-            image: "https://placehold.co/300x200?text=Product",
+            price: `?${parseFloat(i.price).toLocaleString("en-IN")}`,
+            image: i.product?.banner ? (i.product.banner.startsWith('http') || i.product.banner.startsWith('blob:') ? i.product.banner : `http://localhost:5000${i.product.banner.startsWith('/') ? '' : '/'}${i.product.banner}`) : 'https://placehold.co/300x200?text=Product',
             returnStatus: "Processing",
             type: "product",
             trackingId: i.tracking_id,
@@ -97,7 +97,7 @@ export function OrderDetailsPage() {
           </div>
         </div>
         <div>
-          <button className="invoice-btn" onClick={handleInvoiceDownload}>Invoice ⌄</button>
+          <button className="invoice-btn" onClick={handleInvoiceDownload}>Invoice ?</button>
         </div>
       </div>
 

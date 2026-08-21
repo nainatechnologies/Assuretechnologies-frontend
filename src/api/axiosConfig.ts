@@ -8,6 +8,7 @@ const axiosInstance = axios.create({
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
+    'X-Client-Type': 'customer',
   },
 });
 
@@ -39,3 +40,4 @@ axiosInstance.interceptors.response.use(
 );
 
 export default axiosInstance;
+
