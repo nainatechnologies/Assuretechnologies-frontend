@@ -47,13 +47,20 @@ export function OrdersPage() {
         date: new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
         total: `₹${parseFloat(o.total_amount).toLocaleString('en-IN')}`,
         shipTo: o.customer_name || (o.customer ? o.customer.full_name : 'Guest'),
+        address: o.customer_address || 'No address provided',
         type: 'product', // we assume product for now
         status: o.status === 'NEW' ? 'Pending' : o.status === 'ACCEPTED' ? 'Accepted' : o.status === 'OUT_FOR_DELIVERY' ? 'Out for Delivery' : o.status === 'COMPLETED' ? 'Delivered' : o.status === 'CANCELLED' ? 'Cancelled' : o.status,
+        transportName: o.transport_name,
+        trackingId: o.tracking_id,
+        trackingUrl: o.tracking_url,
         items: o.items ? o.items.map((i: any) => ({
           name: i.product ? i.product.name : 'Unknown Product',
           qty: i.qty,
           image: 'https://placehold.co/300x200?text=Product',
-          returnStatus: 'Processing'
+          returnStatus: 'Processing',
+          transportName: i.transport_name,
+          trackingId: i.tracking_id,
+          trackingUrl: i.tracking_url
         })) : []
       }));
       setOrders(mappedOrders);
@@ -75,6 +82,9 @@ export function OrdersPage() {
       alert(`Order ${orderId} cancelled successfully!`);
       // Update local state to reflect cancellation
       setOrders(orders.map(o => o.id === orderId ? { ...o, status: 'Cancelled' } : o));
+    }).catch(err => {
+      console.error(err);
+      alert('Failed to cancel order: ' + (err.response?.data?.message || err.message));
     });
   };
 
@@ -105,9 +115,13 @@ export function OrdersPage() {
                 <span className="order-header-value">{order.total}</span>
               </div>
             )}
-            <div className="order-header-col">
+            <div className="order-header-col ship-to-container">
               <span className="order-header-label">Ship To</span>
               <span className="order-header-value" style={{ color: '#007185', cursor: 'pointer' }}>{userName || order.shipTo} ⌄</span>
+              <div className="ship-to-tooltip">
+                <span className="ship-to-tooltip-name">{userName || order.shipTo}</span>
+                {order.address}
+              </div>
             </div>
           </div>
           <div className="order-header-right">
@@ -118,8 +132,7 @@ export function OrdersPage() {
               </span>
               <div className="order-header-links">
                 <Link to={`/orders/${order.id}`} className="order-link">View order details</Link>
-                <span style={{ color: '#d5d9d9' }}>|</span>
-                <button className="order-link" onClick={handleInvoiceDownload}>Invoice ⌄</button>
+                
                 {canCancel && (
                   <>
                     <span style={{ color: '#d5d9d9' }}>|</span>

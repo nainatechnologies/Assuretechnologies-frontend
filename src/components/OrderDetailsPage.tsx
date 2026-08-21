@@ -1,20 +1,20 @@
-import { useState, useEffect } from 'react';
-import { ordersApi } from '../api/ordersApi';
-import { Link, useParams } from 'react-router-dom';
-import { FaSyncAlt, FaTruck } from 'react-icons/fa';
-import './OrderDetailsPage.css';
+﻿import { useState, useEffect } from "react";
+import { ordersApi } from "../api/ordersApi";
+import { Link, useParams } from "react-router-dom";
+import { FaSyncAlt, FaTruck } from "react-icons/fa";
+import "./OrderDetailsPage.css";
 
 export function OrderDetailsPage() {
   const { id } = useParams();
 
   const handleInvoiceDownload = (e: React.MouseEvent) => {
     e.preventDefault();
-    alert('Invoice download started...');
+    alert("Invoice download started...");
   };
 
-  
   const [orderDetails, setOrderDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [extraItems, setExtraItems] = useState<any[]>([]);
 
   useEffect(() => {
     if (id) {
@@ -22,30 +22,35 @@ export function OrderDetailsPage() {
         const o = res.data;
         const mapped = {
           id: o.order_number,
-          date: new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
-          total: `₹${parseFloat(o.total_amount).toLocaleString('en-IN')}`,
-          shipTo: o.customer_name || (o.customer ? o.customer.full_name : 'Guest'),
-          paymentMethod: 'Online Payment', // Assumed for now
+          date: new Date(o.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+          total: `₹${parseFloat(o.total_amount).toLocaleString("en-IN")}`,
+          shipTo: o.customer_name || (o.customer ? o.customer.full_name : "Guest"),
+          address: o.customer_address || "No address provided",
+          paymentMethod: "Online Payment", // Assumed for now
           status: o.status,
           companyName: o.company_name || null,
           gstNumber: o.gst_number || null,
           summary: {
-            itemsSubtotal: `₹${parseFloat(o.subtotal_amount || o.total_amount).toLocaleString('en-IN')}`,
-            tax: o.tax_amount ? `₹${parseFloat(o.tax_amount).toLocaleString('en-IN')}` : null,
-            shipping: 'Free',
-            grandTotal: `₹${parseFloat(o.total_amount).toLocaleString('en-IN')}`
+            itemsSubtotal: `₹${parseFloat(o.subtotal_amount || o.total_amount).toLocaleString("en-IN")}`,
+            tax: o.tax_amount ? `₹${parseFloat(o.tax_amount).toLocaleString("en-IN")}` : null,
+            shipping: "Charges Applicable",
+            grandTotal: `₹${parseFloat(o.total_amount).toLocaleString("en-IN")}`
           },
           items: o.items ? o.items.map((i: any) => ({
-            name: i.product ? i.product.name : 'Unknown Product',
+            name: i.product ? i.product.name : "Unknown Product",
             qty: i.qty,
-            seller: i.vendor ? i.vendor.business_name : 'Assure Technologies',
-            price: `₹${parseFloat(i.price_at_purchase).toLocaleString('en-IN')}`,
-            image: 'https://placehold.co/300x200?text=Product',
-            returnStatus: 'Processing',
-            type: 'product'
+            seller: i.vendor ? i.vendor.business_name : "Assure Technologies",
+            price: `₹${parseFloat(i.price).toLocaleString("en-IN")}`,
+            image: "https://placehold.co/300x200?text=Product",
+            returnStatus: "Processing",
+            type: "product",
+            trackingId: i.tracking_id,
+            transportName: i.transport_name,
+            trackingUrl: i.tracking_url
           })) : []
         };
         setOrderDetails(mapped);
+        setExtraItems(mapped.extraItems || []);
         setLoading(false);
       }).catch(err => {
         console.error(err);
@@ -54,15 +59,11 @@ export function OrderDetailsPage() {
     }
   }, [id]);
 
-  if (loading) return <div style={{padding: '40px', textAlign: 'center'}}>Loading...</div>;
-  if (!orderDetails) return <div style={{padding: '40px', textAlign: 'center'}}>Order not found.</div>;
+  if (loading) return <div style={{padding: "40px", textAlign: "center"}}>Loading...</div>;
+  if (!orderDetails) return <div style={{padding: "40px", textAlign: "center"}}>Order not found.</div>;
 
-
-  const isService = orderDetails.id.startsWith('SRV') || orderDetails.id.startsWith('DRN');
-  const isDroneService = orderDetails.id.startsWith('DRN');
-
-  // Add local state to handle extra items approval
-  const [extraItems, setExtraItems] = useState((orderDetails as any).extraItems || []);
+  const isService = orderDetails.id.startsWith("SRV") || orderDetails.id.startsWith("DRN");
+  const isDroneService = orderDetails.id.startsWith("DRN");
 
   const handleApproveExtra = () => {
     setExtraItems(extraItems.map((item: any) => ({ ...item, status: 'approved' })));
@@ -140,7 +141,7 @@ export function OrderDetailsPage() {
         <div className="info-grid">
           <div className="info-col">
             <h3>{isDroneService ? 'Farm Land Details' : isService ? 'Service Address' : 'Shipping Address'}</h3>
-            <p className="info-text" style={{ whiteSpace: 'pre-wrap' }}>{isService && (orderDetails as any).address ? (orderDetails as any).address : orderDetails.shipTo}</p>
+            <p className="info-text" style={{ whiteSpace: 'pre-wrap' }}><strong>{orderDetails.shipTo}</strong><br />{orderDetails.address}</p>
             {orderDetails.companyName && (
               <div style={{ marginTop: '10px', fontSize: '14px', color: '#555' }}>
                 <strong>GST Details:</strong><br />
