@@ -1,141 +1,155 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { FaArrowLeft } from 'react-icons/fa';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import Swal from 'sweetalert2';
-import { CAREERS_DATA, type JobListing } from '../data/careers';
+import { FaArrowLeft } from 'react-icons/fa';
+import axios from 'axios';
 import './JobApplicationForm.css';
 
-export function JobApplicationFormPage() {
-  const { id } = useParams<{ id: string }>();
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000') + '/api';
+
+const applicationSchema = z.object({
+  applicantName: z.string().min(3, 'Full name must be at least 3 characters').max(200, 'Name too long'),
+  email: z.string().email('Please enter a valid email address'),
+  phone: z.string().regex(/^[6-9]\d{9}$/, 'Please enter a valid 10-digit mobile number'),
+  gender: z.enum(['Male', 'Female', 'Other']).optional().or(z.literal('')),
+  dob: z.string().optional(),
+  experience: z.string().optional(),
+  currentSalary: z.string().regex(/^\d+(\.\d+)?$/, 'Must be a valid number (e.g. 5, 8.5)').optional().or(z.literal('')),
+  expectedSalary: z.string().regex(/^\d+(\.\d+)?$/, 'Must be a valid number (e.g. 5, 8.5)').optional().or(z.literal('')),
+  availableToJoin: z.string().optional(),
+  preferredLocation: z.string().optional(),
+  currentLocation: z.string().optional(),
+  skills: z.string().optional(),
+  privacyPolicy: z.boolean().refine(val => val === true, { message: 'You must accept the Privacy Policy to proceed.' }),
+});
+
+type ApplicationFormData = z.infer<typeof applicationSchema>;
+
+export function JobApplicationForm() {
+  const { jobCode } = useParams<{ jobCode: string }>();
   const navigate = useNavigate();
-  const [job, setJob] = useState<JobListing | null>(null);
-
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    gender: '',
-    dob: '',
-    experience: '',
-    currentSalary: '',
-    expectedSalary: '',
-    availableToJoin: '',
-    preferredLocation: '',
-    currentLocation: '',
-    skills: '',
-    privacyPolicy: false
-  });
   const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    const foundJob = CAREERS_DATA.find(j => j.id === id);
-    if (foundJob) {
-      setJob(foundJob);
-    }
-  }, [id]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    if (type === 'checkbox') {
-      const checked = (e.target as HTMLInputElement).checked;
-      setFormData(prev => ({ ...prev, [name]: checked }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
-  };
+  const { register, handleSubmit, formState: { errors } } = useForm<ApplicationFormData>({
+    resolver: zodResolver(applicationSchema),
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+    const selected = e.target.files?.[0] || null;
+    if (selected) {
+      const allowed = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!allowed.includes(selected.type)) {
+        setFileError('Only PDF or DOCX files are allowed.');
+        setFile(null);
+        return;
+      }
+      setFileError(null);
+      if (selected.size > 10 * 1024 * 1024) { setFileError('File size exceeds the 10MB limit.'); setFile(null); return; }
+      setFile(selected);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Check if required fields are filled (HTML5 required attribute handles most, but we can do a manual check for SweetAlert)
-    const requiredFields = [
-      'firstName', 'lastName', 'email', 'phone', 'gender', 'dob',
-      'experience', 'currentSalary', 'expectedSalary', 'availableToJoin',
-      'preferredLocation', 'currentLocation', 'skills'
-    ];
-
-    const isAnyEmpty = requiredFields.some(field => !formData[field as keyof typeof formData]);
-
-    if (isAnyEmpty || !file || !formData.privacyPolicy) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Incomplete Form',
-        text: 'Please fill in all the required fields and accept the privacy policy!',
-        confirmButtonColor: '#0076A8'
-      });
+  const onSubmit = async (data: ApplicationFormData) => {
+    if (!file) {
+      setFileError('Please upload your resume.');
       return;
     }
 
-    // Simulate API call
-    console.log("Submitting application for", job?.title);
+    setSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append('jobId', jobCode!);
+      formData.append('applicantName', data.applicantName);
+      formData.append('email', data.email);
+      formData.append('phone', data.phone);
+      if (data.gender) formData.append('gender', data.gender);
+      if (data.dob) formData.append('dob', data.dob);
+      if (data.experience) formData.append('experience', data.experience);
+      if (data.currentSalary) formData.append('currentSalary', data.currentSalary);
+      if (data.expectedSalary) formData.append('expectedSalary', data.expectedSalary);
+      if (data.availableToJoin) formData.append('availableToJoin', data.availableToJoin);
+      if (data.preferredLocation) formData.append('preferredLocation', data.preferredLocation);
+      if (data.currentLocation) formData.append('currentLocation', data.currentLocation);
+      if (data.skills) formData.append('skills', data.skills);
+      formData.append('resume', file);
 
-    Swal.fire({
-      icon: 'success',
-      title: 'Application Submitted!',
-      text: 'Your application has been successfully submitted.',
-      confirmButtonColor: '#0076A8',
-      timer: 3000,
-      timerProgressBar: true
-    }).then(() => {
-      navigate(`/career/${id}`);
-    });
+      await axios.post(`${API_BASE}/career/jobs/${jobCode}/apply`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'Application Submitted!',
+        text: 'Your application has been successfully submitted. We will be in touch soon.',
+        confirmButtonColor: '#0076A8',
+        timer: 3000,
+        timerProgressBar: true,
+      });
+      navigate(`/career/jobdetails/${jobCode}`);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Something went wrong. Please try again.';
+      Swal.fire({
+        icon: 'error',
+        title: 'Submission Failed',
+        text: msg,
+        confirmButtonColor: '#0076A8',
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  if (!job) {
-    return (
-      <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-        <h2>Job not found</h2>
-        <button onClick={() => navigate('/career')} style={{ padding: '10px 20px', cursor: 'pointer' }}>
-          Back to Careers
-        </button>
-      </div>
-    );
-  }
+  const onError = () => {
+    if (!file) {
+      setFileError('Please upload your resume.');
+    }
+    Swal.fire({
+      icon: 'warning',
+      title: 'Action Required',
+      text: 'Please complete all required fields correctly.',
+      confirmButtonColor: '#0076A8',
+    });
+  };
 
   return (
     <div className="application-page-container">
       <div className="application-form-container">
         <div className="application-header">
-          <Link to={`/career/${id}`} className="back-link">
+          <Link to={`/career/jobdetails/${jobCode}`} className="back-link">
             <FaArrowLeft /> Back to Job Details
           </Link>
-          <h2>Apply for {job.title}</h2>
+          <h2>Submit Your Application</h2>
         </div>
 
-        <form onSubmit={handleSubmit} className="job-form">
+        <form onSubmit={handleSubmit(onSubmit, onError)} className="job-form">
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="firstName">First Name *</label>
-              <input type="text" id="firstName" name="firstName" required value={formData.firstName} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-              <label htmlFor="lastName">Last Name *</label>
-              <input type="text" id="lastName" name="lastName" required value={formData.lastName} onChange={handleChange} />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="email">Email Address *</label>
-              <input type="email" id="email" name="email" required value={formData.email} onChange={handleChange} />
+              <label htmlFor="applicantName">Full Name *</label>
+              <input type="text" id="applicantName" {...register('applicantName')}  className={errors.applicantName ? 'input-error' : ''} />
+              {errors.applicantName && <span className="error-text">{errors.applicantName.message}</span>}
             </div>
             <div className="form-group">
               <label htmlFor="phone">Phone Number *</label>
-              <input type="tel" id="phone" name="phone" required value={formData.phone} onChange={handleChange} />
+              <input type="tel" id="phone" {...register('phone')} maxLength={10}  className={errors.phone ? 'input-error' : ''} />
+              {errors.phone && <span className="error-text">{errors.phone.message}</span>}
             </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="email">Email Address *</label>
+            <input type="email" id="email" {...register('email')}  className={errors.email ? 'input-error' : ''} />
+            {errors.email && <span className="error-text">{errors.email.message}</span>}
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="gender">Gender *</label>
-              <select id="gender" name="gender" required value={formData.gender} onChange={handleChange}>
+              <label htmlFor="gender">Gender</label>
+              <select id="gender" {...register('gender')} className={errors.gender ? 'input-error' : ''}>
                 <option value="">Select Gender</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
@@ -143,15 +157,15 @@ export function JobApplicationFormPage() {
               </select>
             </div>
             <div className="form-group">
-              <label htmlFor="dob">Date of Birth *</label>
-              <input type="date" id="dob" name="dob" required value={formData.dob} onChange={handleChange} />
+              <label htmlFor="dob">Date of Birth</label>
+              <input type="date" id="dob" {...register('dob')}  className={errors.dob ? 'input-error' : ''} />
             </div>
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="experience">Experience *</label>
-              <select id="experience" name="experience" required value={formData.experience} onChange={handleChange}>
+              <label htmlFor="experience">Experience</label>
+              <select id="experience" {...register('experience')} className={errors.experience ? 'input-error' : ''}>
                 <option value="">Select Experience</option>
                 <option value="Fresher">Fresher</option>
                 <option value="1-2 Years">1-2 Years</option>
@@ -160,8 +174,8 @@ export function JobApplicationFormPage() {
               </select>
             </div>
             <div className="form-group">
-              <label htmlFor="availableToJoin">Available to Join *</label>
-              <select id="availableToJoin" name="availableToJoin" required value={formData.availableToJoin} onChange={handleChange}>
+              <label htmlFor="availableToJoin">Available to Join</label>
+              <select id="availableToJoin" {...register('availableToJoin')} className={errors.availableToJoin ? 'input-error' : ''}>
                 <option value="">Select Notice Period</option>
                 <option value="Immediate">Immediate</option>
                 <option value="15 Days">15 Days</option>
@@ -174,62 +188,63 @@ export function JobApplicationFormPage() {
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="currentSalary">Current Salary (LPA) *</label>
-              <input type="number" id="currentSalary" name="currentSalary" placeholder="e.g. 5" required value={formData.currentSalary} onChange={handleChange} />
+              <label htmlFor="currentSalary">Current Salary (LPA)</label>
+              <input type="text" id="currentSalary" placeholder="e.g. 5" {...register('currentSalary')}  className={errors.currentSalary ? 'input-error' : ''} />
             </div>
             <div className="form-group">
-              <label htmlFor="expectedSalary">Expected Salary (LPA) *</label>
-              <input type="number" id="expectedSalary" name="expectedSalary" placeholder="e.g. 8" required value={formData.expectedSalary} onChange={handleChange} />
+              <label htmlFor="expectedSalary">Expected Salary (LPA)</label>
+              <input type="text" id="expectedSalary" placeholder="e.g. 8" {...register('expectedSalary')}  className={errors.expectedSalary ? 'input-error' : ''} />
             </div>
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="preferredLocation">Preferred Location *</label>
-              <select id="preferredLocation" name="preferredLocation" required value={formData.preferredLocation} onChange={handleChange}>
+              <label htmlFor="preferredLocation">Preferred Location</label>
+              <select id="preferredLocation" {...register('preferredLocation')} className={errors.preferredLocation ? 'input-error' : ''}>
                 <option value="">Select Location</option>
                 <option value="Hyderabad">Hyderabad</option>
                 <option value="Amaravathi">Amaravathi</option>
               </select>
             </div>
             <div className="form-group">
-              <label htmlFor="currentLocation">Current Location *</label>
-              <input type="text" id="currentLocation" name="currentLocation" placeholder="City, State" required value={formData.currentLocation} onChange={handleChange} />
+              <label htmlFor="currentLocation">Current Location</label>
+              <input type="text" id="currentLocation" placeholder="City, State" {...register('currentLocation')}  className={errors.currentLocation ? 'input-error' : ''} />
             </div>
           </div>
 
           <div className="form-group">
-            <label htmlFor="skills">Skills *</label>
-            <input type="text" id="skills" name="skills" placeholder="React, Node.js, Marketing, etc." required value={formData.skills} onChange={handleChange} />
+            <label htmlFor="skills">Skills</label>
+            <input type="text" id="skills" placeholder="React, Node.js, Marketing, etc." {...register('skills')}  className={errors.skills ? 'input-error' : ''} />
           </div>
 
           <div className="form-group">
-            <label>Upload Resume (PDF, DOCX) *</label>
-            <label htmlFor="resume" className="custom-file-upload">
-              {file ? 'Change File' : 'Choose File'}
+            <label>Upload Resume (PDF, DOCX - Max 10MB) *</label>
+            <label htmlFor="resume" className={`custom-file-upload ${fileError ? 'input-error' : ''}`}>
+              <span style={{ color: fileError ? '#ef4444' : 'inherit' }}>{file ? 'Change Resume' : 'Choose Resume'}</span>
             </label>
-            <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" required onChange={handleFileChange} />
+            <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" onChange={handleFileChange} />
             {file && <div className="file-name">Selected: {file.name}</div>}
+            {fileError && <span className="error-text">{fileError}</span>}
           </div>
 
           <div className="form-group checkbox-group">
-            <input
-              type="checkbox"
-              id="privacyPolicy"
-              name="privacyPolicy"
-              required
-              checked={formData.privacyPolicy}
-              onChange={handleChange}
-            />
+            <input type="checkbox" id="privacyPolicy" {...register('privacyPolicy')} />
             <label htmlFor="privacyPolicy">I agree to the Privacy Policy and consent to the processing of my personal data. *</label>
+            {errors.privacyPolicy && <span className="error-text" style={{ display: 'block', marginTop: '4px' }}>{errors.privacyPolicy.message}</span>}
           </div>
 
           <div className="form-actions">
-            <button type="button" className="btn-cancel" onClick={() => navigate(`/career/${id}`)}>Cancel</button>
-            <button type="submit" className="btn-submit">Submit Application</button>
+            <button type="button" className="btn-cancel" onClick={() => navigate(`/career/jobdetails/${jobCode}`)}>Cancel</button>
+            <button type="submit" className="btn-submit" disabled={submitting}>
+              {submitting ? 'Submitting...' : 'Submit Application'}
+            </button>
           </div>
         </form>
       </div>
     </div>
   );
 }
+
+
+
+

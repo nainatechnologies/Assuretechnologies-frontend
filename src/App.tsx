@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { CategoryStrip } from './components/CategoryStrip';
 import { Footer } from './components/Footer';
@@ -19,11 +19,12 @@ import { OrderDetailsPage } from './components/OrderDetailsPage';
 import { EditProfilePage } from './components/EditProfilePage';
 import { CareersPage } from './components/CareersPage';
 import { JobDetailsPage } from './components/JobDetailsPage';
-import { JobApplicationFormPage } from './components/JobApplicationForm';
+import { JobApplicationForm } from './components/JobApplicationForm';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import WhatsAppButton from './components/WhatsAppButton';
+import { ScrollToTop } from './components/ScrollToTop';
 
 function HomePage() {
   return (
@@ -41,6 +42,7 @@ function App() {
   return (
     <AuthProvider>
       <CartProvider>
+        <ScrollToTop />
         <Navbar />
 
         <CategoryStrip />
@@ -52,9 +54,10 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          
           <Route path="/career" element={<CareersPage />} />
-          <Route path="/career/:id" element={<JobDetailsPage />} />
-          <Route path="/career/:id/apply" element={<JobApplicationFormPage />} />
+          <Route path="/career/jobdetails/:jobCode" element={<JobDetailsPage />} />
+          <Route path="/career/jobdetails/:jobCode/apply" element={<JobApplicationForm />} />
 
           {/* Protected Routes */}
           <Route path="/profile" element={
@@ -86,3 +89,6 @@ function App() {
 }
 
 export default App;
+
+
+

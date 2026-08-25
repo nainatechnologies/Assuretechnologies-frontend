@@ -1,27 +1,54 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProfile, updateProfile } from '../api/customerApi';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import Swal from 'sweetalert2';
 import './EditProfilePage.css';
+
+// Define the validation schema using Zod
+const profileSchema = z.object({
+  full_name: z.string().min(3, 'Full name must be at least 3 characters'),
+  mobile: z.string().optional(),
+  email: z.string().optional(),
+  full_address: z.string().min(10, 'Full address must be at least 10 characters'),
+  pincode: z.string().regex(/^\d{6}$/, 'Pincode must be exactly 6 digits'),
+  state_name: z.string().min(3, 'State must be at least 3 characters'),
+});
+
+// Infer TypeScript type from schema
+type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export function EditProfilePage() {
   const navigate = useNavigate();
-
-  const [formData, setFormData] = useState({
-    full_name: '',
-    mobile: '',
-    email: '',
-    full_address: '',
-    pincode: '',
-    state_name: ''
-  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Initialize react-hook-form
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors }
+  } = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      full_name: '',
+      mobile: '',
+      email: '',
+      full_address: '',
+      pincode: '',
+      state_name: ''
+    }
+  });
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const data = await getProfile();
-        setFormData({
+        // Reset form with fetched data
+        reset({
           full_name: data.full_name || '',
           mobile: data.mobile || '',
           email: data.email || '',
@@ -36,31 +63,33 @@ export function EditProfilePage() {
       }
     };
     fetchProfile();
-  }, []);
+  }, [reset]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: ProfileFormValues) => {
     setSaving(true);
     try {
       await updateProfile({
-        full_name: formData.full_name,
-        full_address: formData.full_address,
-        pincode: formData.pincode,
-        state_name: formData.state_name
+        full_name: data.full_name,
+        full_address: data.full_address,
+        pincode: data.pincode,
+        state_name: data.state_name
       });
-      alert('Profile updated successfully!');
-      navigate('/profile');
+      Swal.fire({
+        icon: 'success',
+        title: 'Success!',
+        text: 'Profile updated successfully!',
+        confirmButtonColor: '#1d4ed8'
+      }).then(() => {
+        navigate('/profile');
+      });
     } catch (error) {
       console.error('Failed to update profile', error);
-      alert('Failed to update profile. Please try again.');
+      Swal.fire({
+        icon: 'error',
+        title: 'Oops...',
+        text: 'Failed to update profile. Please try again.',
+        confirmButtonColor: '#1d4ed8'
+      });
     } finally {
       setSaving(false);
     }
@@ -78,16 +107,15 @@ export function EditProfilePage() {
           <p>Update your personal information</p>
         </div>
 
-        <form className="edit-profile-form" onSubmit={handleSubmit}>
+        <form className="edit-profile-form" onSubmit={handleSubmit(onSubmit)}>
           <div className="form-group">
             <label htmlFor="full_name">Full Name</label>
             <input type="text" autoComplete="none"
               id="full_name"
-              name="full_name"
-              value={formData.full_name}
-              onChange={handleChange}
-              required
+              {...register('full_name')}
+              className={errors.full_name ? 'input-error' : ''}
             />
+            {errors.full_name && <span className="error-text">{errors.full_name.message}</span>}
           </div>
 
           <div className="edit-profile-row">
@@ -96,8 +124,7 @@ export function EditProfilePage() {
               <input
                 type="tel"
                 id="mobile"
-                name="mobile"
-                value={formData.mobile}
+                {...register('mobile')}
                 readOnly
                 style={{ backgroundColor: "#e9ecef", color: "#6c757d", borderColor: "#dee2e6", cursor: "default" }}
               />
@@ -106,8 +133,7 @@ export function EditProfilePage() {
               <label htmlFor="email">Email Address (Read Only)</label>
               <input type="email" autoComplete="none"
                 id="email"
-                name="email"
-                value={formData.email}
+                {...register('email')}
                 readOnly
                 style={{ backgroundColor: "#e9ecef", color: "#6c757d", borderColor: "#dee2e6", cursor: "default" }}
               />
@@ -119,21 +145,19 @@ export function EditProfilePage() {
               <label htmlFor="state_name">State</label>
               <input type="text" autoComplete="none"
                 id="state_name"
-                name="state_name"
-                value={formData.state_name}
-                onChange={handleChange}
-                required
+                {...register('state_name')}
+                className={errors.state_name ? 'input-error' : ''}
               />
+              {errors.state_name && <span className="error-text">{errors.state_name.message}</span>}
             </div>
             <div className="form-group">
               <label htmlFor="pincode">Pincode</label>
               <input type="text" autoComplete="none"
                 id="pincode"
-                name="pincode"
-                value={formData.pincode}
-                onChange={handleChange}
-                required
+                {...register('pincode')}
+                className={errors.pincode ? 'input-error' : ''}
               />
+              {errors.pincode && <span className="error-text">{errors.pincode.message}</span>}
             </div>
           </div>
 
@@ -141,11 +165,10 @@ export function EditProfilePage() {
             <label htmlFor="full_address">Full Address</label>
             <textarea
               id="full_address"
-              name="full_address"
-              value={formData.full_address}
-              onChange={handleChange}
-              required
+              {...register('full_address')}
+              className={errors.full_address ? 'input-error' : ''}
             />
+            {errors.full_address && <span className="error-text">{errors.full_address.message}</span>}
           </div>
 
           <div className="edit-profile-actions">
@@ -161,9 +184,3 @@ export function EditProfilePage() {
     </div>
   );
 }
-
-
-
-
-
-

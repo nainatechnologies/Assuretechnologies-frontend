@@ -1,3 +1,4 @@
+import { BASE_URL } from '../services/api';
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FaTrash, FaPlus, FaMinus, FaShieldAlt } from 'react-icons/fa';
@@ -74,7 +75,7 @@ export function CartPage() {
              originalPrice: base,
              price: base - (base * (disc / 100)),
              service: p.category || 'General',
-             image: p.banner ? (p.banner.startsWith('http') || p.banner.startsWith('blob:') ? p.banner : `http://localhost:5000${p.banner.startsWith('/') ? '' : '/'}${p.banner}`) : 'https://placehold.co/300x200?text=No+Image'
+             image: p.banner ? (p.banner.startsWith('http') || p.banner.startsWith('blob:') ? p.banner : `${BASE_URL}${p.banner.startsWith('/') ? '' : '/'}${p.banner}`) : 'https://placehold.co/300x200?text=No+Image'
            };
         });
         setProducts(formattedProducts);
@@ -421,6 +422,8 @@ export function CartPage() {
                       <input 
                         type="text" 
                         required={needsGstInvoice}
+                        minLength={2}
+                        maxLength={100}
                         value={orderCompanyName} 
                         onChange={e => setOrderCompanyName(e.target.value)} 
                         placeholder="Enter your registered company name" 
@@ -431,6 +434,7 @@ export function CartPage() {
                       <input 
                         type="text" 
                         required={needsGstInvoice}
+                        maxLength={15}
                         value={orderGstNumber} 
                         onChange={e => setOrderGstNumber(e.target.value)} 
                         placeholder="Enter 15-digit GSTIN" 

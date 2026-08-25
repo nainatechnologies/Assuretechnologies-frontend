@@ -37,9 +37,16 @@ export function CategoryStrip() {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
+      const currentScrollY = window.scrollY;
+      
+      if (currentScrollY > 100) {
+        setIsScrolled(true);
+      } else if (currentScrollY < 20) {
+        setIsScrolled(false);
+      }
     };
-    window.addEventListener('scroll', handleScroll);
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -60,3 +67,5 @@ export function CategoryStrip() {
     </div>
   );
 }
+
+

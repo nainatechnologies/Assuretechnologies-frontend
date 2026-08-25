@@ -42,6 +42,11 @@ export function ProfilePage() {
             <h1>My Profile</h1>
             <p>Manage your personal information</p>
           </div>
+          <div className="profile-actions" style={{ marginLeft: 'auto' }}>
+            <button type="button" className="profile-edit-btn" onClick={() => navigate('/profile/edit')}>
+              Edit Profile
+            </button>
+          </div>
         </div>
 
         <form className="profile-form">
@@ -77,12 +82,6 @@ export function ProfilePage() {
             <textarea value={user.full_address || ''} readOnly />
           </div>
         </form>
-
-        <div className="profile-actions">
-          <button type="button" className="profile-edit-btn" onClick={() => navigate('/profile/edit')}>
-            Edit Profile
-          </button>
-        </div>
       </div>
     </div>
   );

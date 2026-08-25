@@ -197,7 +197,7 @@ export function Navbar() {
         <div className={`nav-actions ${isMobileMenuOpen ? 'is-open' : ''}`}>
           
           {/* Profile Dropdown */}
-          <div className="nav-dropdown-wrapper" ref={dropdownRef}>
+          <div className="nav-dropdown-wrapper" ref={dropdownRef} onMouseEnter={() => setIsDropdownOpen(true)} onMouseLeave={() => setIsDropdownOpen(false)}>
             <button 
               className="nav-action-item" 
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}

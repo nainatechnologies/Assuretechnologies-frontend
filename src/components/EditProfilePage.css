@@ -63,6 +63,7 @@
 
 .form-group input,
 .form-group textarea {
+  cursor: text;
   padding: 10px 12px;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
@@ -163,3 +164,9 @@
     gap: 20px;
   }
 }
+
+/* Zod Validation Errors */
+.input-error { border-color: #ef4444 !important; }
+.input-error:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important; }
+.error-text { color: #ef4444; font-size: 12px; margin-top: 2px; }
+
