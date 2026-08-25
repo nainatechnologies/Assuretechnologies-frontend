@@ -1,3 +1,4 @@
+import { BASE_URL } from '../services/api';
 import { useState, useEffect } from "react";
 import { ordersApi } from "../api/ordersApi";
 import { Link, useParams } from "react-router-dom";
@@ -23,7 +24,7 @@ export function OrderDetailsPage() {
         const mapped = {
           id: o.order_number,
           date: new Date(o.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
-          total: `?${parseFloat(o.total_amount).toLocaleString("en-IN")}`,
+          total: `₹${parseFloat(o.total_amount).toLocaleString("en-IN")}`,
           shipTo: o.customer_name || (o.customer ? o.customer.full_name : "Guest"),
           address: o.customer_address || "No address provided",
           paymentMethod: "Online Payment", // Assumed for now
@@ -31,18 +32,17 @@ export function OrderDetailsPage() {
           companyName: o.company_name || null,
           gstNumber: o.gst_number || null,
           summary: {
-            itemsSubtotal: `?${parseFloat(o.subtotal_amount || o.total_amount).toLocaleString("en-IN")}`,
-            tax: o.tax_amount ? `?${parseFloat(o.tax_amount).toLocaleString("en-IN")}` : null,
+            itemsSubtotal: `₹${parseFloat(o.subtotal_amount || o.total_amount).toLocaleString("en-IN")}`,
+            tax: o.tax_amount ? `₹${parseFloat(o.tax_amount).toLocaleString("en-IN")}` : null,
             shipping: "Charges Applicable",
-            grandTotal: `?${parseFloat(o.total_amount).toLocaleString("en-IN")}`
+            grandTotal: `₹${parseFloat(o.total_amount).toLocaleString("en-IN")}`
           },
           items: o.items ? o.items.map((i: any) => ({
             name: i.product ? i.product.name : "Unknown Product",
             qty: i.qty,
             seller: i.vendor ? i.vendor.business_name : "Assure Technologies",
-            price: `?${parseFloat(i.price).toLocaleString("en-IN")}`,
-            image: i.product?.banner ? (i.product.banner.startsWith('http') || i.product.banner.startsWith('blob:') ? i.product.banner : `http://localhost:5000${i.product.banner.startsWith('/') ? '' : '/'}${i.product.banner}`) : 'https://placehold.co/300x200?text=Product',
-            returnStatus: "Processing",
+            price: `₹${parseFloat(i.price).toLocaleString("en-IN")}`,
+            image: i.product?.banner ? (i.product.banner.startsWith('http') || i.product.banner.startsWith('blob:') ? i.product.banner : `${BASE_URL.replace(/\/api$/, "")}${i.product.banner.startsWith('/') ? '' : '/'}${i.product.banner}`) : 'https://placehold.co/300x200?text=Product',
             type: "product",
             trackingId: i.tracking_id,
             transportName: i.transport_name,
@@ -97,7 +97,7 @@ export function OrderDetailsPage() {
           </div>
         </div>
         <div>
-          <button className="invoice-btn" onClick={handleInvoiceDownload}>Invoice ?</button>
+          {orderDetails.status === 'Completed' && <button className="invoice-btn" onClick={handleInvoiceDownload}>Invoice</button>}
         </div>
       </div>
 
@@ -200,21 +200,21 @@ export function OrderDetailsPage() {
               <h3>Order Summary</h3>
               <div className="summary-row">
                 <span>Item(s) Subtotal:</span>
-                <span>{orderDetails.summary.itemsSubtotal}</span>
+                <span>{orderDetails.summary?.itemsSubtotal}</span>
               </div>
-              {orderDetails.summary.tax && (
+              {orderDetails.summary?.tax && (
               <div className="summary-row">
                 <span>Tax (18% GST):</span>
-                <span>{orderDetails.summary.tax}</span>
+                <span>{orderDetails.summary?.tax}</span>
               </div>
               )}
               <div className="summary-row">
                 <span>Shipping:</span>
-                <span>{orderDetails.summary.shipping}</span>
+                <span>{orderDetails.summary?.shipping}</span>
               </div>
               <div className="summary-row summary-total">
                 <span>Grand Total:</span>
-                <span>{orderDetails.summary.grandTotal}</span>
+                <span>{orderDetails.summary?.grandTotal}</span>
               </div>
             </div>
           ) : (
@@ -247,7 +247,6 @@ export function OrderDetailsPage() {
             <div className="item-info">
               <Link to="#" className="item-name">{item.name} {item.qty > 1 ? `x${item.qty}` : ''}</Link>
               {!isService && <div className="item-price">{item.price}</div>}
-              <div className="item-return">{item.returnStatus}</div>
               {(item as any).trackingId && (
                 <div style={{ fontSize: '12px', color: '#007185', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
                   <FaTruck style={{ fontSize: '10px' }} /> {(item as any).transportName} - Tracking: {(item as any).trackingId}

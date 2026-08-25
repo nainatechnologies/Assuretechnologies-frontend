@@ -1,3 +1,4 @@
+import { BASE_URL } from '../services/api';
 import { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaChevronLeft, FaChevronRight, FaPlus, FaMinus, FaShoppingCart } from 'react-icons/fa';
@@ -27,7 +28,7 @@ export function TopProducts() {
             rating: p.rating || 4,
             reviewCount: p.reviewCount || 15,
             service: p.category || 'General',
-            image: p.banner ? (p.banner.startsWith('http') || p.banner.startsWith('blob:') ? p.banner : `http://localhost:5000${p.banner.startsWith('/') ? '' : '/'}${p.banner}`) : 'https://placehold.co/300x200?text=No+Image'
+            image: p.banner ? (p.banner.startsWith('http') || p.banner.startsWith('blob:') ? p.banner : `${BASE_URL}${p.banner.startsWith('/') ? '' : '/'}${p.banner}`) : 'https://placehold.co/300x200?text=No+Image'
           };
         });
 

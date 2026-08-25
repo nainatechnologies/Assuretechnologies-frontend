@@ -1,3 +1,4 @@
+import { BASE_URL } from '../services/api';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaSyncAlt, FaCheckCircle, FaTruck, FaClock, FaTimesCircle, FaBoxOpen, FaUndo, FaSpinner } from 'react-icons/fa';
@@ -56,8 +57,7 @@ export function OrdersPage() {
         items: o.items ? o.items.map((i: any) => ({
           name: i.product ? i.product.name : 'Unknown Product',
           qty: i.qty,
-          image: i.product?.banner ? (i.product.banner.startsWith('http') || i.product.banner.startsWith('blob:') ? i.product.banner : `http://localhost:5000${i.product.banner.startsWith('/') ? '' : '/'}${i.product.banner}`) : 'https://placehold.co/300x200?text=Product',
-          returnStatus: 'Processing',
+          image: i.product?.banner ? (i.product.banner.startsWith('http') || i.product.banner.startsWith('blob:') ? i.product.banner : `${BASE_URL.replace(/\/api$/, '')}${i.product.banner.startsWith('/') ? '' : '/'}${i.product.banner}`) : 'https://placehold.co/300x200?text=Product',
           transportName: i.transport_name,
           trackingId: i.tracking_id,
           trackingUrl: i.tracking_url
@@ -175,7 +175,6 @@ export function OrdersPage() {
                         <FaTruck style={{fontSize: '10px'}} /> {item.transportName} - Tracking: {item.trackingId}
                       </span>
                     )}
-                    <span className="order-item-return" style={{ whiteSpace: 'pre-line', marginTop: '2px' }}>{item.returnStatus}</span>
                   </div>
                 </div>
               </div>
@@ -290,3 +289,6 @@ export function OrdersPage() {
     </div>
   );
 }
+
+
+

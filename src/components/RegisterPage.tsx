@@ -1,12 +1,46 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import Swal from 'sweetalert2';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import API from '../services/api';
 import { loginUser } from '../services/auth';
 import { useAuth } from '../context/AuthContext';
 import './LoginPage.css'; // Reuse auth styles
 import './RegisterPage.css';
+
+const registerSchema = z.object({
+  fullName: z.string().min(3, 'Name must be at least 3 characters long').regex(/^[A-Za-z\s]+$/, 'Name can only contain letters and spaces'),
+  mobileNumber: z.string().regex(/^[6-9]\d{9}$/, 'Please enter a valid 10-digit mobile number'),
+  emailAddress: z.string().email('Please provide a valid email address').max(254, 'Email is too long'),
+  fullAddress: z.string().min(5, 'Address must be at least 5 characters long'),
+  pincode: z.string().regex(/^\d{6}$/, 'Pincode must be exactly 6 digits'),
+  stateName: z.string().min(2, 'State name is required'),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters long')
+    .max(72, 'Password must be at most 72 characters long')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/\d/, 'Password must contain at least one number')
+    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
+  confirmPassword: z.string(),
+  termsAccepted: z.boolean().refine(val => val === true, {
+    message: 'Please accept the terms and conditions to register'
+  })
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword']
+});
+
+type RegisterFormValues = z.infer<typeof registerSchema>;
+
+const otpSchema = z.object({
+  otp: z.string().length(6, 'Please enter a 6-digit OTP')
+});
+
+type OtpFormValues = z.infer<typeof otpSchema>;
 
 export function RegisterPage() {
   const { login } = useAuth();
@@ -15,53 +49,16 @@ export function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [registeredMobile, setRegisteredMobile] = useState('');
   
-  const [formData, setFormData] = useState({
-    fullName: '',
-    mobileNumber: '',
-    emailAddress: '',
-    fullAddress: '',
-    pincode: '',
-    stateName: '',
-    password: '',
-    confirmPassword: '',
-    termsAccepted: false
-  });
-
-  const [errors, setErrors] = useState({
-    fullName: '',
-    mobileNumber: '',
-    emailAddress: '',
-    fullAddress: '',
-    pincode: '',
-    stateName: '',
-    password: '',
-    confirmPassword: '',
-    termsAccepted: ''
-  });
-  
-  const [otp, setOtp] = useState('');
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    const isCheckbox = type === 'checkbox';
-    const checked = isCheckbox ? (e.target as HTMLInputElement).checked : false;
-
-    setFormData({
-      ...formData,
-      [name]: isCheckbox ? checked : value
-    });
-    // Clear error for this field when typing
-    setErrors({
-      ...errors,
-      [name]: ''
-    });
-  };
-
-  const handleRegisterSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const newErrors = {
+  const {
+    register: registerForm,
+    handleSubmit: handleRegisterSubmit,
+    setError: setRegisterError,
+    formState: { errors: registerErrors }
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
       fullName: '',
       mobileNumber: '',
       emailAddress: '',
@@ -70,42 +67,38 @@ export function RegisterPage() {
       stateName: '',
       password: '',
       confirmPassword: '',
-      termsAccepted: ''
-    };
-    let hasError = false;
-
-
-
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords don't match";
-      hasError = true;
+      termsAccepted: false
     }
+  });
 
-    if (!formData.termsAccepted) {
-      newErrors.termsAccepted = "Please accept the terms and conditions to register";
-      hasError = true;
+  const {
+    register: registerOtp,
+    handleSubmit: handleOtpSubmit,
+    formState: { errors: otpErrors }
+  } = useForm<OtpFormValues>({
+    resolver: zodResolver(otpSchema),
+    defaultValues: {
+      otp: ''
     }
+  });
 
-    setErrors(newErrors);
-
-    if (hasError) return;
-
+  const onRegisterSubmit = (data: RegisterFormValues) => {
     setLoading(true);
 
     const payload = {
-      full_name: formData.fullName,
-      mobile: formData.mobileNumber,
-      email: formData.emailAddress,
-      full_address: formData.fullAddress,
-      pincode: formData.pincode,
-      state_name: formData.stateName,
-      password: formData.password
+      full_name: data.fullName,
+      mobile: data.mobileNumber,
+      email: data.emailAddress,
+      full_address: data.fullAddress,
+      pincode: data.pincode,
+      state_name: data.stateName,
+      password: data.password
     };
 
     API.post('/auth/customer/register', payload)
       .then((res) => {
         if (res.data.success) {
-          // Backend returned success and customerId, time for OTP
+          setRegisteredMobile(data.mobileNumber);
           Swal.fire({
             title: 'OTP Sent',
             text: res.data.message || 'Please check your mobile for OTP.',
@@ -122,19 +115,16 @@ export function RegisterPage() {
         
         // Handle field-level validation errors from backend
         if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
-          const serverErrors = { ...newErrors }; // start with empty errors
           err.response.data.errors.forEach((e: any) => {
-            if (e.field === 'mobile') serverErrors.mobileNumber = e.message;
-            if (e.field === 'email') serverErrors.emailAddress = e.message;
-            if (e.field === 'full_name') serverErrors.fullName = e.message;
-            if (e.field === 'full_address') serverErrors.fullAddress = e.message;
-            if (e.field === 'pincode') serverErrors.pincode = e.message;
-            if (e.field === 'state_name') serverErrors.stateName = e.message;
-            if (e.field === 'password') serverErrors.password = e.message;
+            if (e.field === 'mobile') setRegisterError('mobileNumber', { message: e.message });
+            if (e.field === 'email') setRegisterError('emailAddress', { message: e.message });
+            if (e.field === 'full_name') setRegisterError('fullName', { message: e.message });
+            if (e.field === 'full_address') setRegisterError('fullAddress', { message: e.message });
+            if (e.field === 'pincode') setRegisterError('pincode', { message: e.message });
+            if (e.field === 'state_name') setRegisterError('stateName', { message: e.message });
+            if (e.field === 'password') setRegisterError('password', { message: e.message });
           });
-          setErrors(serverErrors);
           
-          // Show a quick toast or let the inline errors do the talking
           Swal.fire({
             toast: true,
             position: 'top-end',
@@ -144,7 +134,6 @@ export function RegisterPage() {
             timer: 3000
           });
         } else {
-          // Fallback to standard popup for other server errors
           Swal.fire({
             title: 'Registration Failed',
             text: err.response?.data?.message || 'Server error',
@@ -156,14 +145,8 @@ export function RegisterPage() {
       .finally(() => setLoading(false));
   };
 
-  const handleOtpSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otp.length !== 6) {
-      alert('Invalid OTP format. Please enter a 6-digit OTP.');
-      return;
-    }
-    
-    API.post('/auth/customer/verify-otp', { mobile: formData.mobileNumber, otp })
+  const onOtpSubmit = (data: OtpFormValues) => {
+    API.post('/auth/customer/verify-otp', { mobile: registeredMobile, otp: data.otp })
       .then((res) => {
         if (res.data.success) {
           loginUser(res.data.data.user);
@@ -196,134 +179,116 @@ export function RegisterPage() {
         <h2 className="auth-title">{step === 1 ? 'Register' : 'Verify Mobile Number'}</h2>
         
         {step === 1 && (
-          <form className="auth-form" onSubmit={handleRegisterSubmit} noValidate>
+          <form className="auth-form" onSubmit={handleRegisterSubmit(onRegisterSubmit)} noValidate>
             <div className="auth-input-group">
               <input
                 type="text"
-                name="fullName"
-                className={`auth-input ${errors.fullName ? 'input-error' : ''}`}
+                className={`auth-input ${registerErrors.fullName ? 'input-error' : ''}`}
                 placeholder="Full Name"
-                value={formData.fullName}
-                onChange={handleInputChange}
-                required
+                {...registerForm('fullName')}
                 maxLength={50}
               />
-              {errors.fullName && <span className="error-text">{errors.fullName}</span>}
+              {registerErrors.fullName && <span className="error-text">{registerErrors.fullName.message}</span>}
             </div>
             
             <div className="register-row">
               <div className="auth-input-group">
                 <input
                   type="tel"
-                  name="mobileNumber"
-                  className={`auth-input ${errors.mobileNumber ? 'input-error' : ''}`}
+                  className={`auth-input ${registerErrors.mobileNumber ? 'input-error' : ''}`}
                   placeholder="Mobile Number"
-                  value={formData.mobileNumber}
-                  onChange={handleInputChange}
-                  required
+                  {...registerForm('mobileNumber')}
                   maxLength={10}
                 />
-                {errors.mobileNumber && <span className="error-text">{errors.mobileNumber}</span>}
+                {registerErrors.mobileNumber && <span className="error-text">{registerErrors.mobileNumber.message}</span>}
               </div>
               <div className="auth-input-group">
                 <input
                   type="email"
-                  name="emailAddress"
-                  className={`auth-input ${errors.emailAddress ? 'input-error' : ''}`}
+                  className={`auth-input ${registerErrors.emailAddress ? 'input-error' : ''}`}
                   placeholder="Email Address"
-                  value={formData.emailAddress}
-                  onChange={handleInputChange}
-                  required
+                  {...registerForm('emailAddress')}
                 />
-                {errors.emailAddress && <span className="error-text">{errors.emailAddress}</span>}
+                {registerErrors.emailAddress && <span className="error-text">{registerErrors.emailAddress.message}</span>}
               </div>
             </div>
 
             <div className="auth-input-group">
               <input
                 type="text"
-                name="fullAddress"
-                className={`auth-input ${errors.fullAddress ? 'input-error' : ''}`}
+                className={`auth-input ${registerErrors.fullAddress ? 'input-error' : ''}`}
                 placeholder="Full Address"
-                value={formData.fullAddress}
-                onChange={handleInputChange}
-                required
-                minLength={5}
+                {...registerForm('fullAddress')}
                 maxLength={200}
               />
-              {errors.fullAddress && <span className="error-text">{errors.fullAddress}</span>}
+              {registerErrors.fullAddress && <span className="error-text">{registerErrors.fullAddress.message}</span>}
             </div>
 
             <div className="register-row">
               <div className="auth-input-group">
                 <input
                   type="text"
-                  name="pincode"
-                  className={`auth-input ${errors.pincode ? 'input-error' : ''}`}
+                  className={`auth-input ${registerErrors.pincode ? 'input-error' : ''}`}
                   placeholder="Pincode"
-                  value={formData.pincode}
-                  onChange={handleInputChange}
-                  required
+                  {...registerForm('pincode')}
                   maxLength={6}
                 />
-                {errors.pincode && <span className="error-text">{errors.pincode}</span>}
+                {registerErrors.pincode && <span className="error-text">{registerErrors.pincode.message}</span>}
               </div>
 
               <div className="auth-input-group">
                 <select
-                  name="stateName"
-                  className={`auth-input auth-select ${errors.stateName ? 'input-error' : ''}`}
-                  value={formData.stateName}
-                  onChange={handleInputChange as any}
-                  required
+                  className={`auth-input auth-select ${registerErrors.stateName ? 'input-error' : ''}`}
+                  {...registerForm('stateName')}
                 >
                   <option value="" disabled>Select State</option>
                   <option value="Andhra Pradesh">Andhra Pradesh</option>
                   <option value="Telangana">Telangana</option>
                 </select>
-                {errors.stateName && <span className="error-text">{errors.stateName}</span>}
+                {registerErrors.stateName && <span className="error-text">{registerErrors.stateName.message}</span>}
               </div>
             </div>
 
             <div className="register-row">
               <div className="auth-input-group">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  className={`auth-input ${errors.password ? 'input-error' : ''}`}
-                  placeholder="Password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  required
-                />
-                <button
-                  type="button"
-                  className="auth-password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <FaEyeSlash /> : <FaEye />}
-                </button>
-                {errors.password && <span className="error-text">{errors.password}</span>}
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    className={`auth-input ${registerErrors.password ? 'input-error' : ''}`}
+                    placeholder="Password"
+                    {...registerForm('password')}
+                  />
+                  <button
+                    type="button"
+                    className="auth-password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
+                <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', lineHeight: '1.2' }}>
+                  Must be 8-72 chars, with at least 1 uppercase, 1 lowercase, 1 number, and 1 special character.
+                </div>
+                {registerErrors.password && <span className="error-text">{registerErrors.password.message}</span>}
               </div>
 
               <div className="auth-input-group">
-                <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  name="confirmPassword"
-                  className={`auth-input ${errors.confirmPassword ? 'input-error' : ''}`}
-                  placeholder="Confirm Password"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  required
-                />
-                <button
-                  type="button"
-                  className="auth-password-toggle"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
-                </button>
-                {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    className={`auth-input ${registerErrors.confirmPassword ? 'input-error' : ''}`}
+                    placeholder="Confirm Password"
+                    {...registerForm('confirmPassword')}
+                  />
+                  <button
+                    type="button"
+                    className="auth-password-toggle"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
+                {registerErrors.confirmPassword && <span className="error-text">{registerErrors.confirmPassword.message}</span>}
               </div>
             </div>
 
@@ -331,14 +296,11 @@ export function RegisterPage() {
               <label className="auth-checkbox-label">
                 <input
                   type="checkbox"
-                  name="termsAccepted"
-                  checked={formData.termsAccepted}
-                  onChange={handleInputChange}
-                  required
+                  {...registerForm('termsAccepted')}
                 />
                 <span>I agree to the <a href="#" target="_blank" rel="noopener noreferrer">Terms and Conditions</a></span>
               </label>
-              {errors.termsAccepted && <span className="error-text" style={{ display: 'block', marginTop: '4px' }}>{errors.termsAccepted}</span>}
+              {registerErrors.termsAccepted && <span className="error-text" style={{ display: 'block', marginTop: '4px' }}>{registerErrors.termsAccepted.message}</span>}
             </div>
 
             <button type="submit" className="auth-submit-btn" disabled={loading}>
@@ -348,20 +310,19 @@ export function RegisterPage() {
         )}
 
         {step === 2 && (
-          <form className="auth-form" onSubmit={handleOtpSubmit} noValidate>
+          <form className="auth-form" onSubmit={handleOtpSubmit(onOtpSubmit)} noValidate>
             <p className="otp-message">
-              Please enter the OTP sent to <strong>{formData.mobileNumber}</strong>
+              Please enter the OTP sent to <strong>{registeredMobile}</strong>
             </p>
 
             <div className="auth-input-group">
               <input
                 type="text"
-                className="auth-input"
+                className={`auth-input ${otpErrors.otp ? 'input-error' : ''}`}
                 placeholder="Enter OTP (Use 123456)"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                required
+                {...registerOtp('otp')}
               />
+              {otpErrors.otp && <span className="error-text">{otpErrors.otp.message}</span>}
             </div>
 
             <button type="submit" className="auth-submit-btn">
@@ -384,4 +345,3 @@ export function RegisterPage() {
     </div>
   );
 }
-

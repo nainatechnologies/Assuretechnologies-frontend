@@ -1,20 +1,53 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { FaMapMarkerAlt, FaBriefcase, FaClock } from 'react-icons/fa';
-import { CAREERS_DATA, type JobListing } from '../data/careers';
+import axios from 'axios';
 import './CareersPage.css';
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000') + '/api';
+
+interface JobPosting {
+  id: string;
+  title: string;
+  overview?: string;
+  description?: string;
+  experience?: string;
+  industry?: string;
+  employmentType?: string;
+  location?: string;
+  responsibilities?: string;
+  skills?: string;
+  postedDate?: string;
+  createdAt: string;
+}
+
 export function CareersPage() {
-  // Group all jobs by department directly since filters are removed
-  const groupedJobs = useMemo(() => {
-    return CAREERS_DATA.reduce((acc, job) => {
-      if (!acc[job.department]) {
-        acc[job.department] = [];
-      }
-      acc[job.department].push(job);
-      return acc;
-    }, {} as Record<string, JobListing[]>);
+  const [jobs, setJobs] = useState<JobPosting[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    axios.get(`${API_BASE}/career/jobs`)
+      .then(res => {
+        setJobs(res.data.data || []);
+      })
+      .catch(() => {
+        setError('Failed to load job postings. Please try again later.');
+      })
+      .finally(() => setLoading(false));
   }, []);
+
+  const groupedJobs = useMemo(() => {
+    return jobs.reduce((acc, job) => {
+      const dept = job.industry || 'General';
+      if (!acc[dept]) acc[dept] = [];
+      acc[dept].push(job);
+      return acc;
+    }, {} as Record<string, JobPosting[]>);
+  }, [jobs]);
+
+  if (loading) return <div className="careers-container"><div className="careers-header"><p>Loading jobs...</p></div></div>;
+  if (error) return <div className="careers-container"><div className="careers-header"><p style={{ color: 'red' }}>{error}</p></div></div>;
 
   return (
     <div className="careers-container">
@@ -24,27 +57,29 @@ export function CareersPage() {
 
       <div className="careers-layout">
         <main className="careers-main">
-          {Object.keys(groupedJobs).length === 0 ? (
+          {jobs.length === 0 ? (
             <div className="no-jobs-found">
-              <p>No jobs found matching your criteria.</p>
+              <p>No open positions at the moment. Check back soon!</p>
             </div>
           ) : (
-            Object.entries(groupedJobs).map(([dept, jobs]) => (
+            Object.entries(groupedJobs).map(([dept, deptJobs]) => (
               <div key={dept} className="department-group">
                 <h2 className="department-title">
-                  {dept} <span className="job-count">{jobs.length} jobs</span>
+                  {dept} <span className="job-count">{deptJobs.length} jobs</span>
                 </h2>
                 <div className="jobs-grid">
-                  {jobs.map(job => (
-                    <Link to={`/career/${job.id}`} key={job.id} className="job-card">
+                  {deptJobs.map(job => (
+                    <Link to={`/career/jobdetails/${job.jobCode || job.id}`} key={job.id} className="job-card">
                       <div className="job-title">
                         {job.title}
-                        <span className="job-posted">{job.postedDaysAgo} days ago</span>
+                        <span className="job-posted">
+                          {job.postedDate ? new Date(job.postedDate).toLocaleDateString() : 'Recently'}
+                        </span>
                       </div>
                       <div className="job-details">
-                        <span className="job-badge"><FaMapMarkerAlt /> {job.location}</span>
-                        <span className="job-badge"><FaBriefcase /> {job.experience}</span>
-                        <span className="job-badge"><FaClock /> {job.type}</span>
+                        {job.location && <span className="job-badge"><FaMapMarkerAlt /> {job.location}</span>}
+                        {job.experience && <span className="job-badge"><FaBriefcase /> {job.experience}</span>}
+                        {job.employmentType && <span className="job-badge"><FaClock /> {job.employmentType}</span>}
                       </div>
                     </Link>
                   ))}
