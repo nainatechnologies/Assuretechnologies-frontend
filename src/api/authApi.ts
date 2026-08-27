@@ -1,17 +1,11 @@
-import axiosInstance from './axiosConfig';
-
 export const authApi = {
-  login: async (identifier: string) => {
-    // Mocking an API call delay
+  login: async (_identifier: string) => {
     await new Promise((resolve) => setTimeout(resolve, 800));
-    // For now, return mock success. When backend is ready:
-    // return axiosInstance.post('/auth/login', { identifier });
     return { data: { success: true, message: 'OTP sent' } };
   },
 
-  verifyOtp: async (identifier: string, otp: string) => {
+  verifyOtp: async (_identifier: string, _otp: string) => {
     await new Promise((resolve) => setTimeout(resolve, 800));
-    // return axiosInstance.post('/auth/verify-otp', { identifier, otp });
     return { 
       data: { 
         success: true, 
@@ -21,9 +15,8 @@ export const authApi = {
     };
   },
 
-  register: async (userData: any) => {
+  register: async (_userData: any) => {
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    // return axiosInstance.post('/auth/register', userData);
     return { data: { success: true, message: 'Registration successful' } };
   }
 };

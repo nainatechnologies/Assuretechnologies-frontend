@@ -69,7 +69,7 @@ export function CareersPage() {
                 </h2>
                 <div className="jobs-grid">
                   {deptJobs.map(job => (
-                    <Link to={`/career/jobdetails/${job.jobCode || job.id}`} key={job.id} className="job-card">
+                    <Link to={`/career/jobdetails/${(job as any).jobCode || job.id}`} key={job.id} className="job-card">
                       <div className="job-title">
                         {job.title}
                         <span className="job-posted">

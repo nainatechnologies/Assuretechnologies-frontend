@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import Swal from 'sweetalert2';
@@ -49,7 +49,7 @@ export function LoginPage() {
       if (res.data.success) {
         loginUser(res.data.data.user);
         login('auth-cookie-set', res.data.data.user.full_name || 'Customer');
-
+        
         Swal.fire({
           title: 'Success!',
           text: 'Logged in successfully!',
