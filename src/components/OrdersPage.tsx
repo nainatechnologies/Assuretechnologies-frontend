@@ -1,11 +1,12 @@
-import { BASE_URL } from '../services/api';
 import { useState, useEffect } from 'react';
+import { BASE_URL } from '../services/api';
 import { Link } from 'react-router-dom';
 import { FaSyncAlt, FaCheckCircle, FaTruck, FaClock, FaTimesCircle, FaBoxOpen, FaUndo, FaSpinner } from 'react-icons/fa';
 import { ordersApi } from '../api/ordersApi';
-import { getCustomerServiceBookings } from '../api/serviceBookingApi';
 import { useAuth } from '../context/AuthContext';
 import './OrdersPage.css';
+import Pagination from './Pagination';
+import { Toast } from '../utils/errorHandler';
 
 const getStatusIcon = (status: string) => {
   switch (status) {
@@ -32,6 +33,75 @@ const getServiceDateLabel = (status: string) => {
   return 'Scheduled For';
 };
 
+const MOCK_SERVICE_ORDERS = [
+  {
+    id: 'SRV-2026-0004',
+    rawId: 'srv-0004',
+    type: 'service',
+    status: 'In Progress',
+    paymentStatus: 'Completed',
+    isDroneService: false,
+    date: '20 Jul 2026',
+    scheduledDate: '25 Jul 2026',
+    scheduledTime: '10:00 AM - 12:00 PM',
+    total: '₹2,300',
+    shipTo: 'H.No 45, Gachibowli, Hyderabad, Telangana - 500032',
+    address: 'H.No 45, Gachibowli, Hyderabad, Telangana - 500032',
+    items: [
+      {
+        name: 'CCTV Installation & Setup Service',
+        qty: 1,
+        image: 'https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=300&q=80',
+        returnStatus: 'Technician is currently working on site'
+      }
+    ]
+  },
+  {
+    id: 'DRN-2026-0810',
+    rawId: 'drn-0810',
+    type: 'service',
+    status: 'Accepted',
+    paymentStatus: 'Completed',
+    isDroneService: true,
+    date: '24 Jul 2026',
+    scheduledDate: '28 Jul 2026',
+    scheduledTime: '02:00 PM - 05:00 PM',
+    total: '₹14,500',
+    shipTo: 'Plot 12, Financial District, Hyderabad, Telangana - 500075',
+    address: 'Plot 12, Financial District, Hyderabad, Telangana - 500075',
+    items: [
+      {
+        name: 'Aerial Drone Site Mapping & Inspection',
+        qty: 1,
+        image: 'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?w=300&q=80',
+        returnStatus: 'Accepted by admin, pending drone pilot deployment'
+      }
+    ]
+  },
+  {
+    id: 'SRV-2026-0002',
+    rawId: 'srv-0002',
+    type: 'service',
+    status: 'Awaiting Approval',
+    paymentStatus: 'Completed',
+    isDroneService: false,
+    date: '18 Jul 2026',
+    scheduledDate: '22 Jul 2026',
+    scheduledTime: '11:00 AM - 01:00 PM',
+    total: '₹3,200',
+    shipTo: 'Flat 302, Madhapur, Hyderabad, Telangana - 500081',
+    address: 'Flat 302, Madhapur, Hyderabad, Telangana - 500081',
+    items: [
+      {
+        name: 'Smart Door Lock & Security Wiring',
+        qty: 1,
+        image: 'https://images.unsplash.com/photo-1558002038-1055907df827?w=300&q=80',
+        returnStatus: 'Work completed, awaiting your approval'
+      }
+    ]
+  }
+];
+
 export function OrdersPage() {
   const { userName } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
@@ -39,20 +109,30 @@ export function OrdersPage() {
   const [productFilter, setProductFilter] = useState('All');
   const [serviceFilter, setServiceFilter] = useState('All');
   const [activeTab, setActiveTab] = useState<'products' | 'services'>('products');
+  const [productPage, setProductPage] = useState(1);
+  const [servicePage, setServicePage] = useState(1);
+  const itemsPerPage = 5;
 
-  
-  
   useEffect(() => {
-    Promise.all([
-      ordersApi.fetchOrders().catch(() => ({ data: [] })),
-      getCustomerServiceBookings().catch(() => ({ data: { data: [] } }))
-    ]).then(([ordersRes, servicesRes]) => {
-      
-      const mappedProducts = (ordersRes.data || []).map((o: any) => ({
+    // Check if redirected from Razorpay payment
+    const urlParams = new URLSearchParams(window.location.search);
+    const payment = urlParams.get('payment');
+    if (payment === 'success') {
+      Toast.fire({ icon: 'success', title: 'Payment successful and order placed!' });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (payment === 'failed') {
+      Toast.fire({ icon: 'error', title: 'Payment was cancelled or could not be completed.' });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    ordersApi.fetchOrders().then(res => {
+      const rawList = Array.isArray(res.data) ? res.data : (Array.isArray(res.data?.data) ? res.data.data : []);
+      const mappedOrders = rawList.map((o: any) => ({
         id: o.order_number || o.id,
         rawId: o.id,
         date: new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
-        total: `₹${parseFloat(o.total_amount).toLocaleString('en-IN')}`,
+        total: `₹${parseFloat(o.total_amount || 0).toLocaleString('en-IN')}`,
+        paymentStatus: o.payment_status || 'PENDING',
         shipTo: o.customer_name || (o.customer ? o.customer.full_name : 'Guest'),
         address: o.customer_address || 'No address provided',
         type: 'product',
@@ -64,69 +144,39 @@ export function OrdersPage() {
           name: i.product ? i.product.name : 'Unknown Product',
           qty: i.qty,
           image: i.product?.banner ? (i.product.banner.startsWith('http') || i.product.banner.startsWith('blob:') ? i.product.banner : `${BASE_URL.replace(/\/api$/, '')}${i.product.banner.startsWith('/') ? '' : '/'}${i.product.banner}`) : 'https://placehold.co/300x200?text=Product',
+          returnStatus: 'Processing',
           transportName: i.transport_name,
           trackingId: i.tracking_id,
           trackingUrl: i.tracking_url
         })) : []
       }));
 
-      // The backend returns { success: true, data: { data: [...] } } or { success: true, data: [...] }
-      const sData = servicesRes.data?.data || servicesRes.data || [];
-      const mappedServices = sData.map((s: any) => ({
-        id: s.display_id || s.order_number || s.id,
-        rawId: s.id,
-        type: 'service',
-        status: s.status === 'NEW' ? 'Pending' : s.status === 'ACCEPTED' ? 'Accepted' : s.status === 'ASSIGNED' ? 'Assigned' : s.status === 'IN_PROGRESS' ? 'In Progress' : s.status === 'COMPLETED' ? 'Completed' : s.status === 'CANCELLED' ? 'Cancelled' : 'Pending',
-        paymentStatus: s.payment_status === 'COMPLETED' ? 'Completed' : 'Pending',
-        isDroneService: ((s.Service || s.service)?.name || '').toLowerCase().includes('drone'),
-        date: new Date(s.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-        scheduledDate: s.scheduled_date ? new Date(s.scheduled_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
-        scheduledTime: s.scheduled_time_slot || '',
-        shipTo: s.address?.line1 || userName || 'Guest',
-        items: [{
-          name: (s.Service || s.service)?.name || 'Service Booking',
-          qty: 1,
-          image: (s.Service || s.service)?.image ? ((s.Service || s.service).image.startsWith('http') || (s.Service || s.service).image.startsWith('blob:') ? (s.Service || s.service).image : `${BASE_URL.replace(/\/api$/, '')}${(s.Service || s.service).image.startsWith('/') ? '' : '/'}${(s.Service || s.service).image}`) : 'https://via.placeholder.com/150?text=Service',
-          returnStatus: (() => {
-              switch(s.status) {
-                case 'NEW': return 'Waiting for admin approval';
-                case 'ACCEPTED': return 'Accepted by admin, pending technician assignment';
-                case 'ASSIGNED': return 'Technician assigned';
-                case 'IN_PROGRESS': return 'Technician is currently working';
-                case 'PENDING_APPROVAL': return 'Work completed, awaiting your approval';
-                case 'COMPLETED': return 'Service completed successfully';
-                case 'CANCELLED': return 'Cancelled by user';
-                default: return s.status;
-              }
-            })()
-        }]
-      }));
-
-      setOrders([...mappedProducts, ...mappedServices]);
+      setOrders([...mappedOrders, ...MOCK_SERVICE_ORDERS]);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setOrders(MOCK_SERVICE_ORDERS);
       setLoading(false);
     });
   }, [userName]);
 
-
-
   const handleInvoiceDownload = (e: React.MouseEvent) => {
     e.preventDefault();
-    alert('Invoice download started...');
+    Toast.fire({ icon: 'success', title: 'Invoice download started...' });
   };
 
   const handleCancelOrder = (orderId: string) => {
     ordersApi.cancelOrder(orderId).then(() => {
-      alert(`Order ${orderId} cancelled successfully!`);
-      // Update local state to reflect cancellation
+      Toast.fire({ icon: 'success', title: `Order ${orderId} cancelled successfully!` });
       setOrders(orders.map(o => o.id === orderId ? { ...o, status: 'Cancelled' } : o));
     }).catch(err => {
       console.error(err);
-      alert('Failed to cancel order: ' + (err.response?.data?.message || err.message));
+      Toast.fire({ icon: 'error', title: 'Failed to cancel order: ' + (err.response?.data?.message || err.message) });
     });
   };
 
   const handleAcceptWork = (orderId: string) => {
-    alert(`Service ${orderId} work accepted!`);
+    Toast.fire({ icon: 'success', title: `Service ${orderId} work accepted!` });
     setOrders(orders.map(o => o.id === orderId ? { ...o, status: 'Completed' } : o));
   };
 
@@ -156,8 +206,8 @@ export function OrdersPage() {
               <span className="order-header-label">Ship To</span>
               <span className="order-header-value" style={{ color: '#007185', cursor: 'pointer' }}>{userName || order.shipTo} ⌄</span>
               <div className="ship-to-tooltip">
-                <span className="ship-to-tooltip-name">{userName || order.shipTo}</span>
-                {order.address}
+                <p className="tooltip-name">{userName || 'Customer'}</p>
+                <p className="tooltip-address">{order.address}</p>
               </div>
             </div>
           </div>
@@ -174,7 +224,7 @@ export function OrdersPage() {
                 
                 {canCancel && (
                   <>
-                    <span style={{ color: '#d5d9d9' }}>|</span>
+                    <span style={{ color: '#d5d9d9', margin: '0 8px' }}>|</span>
                     <button
                       className="order-link"
                       style={{ color: '#c5221f' }}
@@ -186,7 +236,7 @@ export function OrdersPage() {
                 )}
                 {canAcceptWork && (
                   <>
-                    <span style={{ color: '#d5d9d9' }}>|</span>
+                    <span style={{ color: '#d5d9d9', margin: '0 8px' }}>|</span>
                     <button
                       className="order-link"
                       style={{ color: '#10b981', fontWeight: 'bold' }}
@@ -203,18 +253,18 @@ export function OrdersPage() {
 
         <div className="order-body order-body-flex">
           <div className="order-body-items">
-            {order.items?.map((item: any, index: number) => (
-              <div key={index} className="order-item" style={{ marginBottom: index === order.items.length - 1 ? 0 : '20px' }}>
+            {order.items?.map((item: any, idx: number) => (
+              <div key={idx} className="order-item" style={{ marginBottom: idx === order.items.length - 1 ? 0 : '20px' }}>
                 <div className="order-item-left">
                   <img src={item.image} alt={item.name} className="order-item-image" style={{ objectFit: 'cover' }} />
                   <div className="order-item-details">
                     <Link to={`/orders/${order.id}`} className="order-item-name">{item.name} {item.qty > 1 ? `x${item.qty}` : ''}</Link>
-                      {item.returnStatus && (
-                        <div style={{ fontSize: '13px', color: '#565959', marginTop: '4px' }}>{item.returnStatus}</div>
-                      )}
+                    {item.returnStatus && (
+                      <div style={{ fontSize: '13px', color: '#565959', marginTop: '4px' }}>{item.returnStatus}</div>
+                    )}
                     {item.trackingId && (
                       <span style={{ fontSize: '12px', color: '#007185', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                        <FaTruck style={{fontSize: '10px'}} /> {item.transportName} - Tracking: {item.trackingId}
+                        <FaTruck style={{ fontSize: '10px' }} /> {item.transportName} - Tracking: {item.trackingId}
                       </span>
                     )}
                   </div>
@@ -261,7 +311,12 @@ export function OrdersPage() {
   };
 
   const productOrders = orders.filter(o => o.type === 'product' && (productFilter === 'All' || o.status === productFilter));
+  const totalProductPages = Math.ceil(productOrders.length / itemsPerPage) || 1;
+  const paginatedProductOrders = productOrders.slice((productPage - 1) * itemsPerPage, productPage * itemsPerPage);
+
   const serviceOrders = orders.filter(o => o.type === 'service' && (serviceFilter === 'All' || o.status === serviceFilter));
+  const totalServicePages = Math.ceil(serviceOrders.length / itemsPerPage) || 1;
+  const paginatedServiceOrders = serviceOrders.slice((servicePage - 1) * itemsPerPage, servicePage * itemsPerPage);
 
   return (
     <div className="orders-page-container">
@@ -292,7 +347,7 @@ export function OrdersPage() {
             <div className="orders-column">
               <div className="orders-column-header">
                 <h2>Product Orders</h2>
-                <select value={productFilter} onChange={(e) => setProductFilter(e.target.value)} className="orders-filter">
+                <select value={productFilter} onChange={(e) => { setProductFilter(e.target.value); setProductPage(1); }} className="orders-filter">
                   <option value="All">All Statuses</option>
                   <option value="Pending">Pending</option>
                   <option value="Accepted">Accepted</option>
@@ -303,14 +358,19 @@ export function OrdersPage() {
                 </select>
               </div>
               <div className="orders-list">
-                {productOrders.length > 0 ? productOrders.map(renderOrder) : <p className="no-orders-msg">No product orders found.</p>}
+                {paginatedProductOrders.length > 0 ? paginatedProductOrders.map(renderOrder) : <p className="no-orders-msg">No product orders found.</p>}
               </div>
+              <Pagination
+                currentPage={productPage}
+                totalPages={totalProductPages}
+                onPageChange={setProductPage}
+              />
             </div>
 
             <div className="orders-column">
               <div className="orders-column-header">
                 <h2>Service Orders</h2>
-                <select value={serviceFilter} onChange={(e) => setServiceFilter(e.target.value)} className="orders-filter">
+                <select value={serviceFilter} onChange={(e) => { setServiceFilter(e.target.value); setServicePage(1); }} className="orders-filter">
                   <option value="All">All Statuses</option>
                   <option value="Pending">Pending</option>
                   <option value="Accepted">Accepted</option>
@@ -322,8 +382,13 @@ export function OrdersPage() {
                 </select>
               </div>
               <div className="orders-list">
-                {serviceOrders.length > 0 ? serviceOrders.map(renderOrder) : <p className="no-orders-msg">No service orders found.</p>}
+                {paginatedServiceOrders.length > 0 ? paginatedServiceOrders.map(renderOrder) : <p className="no-orders-msg">No service orders found.</p>}
               </div>
+              <Pagination
+                currentPage={servicePage}
+                totalPages={totalServicePages}
+                onPageChange={setServicePage}
+              />
             </div>
           </div>
         </>
@@ -331,6 +396,3 @@ export function OrdersPage() {
     </div>
   );
 }
-
-
-

@@ -1,11 +1,161 @@
 import { BASE_URL } from '../services/api';
 import { useState, useEffect } from "react";
 import { ordersApi } from "../api/ordersApi";
-import { getCustomerServiceBookings } from '../api/serviceBookingApi';
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useAuth } from '../context/AuthContext';
 import { FaTruck } from "react-icons/fa";
 import "./OrderDetailsPage.css";
+import { Toast } from '../utils/errorHandler';
+
+const MOCK_SERVICE_DETAILS: Record<string, any> = {
+  'SRV-2026-0004': {
+    id: 'SRV-2026-0004',
+    date: '20 Jul 2026',
+    scheduledDate: '25 Jul 2026',
+    scheduledTime: '10:00 AM - 12:00 PM',
+    address: 'H.No 45, Gachibowli, Hyderabad, Telangana - 500032',
+    technician: {
+      name: 'Ramesh Kumar',
+      mobile: '+91 98765 43210',
+      experience: '5+ years experience'
+    },
+    total: '₹2,300',
+    shipTo: 'Shyam Matam',
+    paymentMethod: 'Online Payment',
+    paymentStatus: 'PAID',
+    status: 'IN_PROGRESS',
+    type: 'service',
+    isDroneService: false,
+    summary: {
+      itemsSubtotal: '₹2,300',
+      shipping: 'Free',
+      grandTotal: '₹2,300'
+    },
+    items: [
+      {
+        name: 'CCTV Installation & Setup Service',
+        qty: 1,
+        seller: 'Assure Technologies Services',
+        price: '₹1,500',
+        image: 'https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=300&q=80',
+        returnStatus: 'Technician is currently working on site',
+        type: 'service'
+      },
+      {
+        name: 'Network Cabling & Router Configuration',
+        qty: 1,
+        seller: 'Assure Technologies Services',
+        price: '₹800',
+        image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=300&q=80',
+        returnStatus: 'Scheduled along with installation',
+        type: 'service'
+      }
+    ],
+    progress: {
+      startDescription: 'Arrived on site, inspecting the wall structure before drilling.',
+      startPhotos: ['https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300&q=80'],
+      dailyUpdates: [
+        { date: '25 July 2026, 11:30 AM', text: 'Arrived at location. Evaluated mounting points and started drilling.' },
+        { date: '25 July 2026, 04:15 PM', text: 'Completed wiring for front yard and backyard cameras.' }
+      ],
+      completedPhotos: ['https://images.unsplash.com/photo-1557862921-37829c790f19?w=300&q=80']
+    },
+    extraItems: [
+      { description: 'Additional wiring (10m)', qty: 1, status: 'pending' },
+      { description: 'Extra weatherproof camera mount', qty: 2, status: 'pending' }
+    ]
+  },
+  'DRN-2026-0810': {
+    id: 'DRN-2026-0810',
+    date: '24 Jul 2026',
+    scheduledDate: '28 Jul 2026',
+    scheduledTime: '02:00 PM - 05:00 PM',
+    address: 'Plot 12, Financial District, Hyderabad, Telangana - 500075',
+    technician: {
+      name: 'Vikram Reddy (Licensed Drone Pilot)',
+      mobile: '+91 91234 56780',
+      experience: 'DGCA Certified Drone Pilot'
+    },
+    total: '₹14,500',
+    shipTo: 'Shyam Matam',
+    paymentMethod: 'Online Payment',
+    paymentStatus: 'PAID',
+    status: 'ACCEPTED',
+    type: 'service',
+    isDroneService: true,
+    summary: {
+      itemsSubtotal: '₹14,500',
+      shipping: 'Free',
+      grandTotal: '₹14,500'
+    },
+    items: [
+      {
+        name: 'Aerial Drone Site Mapping & Inspection',
+        qty: 1,
+        seller: 'Assure Drone Services',
+        price: '₹14,500',
+        image: 'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?w=300&q=80',
+        returnStatus: 'Accepted by admin, pending drone pilot deployment',
+        type: 'service'
+      }
+    ],
+    progress: {
+      startDescription: 'Flight plan filed and drone airspace cleared.',
+      startPhotos: ['https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=300&q=80'],
+      dailyUpdates: [
+        { date: '28 July 2026, 02:30 PM', text: 'Completed calibration flights and perimeter scanning.' }
+      ],
+      completedPhotos: []
+    },
+    extraItems: []
+  },
+  'SRV-2026-0002': {
+    id: 'SRV-2026-0002',
+    date: '18 Jul 2026',
+    scheduledDate: '22 Jul 2026',
+    scheduledTime: '11:00 AM - 01:00 PM',
+    address: 'Flat 302, Madhapur, Hyderabad, Telangana - 500081',
+    technician: {
+      name: 'Anil Sharma',
+      mobile: '+91 97890 12345',
+      experience: 'IoT & Smart Lock Specialist'
+    },
+    total: '₹3,200',
+    shipTo: 'Shyam Matam',
+    paymentMethod: 'Online Payment',
+    paymentStatus: 'PAID',
+    status: 'PENDING_APPROVAL',
+    type: 'service',
+    isDroneService: false,
+    summary: {
+      itemsSubtotal: '₹3,200',
+      shipping: 'Free',
+      grandTotal: '₹3,200'
+    },
+    items: [
+      {
+        name: 'Smart Door Lock & Security Wiring',
+        qty: 1,
+        seller: 'Assure Technologies Services',
+        price: '₹3,200',
+        image: 'https://images.unsplash.com/photo-1558002038-1055907df827?w=300&q=80',
+        returnStatus: 'Work completed, awaiting your approval',
+        type: 'service'
+      }
+    ],
+    progress: {
+      startDescription: 'Tested smart lock unit and began mortise installation.',
+      startPhotos: ['https://images.unsplash.com/photo-1558002038-1055907df827?w=300&q=80'],
+      dailyUpdates: [
+        { date: '22 July 2026, 12:45 PM', text: 'Installed smart lock, synced mobile app and biometrics successfully.' }
+      ],
+      completedPhotos: ['https://images.unsplash.com/photo-1558002038-1055907df827?w=300&q=80']
+    },
+    extraItems: [
+      { description: 'Emergency Backup Battery Pack', qty: 1, status: 'pending' }
+    ]
+  }
+};
 
 export function OrderDetailsPage() {
   const { id } = useParams();
@@ -13,139 +163,87 @@ export function OrderDetailsPage() {
 
   const handleInvoiceDownload = (e: React.MouseEvent) => {
     e.preventDefault();
-    alert("Invoice download started...");
+    Toast.fire({ icon: 'success', title: "Invoice download started..." });
   };
 
   const [orderDetails, setOrderDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [extraItems, setExtraItems] = useState<any[]>([]);
 
-  
-  
   useEffect(() => {
-    if (id) {
-      Promise.allSettled([
-        ordersApi.fetchOrderById(id),
-        getCustomerServiceBookings()
-      ]).then(([orderRes, serviceRes]) => {
-        
-        let sData = [];
-        if (serviceRes.status === 'fulfilled') {
-          sData = serviceRes.value.data?.data || serviceRes.value.data || [];
-        }
-        
-        const s = sData.find((x: any) => x.display_id === id || x.order_number === id || x.id === id);
-
-        if (s) {
-          const mappedService = {
-            id: s.display_id || s.order_number || s.id,
-            type: "service",
-            date: new Date(s.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
-            total: (s.Order?.total_amount || s.total_amount) ? `₹${parseFloat(s.Order?.total_amount || s.total_amount).toLocaleString("en-IN")}` : '₹0',
-            shipTo: s.address?.line1 || userName || "Guest",
-            address: (() => {
-              if (typeof s.address === 'string') {
-                try {
-                  const p = JSON.parse(s.address);
-                  return `${p.line1 || p.line2 || ''}, ${p.city || ''}, ${p.state || ''} ${p.pincode || ''}`.replace(/^, /, '').replace(/, $/, '');
-                } catch (e) {
-                  return s.address;
-                }
-              }
-              return `${s.address?.line1 || ''}, ${s.address?.city || ''}`;
-            })(),
-            paymentMethod: "UPI", 
-            status: s.status,
-            isDroneService: (s.Service || s.service)?.service_owner_type === 'PARTNER',
-            summary: {
-              itemsSubtotal: (s.Order?.total_amount || s.total_amount) ? `₹${parseFloat(s.Order?.total_amount || s.total_amount).toLocaleString("en-IN")}` : '₹0',
-              grandTotal: (s.Order?.total_amount || s.total_amount) ? `₹${parseFloat(s.Order?.total_amount || s.total_amount).toLocaleString("en-IN")}` : '₹0',
-              prebookingPaid: (s.Order?.total_amount || s.total_amount) ? `₹${parseFloat(s.Order?.total_amount || s.total_amount).toLocaleString("en-IN")}` : '₹0' 
-            },
-            scheduledDate: s.scheduled_date ? new Date(s.scheduled_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : '',
-            scheduledTime: s.scheduled_time_slot || '09:00 AM - 11:00 AM', 
-            paymentStatus: s.payment_status === 'COMPLETED' ? 'Completed' : 'Pending',
-            items: [{
-              name: (s.Service || s.service)?.name || "Service Booking",
-              qty: 1,
-              seller: (s.Service || s.service)?.service_owner_type === 'PARTNER' ? 'Drone Partner' : 'Assure Services',
-              price: (s.Order?.total_amount || s.total_amount) ? `₹${parseFloat(s.Order?.total_amount || s.total_amount).toLocaleString("en-IN")}` : '₹0',
-              image: (s.Service || s.service)?.image ? ((s.Service || s.service).image.startsWith('http') || (s.Service || s.service).image.startsWith('blob:') ? (s.Service || s.service).image : `${BASE_URL.replace(/\/api$/, "")}${(s.Service || s.service).image.startsWith('/') ? '' : '/'}${(s.Service || s.service).image}`) : 'https://via.placeholder.com/150?text=Service',
-              type: "service",
-              returnStatus: (() => {
-                switch(s.status) {
-                  case 'NEW': return 'Waiting for admin approval';
-                  case 'ACCEPTED': return 'Accepted by admin, pending technician assignment';
-                  case 'ASSIGNED': return 'Technician assigned';
-                  case 'IN_PROGRESS': return 'Technician is currently working';
-                  case 'PENDING_APPROVAL': return 'Work completed, awaiting your approval';
-                  case 'COMPLETED': return 'Service completed successfully';
-                  case 'CANCELLED': return 'Cancelled by user';
-                  default: return s.status;
-                }
-              })()
-            }]
-          };
-          setOrderDetails(mappedService);
-          setExtraItems([]);
-          setLoading(false);
-        } else if (orderRes.status === 'fulfilled' && orderRes.value && orderRes.value.data) {
-          const o = orderRes.value.data;
-          const mapped = {
-            id: o.order_number || o.id,
-            date: new Date(o.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
-            total: `₹${parseFloat(o.total_amount).toLocaleString("en-IN")}`,
-            shipTo: o.customer_name || (o.customer ? o.customer.full_name : "Guest"),
-            address: o.customer_address || "No address provided",
-            paymentMethod: "Online Payment", 
-            status: o.status,
-            companyName: o.company_name || null,
-            gstNumber: o.gst_number || null,
-            summary: {
-              itemsSubtotal: `₹${parseFloat(o.subtotal_amount || o.total_amount).toLocaleString("en-IN")}`,
-              tax: o.tax_amount ? `₹${parseFloat(o.tax_amount).toLocaleString("en-IN")}` : null,
-              shipping: "Charges Applicable",
-              grandTotal: `₹${parseFloat(o.total_amount).toLocaleString("en-IN")}`
-            },
-            items: o.items ? o.items.map((i: any) => ({
-              name: i.product ? i.product.name : "Unknown Product",
-              qty: i.qty,
-              seller: i.vendor ? i.vendor.business_name : "Assure Technologies",
-              price: `₹${parseFloat(i.price).toLocaleString("en-IN")}`,
-              image: i.product?.banner ? (i.product.banner.startsWith('http') || i.product.banner.startsWith('blob:') ? i.product.banner : `${BASE_URL.replace(/\/api$/, "")}${i.product.banner.startsWith('/') ? '' : '/'}${i.product.banner}`) : 'https://placehold.co/300x200?text=Product',
-              type: "product",
-              trackingId: i.tracking_id,
-              transportName: i.transport_name,
-              trackingUrl: i.tracking_url
-            })) : []
-          };
-          setOrderDetails(mapped);
-          setExtraItems((mapped as any).extraItems || []);
-          setLoading(false);
-        } else {
-          setOrderDetails(null);
-          setLoading(false);
-        }
-      });
+    if (!id) {
+      setLoading(false);
+      return;
     }
+
+    // Check mock service order first
+    if (MOCK_SERVICE_DETAILS[id] || id.startsWith('SRV-') || id.startsWith('DRN-')) {
+      const mockOrder = MOCK_SERVICE_DETAILS[id] || MOCK_SERVICE_DETAILS['SRV-2026-0004'];
+      setOrderDetails(mockOrder);
+      setExtraItems(mockOrder.extraItems || []);
+      setLoading(false);
+      return;
+    }
+
+    ordersApi.fetchOrderById(id).then(res => {
+      const o = res.data;
+      const mapped = {
+        id: o.order_number || o.id,
+        date: new Date(o.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+        total: `₹${parseFloat(o.total_amount || 0).toLocaleString("en-IN")}`,
+        shipTo: o.customer_name || (o.customer ? o.customer.full_name : "Guest"),
+        address: o.customer_address || "No address provided",
+        paymentMethod: "Online Payment",
+        paymentStatus: o.payment_status || "PENDING",
+        razorpayPaymentId: o.razorpay_payment_id || null,
+        razorpayOrderId: o.razorpay_order_id || null,
+        status: o.status,
+        companyName: o.company_name || null,
+        gstNumber: o.gst_number || null,
+        summary: {
+          itemsSubtotal: `₹${parseFloat(o.subtotal_amount || o.total_amount || 0).toLocaleString("en-IN")}`,
+          tax: o.tax_amount ? `₹${parseFloat(o.tax_amount).toLocaleString("en-IN")}` : null,
+          shipping: "Charges Applicable",
+          grandTotal: `₹${parseFloat(o.total_amount || 0).toLocaleString("en-IN")}`
+        },
+        items: o.items ? o.items.map((i: any) => ({
+          name: i.product ? i.product.name : "Unknown Product",
+          qty: i.qty,
+          seller: i.vendor ? i.vendor.business_name : "Assure Technologies",
+          price: `₹${parseFloat(i.price || 0).toLocaleString("en-IN")}`,
+          image: i.product?.banner ? (i.product.banner.startsWith('http') || i.product.banner.startsWith('blob:') ? i.product.banner : `${BASE_URL.replace(/\/api$/, "")}${i.product.banner.startsWith('/') ? '' : '/'}${i.product.banner}`) : 'https://placehold.co/300x200?text=Product',
+          type: "product",
+          trackingId: i.tracking_id,
+          transportName: i.transport_name,
+          trackingUrl: i.tracking_url
+        })) : []
+      };
+      setOrderDetails(mapped);
+      setExtraItems((mapped as any).extraItems || []);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      if (MOCK_SERVICE_DETAILS['SRV-2026-0004']) {
+        setOrderDetails(MOCK_SERVICE_DETAILS['SRV-2026-0004']);
+      }
+      setLoading(false);
+    });
   }, [id, userName]);
 
-
-
-  if (loading) return <div style={{padding: "40px", textAlign: "center"}}>Loading...</div>;
-  if (!orderDetails) return <div style={{padding: "40px", textAlign: "center"}}>Order not found.</div>;
+  if (loading) return <div style={{ padding: "40px", textAlign: "center" }}>Loading...</div>;
+  if (!orderDetails) return <div style={{ padding: "40px", textAlign: "center" }}>Order not found.</div>;
 
   const isService = orderDetails.type === "service" || orderDetails.id.startsWith("SRV") || orderDetails.id.startsWith("DRN") || orderDetails.id.startsWith("SBK");
   const isDroneService = orderDetails.isDroneService || orderDetails.id.startsWith("DRN");
 
   const handleApproveExtra = () => {
     setExtraItems(extraItems.map((item: any) => ({ ...item, status: 'approved' })));
-    alert('Extra items approved and will be added to the final invoice.');
+    Toast.fire({ icon: 'success', title: 'Extra items approved and will be added to the final invoice.' });
   };
 
   const handleDeclineExtra = () => {
     setExtraItems(extraItems.map((item: any) => ({ ...item, status: 'declined' })));
-    alert('Extra items declined.');
+    Toast.fire({ icon: 'info', title: 'Extra items declined.' });
   };
 
   const pendingExtraItems = extraItems.filter((i: any) => i.status === 'pending');
@@ -157,168 +255,214 @@ export function OrderDetailsPage() {
         <div>
           <h1 className="order-details-title">
             Order Details
-            {(orderDetails as any).summary?.prebookingPaid && (
-              <span style={{ marginLeft: '12px', background: '#dcfce7', color: '#166534', padding: '4px 10px', borderRadius: '12px', fontSize: '14px', fontWeight: '600', verticalAlign: 'middle' }}>
-                Prebooking Paid ({(orderDetails as any).summary.prebookingPaid})
-              </span>
-            )}
+            {isDroneService && <span style={{ marginLeft: '12px', background: '#dc2626', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>DRONE SERVICE</span>}
           </h1>
-          <div className="order-details-meta">
-            <span>Ordered on {orderDetails.date}</span>
-            <span className="divider">|</span>
-            <span>Order# {orderDetails.id}</span>
-          </div>
+          <p className="order-meta">
+            Ordered on {orderDetails.date} <span className="meta-separator">|</span> Order# {orderDetails.id}
+          </p>
         </div>
-        <div>
-          {orderDetails.status === 'Completed' && <button className="invoice-btn" onClick={handleInvoiceDownload}>Invoice</button>}
-        </div>
+        <button className="invoice-btn" onClick={handleInvoiceDownload}>
+          Download Invoice
+        </button>
       </div>
 
-      {pendingExtraItems.length > 0 && (
-        <div style={{ background: '#fffbeb', borderLeft: '4px solid #f59e0b', padding: '16px', borderRadius: '8px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h3 style={{ color: '#b45309', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              Action Required: Extra Items Requested
-            </h3>
-            <p style={{ margin: '0', color: '#78350f', fontSize: '14px' }}>
-              The technician has requested to add the following items to your service:
-            </p>
-            <ul style={{ margin: '8px 0 0 20px', padding: '0', color: '#78350f', fontSize: '14px' }}>
-              {pendingExtraItems.map((item: any, idx: number) => (
-                <li key={idx}><strong>{item.qty}x</strong> {item.description}</li>
-              ))}
-            </ul>
-          </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={handleDeclineExtra} style={{ background: 'transparent', border: '1px solid #b45309', color: '#b45309', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }}>Decline</button>
-            <button onClick={handleApproveExtra} style={{ background: '#f59e0b', border: 'none', color: 'white', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }}>Approve</button>
-          </div>
-        </div>
-      )}
-
-      {approvedExtraItems.length > 0 && (
-        <div style={{ background: '#ecfdf5', borderLeft: '4px solid #10b981', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
-          <h3 style={{ color: '#047857', margin: '0 0 8px 0' }}>Approved Extra Items</h3>
-          <p style={{ margin: '0', color: '#065f46', fontSize: '14px' }}>
-            You have approved the following extra items. They will be included in the final invoice:
-          </p>
-          <ul style={{ margin: '8px 0 0 20px', padding: '0', color: '#065f46', fontSize: '14px' }}>
-            {approvedExtraItems.map((item: any, idx: number) => (
-              <li key={idx}><strong>{item.qty}x</strong> {item.description}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div className="details-card">
+      <div className="info-card">
         <div className="info-grid">
           <div className="info-col">
-            <h3>{isDroneService ? 'Farm Land Details' : isService ? 'Service Address' : 'Shipping Address'}</h3>
-            <p className="info-text" style={{ whiteSpace: 'pre-wrap' }}><strong>{orderDetails.shipTo}</strong><br />{orderDetails.address}</p>
-            {orderDetails.companyName && (
-              <div style={{ marginTop: '10px', fontSize: '14px', color: '#555' }}>
-                <strong>GST Details:</strong><br />
-                {orderDetails.companyName}<br />
-                GSTIN: {orderDetails.gstNumber}
-              </div>
-            )}
+            <h3>{isService ? "Service Location" : "Shipping Address"}</h3>
+            <p className="info-text">{orderDetails.shipTo}</p>
+            <p className="info-text" style={{ whiteSpace: "pre-line" }}>{orderDetails.address}</p>
           </div>
-          {!isService && (orderDetails as any).transportName && (
+          {orderDetails.companyName && (
             <div className="info-col">
-              <h3>Tracking Details</h3>
-              <p className="info-text" style={{ fontWeight: '500' }}>
-                {(orderDetails as any).trackingUrl ? (
-                  <a href={(orderDetails as any).trackingUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#007185', textDecoration: 'underline' }}>
-                    {(orderDetails as any).transportName}
-                  </a>
-                ) : (
-                  (orderDetails as any).transportName
-                )}
-              </p>
-              <p className="info-text">Track ID: {(orderDetails as any).trackingId}</p>
-            </div>
-          )}
-          {isService && (orderDetails as any).scheduledDate && (
-            <div className="info-col">
-              <h3>Scheduled Slot</h3>
-              <p className="info-text" style={{ fontWeight: '500' }}>{(orderDetails as any).scheduledDate}</p>
-              <p className="info-text">{(orderDetails as any).scheduledTime}</p>
-            </div>
-          )}
-          {isService && (orderDetails as any).technician && (
-            <div className="info-col">
-              <h3>Assigned Technician</h3>
-              <p className="info-text" style={{ fontWeight: '500' }}>{(orderDetails as any).technician.name}</p>
-              <p className="info-text">{(orderDetails as any).technician.mobile}</p>
+              <h3>Billing Info</h3>
+              <p className="info-text"><strong>Company:</strong> {orderDetails.companyName}</p>
+              {orderDetails.gstNumber && <p className="info-text"><strong>GST:</strong> {orderDetails.gstNumber}</p>}
             </div>
           )}
           <div className="info-col">
             <h3>Payment Method</h3>
-            <p className="info-text">{orderDetails.paymentMethod || 'Manual Payment'}</p>
-          </div>
-          {isService && (
-            <div className="info-col">
-              <h3>Payment Status</h3>
-              <p className="info-text">
-                {(orderDetails as any).paymentStatus === 'Completed' ? (
-                  <span style={{ color: '#166534', fontWeight: 'bold' }}>Completed</span>
-                ) : (
-                  <span style={{ color: '#b45309', fontWeight: 'bold' }}>Pending</span>
-                )}
+            <p className="info-text">{orderDetails.paymentMethod || 'Online Payment'}</p>
+            {orderDetails.razorpayPaymentId && (
+              <p className="info-text" style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                Txn ID: <strong>{orderDetails.razorpayPaymentId}</strong>
               </p>
+            )}
+          </div>
+          <div className="info-col">
+            <h3>Payment Status</h3>
+            <p className="info-text">
+              <span className={`badge ${orderDetails.paymentStatus === 'PAID' ? 'badge-success' : 'badge-warning'}`} style={{
+                padding: '4px 8px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                backgroundColor: orderDetails.paymentStatus === 'PAID' ? '#dcfce7' : '#fef9c3',
+                color: orderDetails.paymentStatus === 'PAID' ? '#15803d' : '#a16207'
+              }}>
+                {orderDetails.paymentStatus}
+              </span>
+            </p>
+          </div>
+          <div className="info-col">
+            <h3>Order Summary</h3>
+            <div className="summary-row">
+              <span>Item(s) Subtotal:</span>
+              <span>{orderDetails.summary?.itemsSubtotal}</span>
             </div>
-          )}
-          {!isService ? (
-            <div className="info-col">
-              <h3>Order Summary</h3>
+            {orderDetails.summary?.tax && (
               <div className="summary-row">
-                <span>Item(s) Subtotal:</span>
-                <span>{orderDetails.summary?.itemsSubtotal}</span>
-              </div>
-              {orderDetails.summary?.tax && (
-              <div className="summary-row">
-                <span>Tax (18% GST):</span>
+                <span>Tax:</span>
                 <span>{orderDetails.summary?.tax}</span>
               </div>
-              )}
-              <div className="summary-row">
-                <span>Shipping:</span>
-                <span>{orderDetails.summary?.shipping}</span>
-              </div>
-              <div className="summary-row summary-total">
-                <span>Grand Total:</span>
-                <span>{orderDetails.summary?.grandTotal}</span>
-              </div>
+            )}
+            <div className="summary-row">
+              <span>Shipping:</span>
+              <span>{orderDetails.summary?.shipping || 'Free'}</span>
             </div>
-          ) : (
-            <div className="info-col">
-              <h3>Pricing Details</h3>
-              {(orderDetails.summary as any).prebookingPaid ? (
-                <>
-                  <div className="summary-row" style={{ color: '#166534', fontWeight: '500' }}>
-                    <span>Prebooking Paid:</span>
-                    <span>{(orderDetails.summary as any).prebookingPaid}</span>
-                  </div>
-                  <div className="summary-row" style={{ marginTop: '8px' }}>
-                    <span>Balance Due:</span>
-                    <span style={{ fontSize: '13px', color: '#565959', fontStyle: 'italic' }}>Billed manually</span>
-                  </div>
-                </>
-              ) : (
-                <p className="info-text">Cost will be billed manually after the technician completes the service.</p>
-              )}
+            <div className="summary-row grand-total">
+              <span>Grand Total:</span>
+              <span>{orderDetails.summary?.grandTotal}</span>
             </div>
-          )}
+          </div>
         </div>
       </div>
 
+      {isService && orderDetails.technician && (
+        <div className="service-details-card" style={{ marginBottom: "20px", padding: "20px", border: "1px solid #e5e7eb", borderRadius: "8px", background: "#f9fafb" }}>
+          <h2 style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "12px", color: "#111827" }}>
+            {isDroneService ? "Assigned Drone Pilot" : "Assigned Technician"}
+          </h2>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <div style={{ width: "48px", height: "48px", borderRadius: "50%", background: isDroneService ? "#fee2e2" : "#e0e7ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", color: isDroneService ? "#dc2626" : "#4f46e5" }}>
+              {isDroneService ? "🚁" : "🔧"}
+            </div>
+            <div>
+              <p style={{ fontWeight: "600", margin: "0 0 4px 0", color: "#1f2937" }}>{orderDetails.technician.name}</p>
+              <p style={{ fontSize: "14px", color: "#6b7280", margin: "0 0 2px 0" }}>Mobile: {orderDetails.technician.mobile}</p>
+              <p style={{ fontSize: "13px", color: "#9ca3af", margin: 0 }}>{orderDetails.technician.experience}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isService && orderDetails.progress && (
+        <div className="service-progress-card" style={{ marginBottom: "20px", padding: "20px", border: "1px solid #e5e7eb", borderRadius: "8px", background: "#ffffff" }}>
+          <h2 style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "16px", color: "#111827" }}>Service Live Progress</h2>
+          
+          {orderDetails.progress.startDescription && (
+            <div style={{ marginBottom: "16px" }}>
+              <h4 style={{ fontSize: "14px", fontWeight: "600", color: "#374151", margin: "0 0 6px 0" }}>Start of Work Note</h4>
+              <p style={{ fontSize: "14px", color: "#4b5563", margin: "0 0 8px 0" }}>{orderDetails.progress.startDescription}</p>
+              {orderDetails.progress.startPhotos && orderDetails.progress.startPhotos.length > 0 && (
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  {orderDetails.progress.startPhotos.map((photo: string, idx: number) => (
+                    <img key={idx} src={photo} alt="Start photo" style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "6px", border: "1px solid #e5e7eb" }} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {orderDetails.progress.dailyUpdates && orderDetails.progress.dailyUpdates.length > 0 && (
+            <div style={{ marginBottom: "16px" }}>
+              <h4 style={{ fontSize: "14px", fontWeight: "600", color: "#374151", margin: "0 0 8px 0" }}>Updates Timeline</h4>
+              <div style={{ borderLeft: "2px solid #e5e7eb", paddingLeft: "12px", marginLeft: "4px" }}>
+                {orderDetails.progress.dailyUpdates.map((update: any, idx: number) => (
+                  <div key={idx} style={{ marginBottom: "10px", position: "relative" }}>
+                    <div style={{ position: "absolute", left: "-17px", top: "4px", width: "8px", height: "8px", borderRadius: "50%", background: "#4f46e5" }}></div>
+                    <span style={{ fontSize: "12px", color: "#6b7280", fontWeight: "500" }}>{update.date}</span>
+                    <p style={{ fontSize: "13px", color: "#374151", margin: "2px 0 0 0" }}>{update.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {orderDetails.progress.completedPhotos && orderDetails.progress.completedPhotos.length > 0 && (
+            <div>
+              <h4 style={{ fontSize: "14px", fontWeight: "600", color: "#374151", margin: "0 0 6px 0" }}>Completed Work Photos</h4>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                {orderDetails.progress.completedPhotos.map((photo: string, idx: number) => (
+                  <img key={idx} src={photo} alt="Completed photo" style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "6px", border: "1px solid #e5e7eb" }} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {isService && extraItems && extraItems.length > 0 && (
+        <div className="extra-items-card" style={{ marginBottom: "20px", padding: "20px", border: "1px solid #fde68a", borderRadius: "8px", background: "#fffbeb" }}>
+          <h2 style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "8px", color: "#92400e" }}>
+            Additional Materials / Work Requested
+          </h2>
+          <p style={{ fontSize: "13px", color: "#78350f", marginBottom: "16px" }}>
+            The technician identified the following additional requirements on site:
+          </p>
+
+          <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "16px" }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid #fcd34d", textAlign: "left", fontSize: "13px", color: "#92400e" }}>
+                <th style={{ padding: "8px" }}>Item Description</th>
+                <th style={{ padding: "8px" }}>Qty</th>
+                <th style={{ padding: "8px" }}>Approval Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {extraItems.map((item: any, idx: number) => (
+                <tr key={idx} style={{ borderBottom: "1px solid #fef3c7", fontSize: "13px", color: "#78350f" }}>
+                  <td style={{ padding: "8px" }}>{item.description}</td>
+                  <td style={{ padding: "8px" }}>{item.qty}</td>
+                  <td style={{ padding: "8px" }}>
+                    <span style={{
+                      padding: "2px 8px",
+                      borderRadius: "12px",
+                      fontSize: "11px",
+                      fontWeight: "600",
+                      background: item.status === 'approved' ? '#dcfce7' : item.status === 'declined' ? '#fee2e2' : '#fef08a',
+                      color: item.status === 'approved' ? '#15803d' : item.status === 'declined' ? '#b91c1c' : '#854d0e'
+                    }}>
+                      {item.status.toUpperCase()}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {pendingExtraItems.length > 0 && (
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              <button 
+                onClick={handleApproveExtra}
+                style={{ padding: "8px 16px", background: "#10b981", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "600", cursor: "pointer", fontSize: "13px" }}
+              >
+                Approve Extra Items
+              </button>
+              <button 
+                onClick={handleDeclineExtra}
+                style={{ padding: "8px 16px", background: "#ef4444", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "600", cursor: "pointer", fontSize: "13px" }}
+              >
+                Decline
+              </button>
+            </div>
+          )}
+          {approvedExtraItems.length > 0 && pendingExtraItems.length === 0 && (
+            <p style={{ margin: 0, fontSize: "12px", color: "#15803d", fontWeight: "500" }}>
+              ✓ All extra items have been approved and added to your work order.
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="item-details-card">
         <h2 className="item-title">{orderDetails.items.length} item{orderDetails.items.length !== 1 ? 's' : ''}</h2>
-        {orderDetails.items.map((item, index) => (
+        {orderDetails.items.map((item: any, index: number) => (
           <div className="item-flex" key={index} style={{ marginBottom: index !== orderDetails.items.length - 1 ? '30px' : '0' }}>
             <img src={item.image} alt={item.name} className="item-img" />
             <div className="item-info">
-              <Link to="#" className="item-name">{item.name} {item.qty > 1 ? `x${item.qty}` : ''}</Link>
+              <div className="item-name">{item.name}</div>
+              <div className="item-seller">Sold by: {item.seller}</div>
               {!isService && <div className="item-price">{item.price}</div>}
               {item.returnStatus && <div className="item-return-status" style={{ fontSize: '12px', color: '#565959', marginTop: '4px' }}>{item.returnStatus}</div>}
               {(item as any).trackingId && (
@@ -330,56 +474,6 @@ export function OrderDetailsPage() {
           </div>
         ))}
       </div>
-
-      {isService && (orderDetails as any).progress && (
-        <div className="details-card" style={{ marginTop: '20px' }}>
-          <h2 className="item-title" style={{ padding: '0 20px', paddingTop: '20px' }}>Technician Progress</h2>
-          <div className="info-grid">
-
-            {(orderDetails as any).progress.startPhotos?.length > 0 && (
-              <div className="info-col" style={{ gridColumn: '1 / -1' }}>
-                <h3>Start Work Info</h3>
-                {(orderDetails as any).progress.startDescription && (
-                  <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '4px', borderLeft: '4px solid #3b82f6', marginTop: '10px' }}>
-                    <div style={{ fontSize: '14px', color: '#334155' }}>{(orderDetails as any).progress.startDescription}</div>
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                  {(orderDetails as any).progress.startPhotos.map((img: string, i: number) => (
-                    <img key={i} src={img} alt={`Start work ${i}`} style={{ width: '120px', height: '90px', objectFit: 'cover', borderRadius: '4px' }} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {(orderDetails as any).progress.dailyUpdates?.length > 0 && (
-              <div className="info-col" style={{ gridColumn: '1 / -1', marginTop: '10px' }}>
-                <h3>Work Updates</h3>
-                <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {(orderDetails as any).progress.dailyUpdates.map((update: any, i: number) => (
-                    <div key={i} style={{ padding: '12px', background: '#f8fafc', borderRadius: '4px', borderLeft: '4px solid #10b981' }}>
-                      <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>{update.date}</div>
-                      <div style={{ fontSize: '14px', color: '#334155' }}>{update.text}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {(orderDetails as any).progress.completedPhotos?.length > 0 && (
-              <div className="info-col" style={{ gridColumn: '1 / -1', marginTop: '10px' }}>
-                <h3>Completed Photos</h3>
-                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                  {(orderDetails as any).progress.completedPhotos.map((img: string, i: number) => (
-                    <img key={i} src={img} alt={`Completed work ${i}`} style={{ width: '120px', height: '90px', objectFit: 'cover', borderRadius: '4px' }} />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

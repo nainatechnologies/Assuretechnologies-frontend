@@ -10,6 +10,8 @@ import { loginUser } from '../services/auth';
 import { useAuth } from '../context/AuthContext';
 import './LoginPage.css'; // Reuse auth styles
 import './RegisterPage.css';
+import { Toast } from '../utils/errorHandler';
+
 
 const registerSchema = z.object({
   fullName: z.string().min(3, 'Name must be at least 3 characters long').regex(/^[A-Za-z\s]+$/, 'Name can only contain letters and spaces'),
@@ -331,7 +333,7 @@ export function RegisterPage() {
 
             <div className="auth-resend">
               Didn't receive code? 
-              <button type="button" onClick={() => alert('OTP Resent! (Use 123456)')}>
+              <button type="button" onClick={() => Toast.fire({ icon: 'info', title: 'OTP Resent! (Use 123456)' })}>
                 Resend OTP
               </button>
             </div>

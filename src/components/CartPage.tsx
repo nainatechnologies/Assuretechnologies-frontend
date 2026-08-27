@@ -6,8 +6,19 @@ import { productsApi } from '../api/productsApi';
 import { ordersApi } from '../api/ordersApi';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import API from '../services/api';
+import API from '../api/axiosConfig';
 import './CartPage.css';
+import { Toast } from '../utils/errorHandler';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
 
 interface Address {
   id: string;
@@ -21,6 +32,36 @@ interface Address {
   state: string;
   isDefault?: boolean;
 }
+
+const addressFormSchema = z.object({
+  fullName: z
+    .string()
+    .min(3, 'Full name must be at least 3 characters long')
+    .regex(/^[A-Za-z\s]+$/, 'Name can only contain letters and spaces')
+    .max(100, 'Full name is too long'),
+  mobileNumber: z
+    .string()
+    .regex(/^[6-9]\d{9}$/, 'Please enter a valid 10-digit mobile number'),
+  pincode: z
+    .string()
+    .regex(/^\d{6}$/, 'Pincode must be exactly 6 digits'),
+  city: z
+    .string()
+    .min(3, 'Town/City must be at least 3 characters long'),
+  addressLine1: z
+    .string()
+    .min(5, 'Flat / House No. is required (at least 5 characters)'),
+  addressLine2: z
+    .string()
+    .min(3, 'Area / Street is required (at least 3 characters)'),
+  landmark: z.string().optional().or(z.literal('')),
+  state: z
+    .string()
+    .min(2, 'Please select a state')
+});
+
+type AddressFormValues = z.infer<typeof addressFormSchema>;
+
 export function CartPage() {
   const { cart, setCart, updateCartItem, removeFromCart } = useCart();
   const { isLoggedIn } = useAuth();
@@ -34,10 +75,29 @@ export function CartPage() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
-  const [newAddress, setNewAddress] = useState<Partial<Address>>({});
+
+  const {
+    register: registerAddress,
+    handleSubmit: handleAddressFormSubmit,
+    reset: resetAddressForm,
+    formState: { errors: addressErrors, isSubmitting: isSavingAddress }
+  } = useForm<AddressFormValues>({
+    resolver: zodResolver(addressFormSchema),
+    defaultValues: {
+      fullName: '',
+      mobileNumber: '',
+      pincode: '',
+      city: '',
+      addressLine1: '',
+      addressLine2: '',
+      landmark: '',
+      state: ''
+    }
+  });
 
   const [products, setProducts] = useState<any[]>([]);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -139,18 +199,17 @@ export function CartPage() {
     }
   };
 
-  const handleAddressSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSaveAddress = async (data: AddressFormValues) => {
     try {
       const payload = {
-        full_name: newAddress.fullName,
-        mobile_number: newAddress.mobileNumber,
-        pincode: newAddress.pincode,
-        address_line1: newAddress.addressLine1,
-        address_line2: newAddress.addressLine2,
-        landmark: newAddress.landmark,
-        city: newAddress.city,
-        state: newAddress.state
+        full_name: data.fullName,
+        mobile_number: data.mobileNumber,
+        pincode: data.pincode,
+        address_line1: data.addressLine1,
+        address_line2: data.addressLine2,
+        landmark: data.landmark || '',
+        city: data.city,
+        state: data.state
       };
       const res = await API.post('/auth/customer/addresses', payload);
       if (res.data.success) {
@@ -169,15 +228,32 @@ export function CartPage() {
         setAddresses(prev => [...prev, addedAddress]);
         setSelectedAddressId(a.id);
         setShowNewAddressForm(false);
-        setNewAddress({});
+        resetAddressForm();
+        Toast.fire({ icon: 'success', title: 'Address saved successfully!' });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to add address', err);
-      alert('Failed to save address.');
+      Toast.fire({ icon: 'error', title: err.response?.data?.message || 'Failed to save address.' });
     }
   };
 
+  const handleCancelAddress = () => {
+    setShowNewAddressForm(false);
+    resetAddressForm();
+  };
+
   
+
+  const loadRazorpay = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const submitOrder = async () => {
     try {
       setIsPlacingOrder(true);
@@ -195,14 +271,77 @@ export function CartPage() {
         }))
       };
       const res = await ordersApi.createOrder(orderPayload);
-      alert('Order placed successfully! Order Number: ' + res.data.order.order_number);
-      setCart({}); // clear cart
-      navigate('/orders');
-    } catch (err) {
+      
+      if (res.data && res.data.razorpayOrderId) {
+        const resLoaded = await loadRazorpay();
+        if (!resLoaded) {
+          Toast.fire({ icon: 'error', title: 'Razorpay SDK failed to load. Please check your internet connection.' });
+          setIsPlacingOrder(false);
+          return;
+        }
+
+        const razorpayKey = res.data.razorpayKeyId || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TUJt0fwUv206Vf';
+
+        const options = {
+          key: razorpayKey,
+          amount: Math.round(res.data.order.total_amount * 100),
+          currency: 'INR',
+          name: 'Assure Technologies',
+          description: 'Order #' + res.data.order.order_number,
+          order_id: res.data.razorpayOrderId,
+          handler: async function (response: any) {
+            try {
+              setIsVerifyingPayment(true);
+              const verifyRes = await API.post('/orders/verify-payment', {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                receipt_order_number: res.data.order.order_number
+              });
+              if (verifyRes.data.success) {
+                Toast.fire({ icon: 'success', title: 'Payment verified and order placed successfully!' });
+                setCart({});
+                navigate('/orders');
+              }
+            } catch (err) {
+              Toast.fire({ icon: 'error', title: 'Payment verification failed.' });
+            } finally {
+              setIsVerifyingPayment(false);
+              setIsPlacingOrder(false);
+            }
+          },
+          modal: {
+            ondismiss: function () {
+              setIsPlacingOrder(false);
+              setIsVerifyingPayment(false);
+              Toast.fire({ icon: 'warning', title: 'Payment cancelled. You can retry anytime.' });
+            }
+          },
+          prefill: {
+            name: orderPayload.customer_name,
+            contact: orderPayload.customer_contact
+          },
+          theme: {
+            color: '#4F46E5'
+          }
+        };
+
+        const paymentObject = new (window as any).Razorpay(options);
+        paymentObject.on('payment.failed', function (response: any) {
+          setIsPlacingOrder(false);
+          setIsVerifyingPayment(false);
+          Toast.fire({ icon: 'error', title: response.error?.description || 'Payment failed. Please retry.' });
+        });
+        paymentObject.open();
+      } else {
+        Toast.fire({ icon: 'error', title: 'Unable to initialize online payment. Please try again.' });
+        setIsPlacingOrder(false);
+      }
+    } catch (err: any) {
       console.error('Failed to place order', err);
-      alert('Failed to place order.');
-    } finally {
+      Toast.fire({ icon: 'error', title: err.response?.data?.message || 'Failed to place order.' });
       setIsPlacingOrder(false);
+      setIsVerifyingPayment(false);
     }
   };
 
@@ -232,6 +371,44 @@ export function CartPage() {
 
   return (
     <div className="cart-page">
+      {/* Fullscreen Blur Overlay during Payment Verification */}
+      {isVerifyingPayment && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.88)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999999,
+          textAlign: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            width: '54px',
+            height: '54px',
+            border: '5px solid #e0e7ff',
+            borderTop: '5px solid #4F46E5',
+            borderRadius: '50%',
+            animation: 'cartSpin 0.9s linear infinite',
+            marginBottom: '20px'
+          }} />
+          <h2 style={{ color: '#1e293b', fontSize: '1.4rem', fontWeight: '700', margin: '0 0 8px 0' }}>
+            Verifying Your Payment...
+          </h2>
+          <p style={{ color: '#64748b', fontSize: '0.95rem', margin: 0, maxWidth: '400px', lineHeight: '1.5' }}>
+            Please wait while we securely confirm your payment with the bank. Do not refresh or close this window.
+          </p>
+          <style>{`
+            @keyframes cartSpin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      )}
       {/* Step Indicator */}
       <div className="cart-steps">
         <div className={`cart-step ${currentStep >= 1 ? 'active' : ''}`}>
@@ -326,7 +503,7 @@ export function CartPage() {
                         </span>
 
                         {selectedAddressId === addr.id && (
-                          <button className="btn-deliver-here" onClick={handleDeliverHere}>
+                          <button type="button" className="btn-deliver-here" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeliverHere(); }}>
                             Deliver Here
                           </button>
                         )}
@@ -341,58 +518,115 @@ export function CartPage() {
                   </div>
                 ) : (
                   <div className="new-address-form-container">
-                    <h3>Add a new address</h3>
-                    <form onSubmit={handleAddressSubmit} className="new-address-form">
+                    <h3>Add a New Address</h3>
+                    <form className="new-address-form" onSubmit={handleAddressFormSubmit(onSaveAddress)} noValidate>
                       <div className="form-row">
                         <div className="form-group">
                           <label>Full Name</label>
-                          <input required type="text" value={newAddress.fullName || ''} onChange={e => setNewAddress({ ...newAddress, fullName: e.target.value })} />
+                          <input
+                            type="text"
+                            className={addressErrors.fullName ? 'input-error' : ''}
+                            placeholder="Full Name"
+                            maxLength={100}
+                            {...registerAddress('fullName')}
+                          />
+                          {addressErrors.fullName && <span className="error-text">{addressErrors.fullName.message}</span>}
                         </div>
                         <div className="form-group">
                           <label>Mobile Number</label>
-                          <input required type="tel" value={newAddress.mobileNumber || ''} onChange={e => setNewAddress({ ...newAddress, mobileNumber: e.target.value })} />
+                          <input
+                            type="tel"
+                            className={addressErrors.mobileNumber ? 'input-error' : ''}
+                            placeholder="10-digit Mobile Number"
+                            maxLength={10}
+                            {...registerAddress('mobileNumber')}
+                          />
+                          {addressErrors.mobileNumber && <span className="error-text">{addressErrors.mobileNumber.message}</span>}
                         </div>
                       </div>
 
                       <div className="form-row">
                         <div className="form-group">
                           <label>Pincode</label>
-                          <input required type="text" value={newAddress.pincode || ''} onChange={e => setNewAddress({ ...newAddress, pincode: e.target.value })} />
+                          <input
+                            type="text"
+                            className={addressErrors.pincode ? 'input-error' : ''}
+                            placeholder="6-digit Pincode"
+                            maxLength={6}
+                            {...registerAddress('pincode')}
+                          />
+                          {addressErrors.pincode && <span className="error-text">{addressErrors.pincode.message}</span>}
                         </div>
                         <div className="form-group">
                           <label>Town/City</label>
-                          <input required type="text" value={newAddress.city || ''} onChange={e => setNewAddress({ ...newAddress, city: e.target.value })} />
+                          <input
+                            type="text"
+                            className={addressErrors.city ? 'input-error' : ''}
+                            placeholder="City / Town"
+                            maxLength={50}
+                            {...registerAddress('city')}
+                          />
+                          {addressErrors.city && <span className="error-text">{addressErrors.city.message}</span>}
                         </div>
                       </div>
 
                       <div className="form-group">
                         <label>Flat, House no., Building, Company, Apartment</label>
-                        <input required type="text" value={newAddress.addressLine1 || ''} onChange={e => setNewAddress({ ...newAddress, addressLine1: e.target.value })} />
+                        <input
+                          type="text"
+                          className={addressErrors.addressLine1 ? 'input-error' : ''}
+                          placeholder="Flat / House No. / Building"
+                          maxLength={150}
+                          {...registerAddress('addressLine1')}
+                        />
+                        {addressErrors.addressLine1 && <span className="error-text">{addressErrors.addressLine1.message}</span>}
                       </div>
 
                       <div className="form-group">
                         <label>Area, Street, Sector, Village</label>
-                        <input required type="text" value={newAddress.addressLine2 || ''} onChange={e => setNewAddress({ ...newAddress, addressLine2: e.target.value })} />
+                        <input
+                          type="text"
+                          className={addressErrors.addressLine2 ? 'input-error' : ''}
+                          placeholder="Area / Street / Sector"
+                          maxLength={150}
+                          {...registerAddress('addressLine2')}
+                        />
+                        {addressErrors.addressLine2 && <span className="error-text">{addressErrors.addressLine2.message}</span>}
                       </div>
 
                       <div className="form-row">
                         <div className="form-group">
-                          <label>Landmark</label>
-                          <input type="text" value={newAddress.landmark || ''} onChange={e => setNewAddress({ ...newAddress, landmark: e.target.value })} placeholder="E.g. near apollo hospital" />
+                          <label>Landmark (Optional)</label>
+                          <input
+                            type="text"
+                            className={addressErrors.landmark ? 'input-error' : ''}
+                            placeholder="E.g. near Apollo Hospital"
+                            maxLength={100}
+                            {...registerAddress('landmark')}
+                          />
+                          {addressErrors.landmark && <span className="error-text">{addressErrors.landmark.message}</span>}
                         </div>
                         <div className="form-group">
                           <label>State</label>
-                          <select required value={newAddress.state || ''} onChange={e => setNewAddress({ ...newAddress, state: e.target.value })}>
+                          <select
+                            className={addressErrors.state ? 'input-error' : ''}
+                            {...registerAddress('state')}
+                          >
                             <option value="" disabled>Select State</option>
                             <option value="Andhra Pradesh">Andhra Pradesh</option>
                             <option value="Telangana">Telangana</option>
                           </select>
+                          {addressErrors.state && <span className="error-text">{addressErrors.state.message}</span>}
                         </div>
                       </div>
 
                       <div className="form-actions">
-                        <button type="submit" className="btn-save-address">Save and Deliver Here</button>
-                        <button type="button" className="btn-cancel-address" onClick={() => setShowNewAddressForm(false)}>Cancel</button>
+                        <button type="submit" className="btn-save-address" disabled={isSavingAddress}>
+                          {isSavingAddress ? 'Saving...' : 'Save and Deliver Here'}
+                        </button>
+                        <button type="button" className="btn-cancel-address" onClick={handleCancelAddress}>
+                          Cancel
+                        </button>
                       </div>
                     </form>
                   </div>
@@ -463,8 +697,8 @@ export function CartPage() {
                   </div>
                   {paymentMethod === 'Online' && (
                     <div className="payment-action-area">
-                      <button className="btn-confirm-order" onClick={submitOrder} disabled={isPlacingOrder}>
-                        {isPlacingOrder ? 'Processing...' : `Pay ₹${total.toLocaleString('en-IN', { minimumFractionDigits: 2 })} & Place Order`}
+                      <button className="btn-confirm-order" onClick={submitOrder} disabled={isPlacingOrder || isVerifyingPayment}>
+                        {isVerifyingPayment ? 'Verifying Payment...' : isPlacingOrder ? 'Processing...' : `Pay ₹${total.toLocaleString('en-IN', { minimumFractionDigits: 2 })} & Place Order`}
                       </button>
                     </div>
                   )}
