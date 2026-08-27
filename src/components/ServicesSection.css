@@ -79,6 +79,22 @@
   color: #ffffff;
 }
 
+.service-icon.image-icon {
+  overflow: hidden;
+}
+
+.service-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.service-icon .service-placeholder {
+  width: 100%;
+  height: 100%;
+  background-color: #e2e8f0;
+}
+
 .service-label {
   font-size: 1.15rem;
   font-weight: 700;

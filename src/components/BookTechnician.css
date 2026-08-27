@@ -85,6 +85,12 @@
   justify-content: center;
 }
 
+.bt-card-placeholder {
+  width: 100%;
+  height: 100%;
+  background-color: #e2e8f0;
+}
+
 /* ─── Label (left) + Arrow (bottom-right) ────────────────────── */
 .bt-card-info {
   display: flex;

@@ -1,12 +1,21 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FaUserCircle, FaShoppingCart, FaBars, FaTimes, FaDownload, FaSearch, FaHome, FaTools, FaBoxOpen, FaChartLine, FaHandshake } from 'react-icons/fa';
 import { Logo } from './Logo';
-import { PRODUCTS, CATEGORIES } from '../data/products';
-import { SERVICES } from '../data/services';
+import { PRODUCTS } from '../data/products';
+import { useServices } from '../hooks/useServices';
+import { useClickOutside } from '../hooks/useClickOutside';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import './Navbar.css';
+
+const BOTTOM_NAV = [
+  { to: '/', label: 'Home', icon: FaHome, exact: true },
+  { to: '/book-service', label: 'Services', icon: FaTools, exact: true },
+  { to: '/order-products', label: 'Products', icon: FaBoxOpen, exact: false },
+  { to: '/ventures', label: 'Ventures', icon: FaChartLine, exact: true },
+  { to: '/investors', label: 'Investors', icon: FaHandshake, exact: true },
+];
 
 function SearchBar({ isMobile }: { isMobile?: boolean }) {
   const navigate = useNavigate();
@@ -15,51 +24,39 @@ function SearchBar({ isMobile }: { isMobile?: boolean }) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const { services } = useServices();
+
+  useClickOutside(wrapperRef, useCallback(() => setShowSuggestions(false), []));
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    if (!query.trim()) { setSuggestions([]); setShowSuggestions(false); setHighlightedIndex(-1); return; }
 
-  useEffect(() => {
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      let phrases: string[] = [];
-      
-      SERVICES.forEach(s => {
-        phrases.push(s.title.toLowerCase());
-        phrases.push(`${s.label.toLowerCase()} services`);
-      });
-      
-      PRODUCTS.forEach(p => {
-        phrases.push(p.name.toLowerCase());
-        const words = p.name.toLowerCase().split(' ');
-        if (words.length >= 2) {
-          phrases.push(`${words[0]} ${words[1]}`);
-        }
-      });
+    const q = query.toLowerCase();
+    const phrases = new Set<string>();
 
-      const uniquePhrases = Array.from(new Set(phrases));
-      const matches = uniquePhrases.filter(p => p.includes(q));
-      matches.sort((a, b) => {
-        const aStarts = a.startsWith(q) ? -1 : 1;
-        const bStarts = b.startsWith(q) ? -1 : 1;
-        return aStarts - bStarts || a.length - b.length;
-      });
+    services.forEach(s => {
+      phrases.add(s.name.toLowerCase());
+      if (s.category?.name) phrases.add(`${s.category.name.toLowerCase()} services`);
+    });
+    PRODUCTS.forEach(p => {
+      phrases.add(p.name.toLowerCase());
+      const words = p.name.toLowerCase().split(' ');
+      if (words.length >= 2) phrases.add(`${words[0]} ${words[1]}`);
+    });
 
-      setSuggestions(matches.slice(0, 10));
-      setShowSuggestions(true);
-    } else {
-      setSuggestions([]);
-      setShowSuggestions(false);
-    }
+    const matches = [...phrases]
+      .filter(p => p.includes(q))
+      .sort((a, b) => {
+        const aS = a.startsWith(q) ? -1 : 1;
+        const bS = b.startsWith(q) ? -1 : 1;
+        return aS - bS || a.length - b.length;
+      })
+      .slice(0, 10);
+
+    setSuggestions(matches);
+    setShowSuggestions(true);
     setHighlightedIndex(-1);
-  }, [query]);
+  }, [query, services]);
 
   const handleSearch = (e?: React.FormEvent, submitQuery = query) => {
     if (e) e.preventDefault();
@@ -71,64 +68,42 @@ function SearchBar({ isMobile }: { isMobile?: boolean }) {
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (!showSuggestions) return;
-    
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setHighlightedIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : prev));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setHighlightedIndex(prev => (prev > 0 ? prev - 1 : -1));
-    } else if (e.key === 'Enter') {
-      if (highlightedIndex >= 0) {
-        e.preventDefault();
-        setQuery(suggestions[highlightedIndex]);
-        handleSearch(undefined, suggestions[highlightedIndex]);
-      }
-    } else if (e.key === 'Escape') {
-      setShowSuggestions(false);
-    }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlightedIndex(i => Math.min(i + 1, suggestions.length - 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlightedIndex(i => Math.max(i - 1, -1)); }
+    else if (e.key === 'Enter' && highlightedIndex >= 0) { e.preventDefault(); setQuery(suggestions[highlightedIndex]); handleSearch(undefined, suggestions[highlightedIndex]); }
+    else if (e.key === 'Escape') setShowSuggestions(false);
   };
 
   return (
     <div className={`nav-search-wrapper ${isMobile ? 'mobile' : ''}`} ref={wrapperRef}>
-      <form className={isMobile ? "nav-search-bar-mobile" : "nav-search-bar"} onSubmit={handleSearch}>
-
+      <form className={isMobile ? 'nav-search-bar-mobile' : 'nav-search-bar'} onSubmit={handleSearch}>
         <input
           className="nav-search-input"
           type="text"
-          placeholder={isMobile ? "Search for products, services..." : "Search for products, services and more..."}
+          placeholder={isMobile ? 'Search for products, services...' : 'Search for products, services and more...'}
           value={query}
           onChange={e => setQuery(e.target.value)}
           onFocus={() => { if (query) setShowSuggestions(true); }}
           onKeyDown={onKeyDown}
         />
-        <button className="nav-search-btn" type="submit" aria-label="Search">
-          <FaSearch />
-        </button>
+        <button className="nav-search-btn" type="submit" aria-label="Search"><FaSearch /></button>
       </form>
 
       {showSuggestions && suggestions.length > 0 && (
         <div className="search-autocomplete-dropdown">
-          {suggestions.map((suggestion, index) => {
-            const matchIndex = suggestion.indexOf(query.toLowerCase());
-            const before = suggestion.substring(0, matchIndex);
-            const match = suggestion.substring(matchIndex, matchIndex + query.length);
-            const after = suggestion.substring(matchIndex + query.length);
-
+          {suggestions.map((s, i) => {
+            const idx = s.indexOf(query.toLowerCase());
             return (
-              <div 
-                key={suggestion} 
-                className={`search-suggestion-item ${index === highlightedIndex ? 'highlighted' : ''}`}
-                onClick={() => {
-                  setQuery(suggestion);
-                  handleSearch(undefined, suggestion);
-                }}
+              <div
+                key={s}
+                className={`search-suggestion-item ${i === highlightedIndex ? 'highlighted' : ''}`}
+                onClick={() => { setQuery(s); handleSearch(undefined, s); }}
               >
                 <FaSearch className="suggestion-search-icon" />
                 <span className="suggestion-text">
-                  {before && <strong>{before}</strong>}
-                  {match}
-                  {after && <strong>{after}</strong>}
+                  {idx > 0 && <strong>{s.slice(0, idx)}</strong>}
+                  {s.slice(idx, idx + query.length)}
+                  {idx + query.length < s.length && <strong>{s.slice(idx + query.length)}</strong>}
                 </span>
               </div>
             );
@@ -148,35 +123,20 @@ export function Navbar() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  useClickOutside(dropdownRef, useCallback(() => setIsDropdownOpen(false), []));
+  useEffect(() => { setIsMobileMenuOpen(false); }, [pathname]);
 
-  // Close mobile menu when navigating
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [pathname]);
+  const closeDropdown = () => setIsDropdownOpen(false);
 
   return (
     <nav className="nav-container">
       <div className="nav-content">
-        
-        {/* Brand */}
-        <Link className="nav-brand" to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+        <Link className="nav-brand" to="/">
           <Logo />
         </Link>
 
-        {/* Search Bar */}
         <SearchBar />
 
-        {/* Mobile Cart Button */}
         <Link className="nav-mobile-cart" to="/cart" aria-label="Cart">
           <div className="cart-icon-wrapper">
             <FaShoppingCart className="action-icon" />
@@ -184,22 +144,16 @@ export function Navbar() {
           </div>
         </Link>
 
-        {/* Mobile Toggle Button */}
-        <button 
-          className="nav-mobile-toggle" 
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          aria-label="Toggle navigation"
-        >
+        <button className="nav-mobile-toggle" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} aria-label="Toggle navigation">
           {isMobileMenuOpen ? <FaTimes /> : <FaBars />}
         </button>
 
-        {/* Right Actions (always visible on desktop) */}
         <div className={`nav-actions ${isMobileMenuOpen ? 'is-open' : ''}`}>
-          
+
           {/* Profile Dropdown */}
           <div className="nav-dropdown-wrapper" ref={dropdownRef} onMouseEnter={() => setIsDropdownOpen(true)} onMouseLeave={() => setIsDropdownOpen(false)}>
-            <button 
-              className="nav-action-item" 
+            <button
+              className="nav-action-item"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               aria-expanded={isDropdownOpen}
               aria-label="Profile"
@@ -207,30 +161,20 @@ export function Navbar() {
               <FaUserCircle className="action-icon" />
               <span className="action-text">{isLoggedIn && userName ? userName.split(' ')[0] : 'Login'}</span>
             </button>
-            
+
             {isDropdownOpen && (
               <div className="nav-dropdown-menu">
                 {isLoggedIn ? (
                   <>
-                    <Link to="/profile" className="nav-dropdown-item" onClick={() => setIsDropdownOpen(false)}>My Profile</Link>
-                    <Link to="/orders" className="nav-dropdown-item" onClick={() => setIsDropdownOpen(false)}>My Orders</Link>
-                    <div style={{ borderTop: '1px solid #e2e8f0', margin: '5px 0' }} />
-                    <button 
-                      className="nav-dropdown-item" 
-                      style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}
-                      onClick={() => {
-                        setIsDropdownOpen(false);
-                        logout();
-                        navigate('/');
-                      }}
-                    >
-                      Logout
-                    </button>
+                    <Link to="/profile" className="nav-dropdown-item" onClick={closeDropdown}>My Profile</Link>
+                    <Link to="/orders" className="nav-dropdown-item" onClick={closeDropdown}>My Orders</Link>
+                    <div className="nav-dropdown-divider" />
+                    <button className="nav-dropdown-item nav-dropdown-btn" onClick={() => { closeDropdown(); logout(); navigate('/'); }}>Logout</button>
                   </>
                 ) : (
                   <>
-                    <Link to="/login" className="nav-dropdown-item" onClick={() => setIsDropdownOpen(false)}>Login</Link>
-                    <Link to="/register" className="nav-dropdown-item" onClick={() => setIsDropdownOpen(false)}>Register</Link>
+                    <Link to="/login" className="nav-dropdown-item" onClick={closeDropdown}>Login</Link>
+                    <Link to="/register" className="nav-dropdown-item" onClick={closeDropdown}>Register</Link>
                   </>
                 )}
               </div>
@@ -239,7 +183,6 @@ export function Navbar() {
 
           <div className="nav-divider" />
 
-          {/* Cart */}
           <Link className="nav-action-item cart-btn" to="/cart" aria-label="Cart">
             <div className="cart-icon-wrapper">
               <FaShoppingCart className="action-icon" />
@@ -249,37 +192,24 @@ export function Navbar() {
           </Link>
 
           <Link className="nav-download-btn" to="/download-app">
-            <FaDownload style={{ marginRight: '8px' }} /> Download App
+            <FaDownload className="nav-download-icon" /> Download App
           </Link>
-
         </div>
       </div>
 
-      {/* Mobile Search Bar */}
-      <SearchBar isMobile={true} />
+      <SearchBar isMobile />
 
-      {/* Mobile Bottom Navbar */}
       <div className="mobile-bottom-nav">
-        <Link to="/" className={`bottom-nav-item ${pathname === '/' ? 'active' : ''}`}>
-          <FaHome className="bottom-nav-icon" />
-          <span>Home</span>
-        </Link>
-        <Link to="/book-service" className={`bottom-nav-item ${pathname === '/book-service' ? 'active' : ''}`}>
-          <FaTools className="bottom-nav-icon" />
-          <span>Services</span>
-        </Link>
-        <Link to="/order-products" className={`bottom-nav-item ${pathname.startsWith('/order-products') ? 'active' : ''}`}>
-          <FaBoxOpen className="bottom-nav-icon" />
-          <span>Products</span>
-        </Link>
-        <Link to="/ventures" className={`bottom-nav-item ${pathname === '/ventures' ? 'active' : ''}`}>
-          <FaChartLine className="bottom-nav-icon" />
-          <span>Ventures</span>
-        </Link>
-        <Link to="/investors" className={`bottom-nav-item ${pathname === '/investors' ? 'active' : ''}`}>
-          <FaHandshake className="bottom-nav-icon" />
-          <span>Investors</span>
-        </Link>
+        {BOTTOM_NAV.map(({ to, label, icon: Icon, exact }) => (
+          <Link
+            key={to}
+            to={to}
+            className={`bottom-nav-item ${exact ? pathname === to ? 'active' : '' : pathname.startsWith(to) ? 'active' : ''}`}
+          >
+            <Icon className="bottom-nav-icon" />
+            <span>{label}</span>
+          </Link>
+        ))}
       </div>
     </nav>
   );

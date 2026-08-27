@@ -38,10 +38,10 @@ export function LoginPage() {
 
   const onSubmit = async (data: LoginFormInputs) => {
     setLoading(true);
-    
+
     // Determine if identifier is email or mobile
-    const payload = data.identifier.includes('@') 
-      ? { email: data.identifier, password: data.password } 
+    const payload = data.identifier.includes('@')
+      ? { email: data.identifier, password: data.password }
       : { mobile: data.identifier, password: data.password };
 
     try {
@@ -49,7 +49,7 @@ export function LoginPage() {
       if (res.data.success) {
         loginUser(res.data.data.user);
         login('auth-cookie-set', res.data.data.user.full_name || 'Customer');
-        
+
         Swal.fire({
           title: 'Success!',
           text: 'Logged in successfully!',
@@ -71,7 +71,7 @@ export function LoginPage() {
             setError('password', { type: 'server', message: e.message });
           }
         });
-        
+
         Swal.fire({
           toast: true,
           position: 'top-end',
@@ -108,7 +108,7 @@ export function LoginPage() {
     <div className="auth-page-container">
       <div className="auth-card">
         <h2 className="auth-title">Welcome Back</h2>
-        
+
         <form className="auth-form" onSubmit={handleSubmit(onSubmit, onError)} noValidate>
           <div className="auth-input-group">
             <input

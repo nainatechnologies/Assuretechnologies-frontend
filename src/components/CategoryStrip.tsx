@@ -56,7 +56,7 @@ export function CategoryStrip() {
         {categories.map(cat => (
           <Link
             key={cat.slug}
-            to={`/order-products?category=${encodeURIComponent(cat.slug)}`}
+            to={`/book-service?service=${encodeURIComponent(cat.slug)}`}
             className="cat-strip-item"
           >
             <div className="cat-strip-icon">{cat.icon}</div>

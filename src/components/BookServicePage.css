@@ -112,6 +112,7 @@
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -340,4 +341,130 @@
 
 .btn-modal-confirm:hover {
   background: #1d4ed8;
+}
+
+/* ─── Custom Fields & Extras ────────────────────────────────────── */
+.booking-modal-body .form-group textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.bs-custom-boolean {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+}
+
+.bs-custom-boolean input[type="checkbox"] {
+  width: 18px !important;
+  height: 18px !important;
+  margin: 0;
+  cursor: pointer;
+}
+
+.bs-custom-boolean span {
+  font-size: 14px;
+  color: #475569;
+}
+
+.bs-custom-row {
+  flex-wrap: wrap;
+}
+
+.bs-custom-field {
+  min-width: 200px;
+  flex: 1;
+}
+
+.bs-geolocation-container {
+  display: flex;
+  gap: 10px;
+}
+
+.bs-geolocation-input {
+  flex: 1;
+  background-color: #f8fafc !important;
+  color: #64748b !important;
+}
+
+.bs-geolocation-btn {
+  padding: 10px 16px;
+  background-color: #e2e8f0;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.bs-map-container {
+  height: 220px;
+  margin-top: 10px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  position: relative;
+  z-index: 1;
+}
+
+.bs-map {
+  height: 100%;
+  width: 100%;
+}
+
+.bs-map-note {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.bs-pricing-section {
+  margin-top: 20px;
+}
+
+.bs-pricing-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 12px;
+}
+
+.bs-pricing-row {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 12px;
+}
+
+.bs-pricing-col {
+  flex: 1;
+}
+
+.bs-pricing-label {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.bs-pricing-total {
+  padding: 15px;
+  background: #e0e7ff;
+  border-radius: 8px;
+  border: 1px solid #c7d2fe;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bs-pricing-total-label {
+  color: #3730a3;
+  font-weight: 600;
+}
+
+.bs-pricing-total-amount {
+  font-size: 18px;
+  font-weight: 700;
+  color: #4338ca;
 }

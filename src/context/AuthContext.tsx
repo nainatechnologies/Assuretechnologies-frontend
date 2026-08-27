@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 
 interface AuthContextType {
   isLoggedIn: boolean;
@@ -12,7 +12,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   // Try to load from localStorage initially
-  const [token, setToken] = useState<string | null>(localStorage.getItem('authToken'));
+  // If a placeholder token was stored previously (dev artifact), remove it.
+  const rawToken = localStorage.getItem('authToken');
+  if (rawToken === 'auth-cookie-set') {
+    localStorage.removeItem('authToken');
+  }
+  const [token, setToken] = useState<string | null>(rawToken === 'auth-cookie-set' ? null : rawToken);
   const [userName, setUserName] = useState<string | null>(localStorage.getItem('userName'));
   
   const isLoggedIn = !!token;

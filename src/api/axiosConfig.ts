@@ -16,7 +16,10 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');
-    if (token && config.headers) {
+    // Prefer server-set httpOnly cookie when present. Only attach Authorization
+    // header when there is a real token in localStorage and no customer cookie.
+    const hasCustomerCookie = (typeof document !== 'undefined') && document.cookie && document.cookie.includes('customer_token=');
+    if (token && config.headers && !hasCustomerCookie && token !== 'auth-cookie-set') {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;

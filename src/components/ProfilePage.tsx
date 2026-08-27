@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+﻿import { useNavigate } from 'react-router-dom';
 import { FaUserAlt } from 'react-icons/fa';
 import { useState, useEffect } from 'react';
 import { getProfile } from '../api/customerApi';
@@ -86,5 +86,7 @@ export function ProfilePage() {
     </div>
   );
 }
+
+
 
 

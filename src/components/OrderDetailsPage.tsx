@@ -1,12 +1,15 @@
 import { BASE_URL } from '../services/api';
 import { useState, useEffect } from "react";
 import { ordersApi } from "../api/ordersApi";
+import { getCustomerServiceBookings } from '../api/serviceBookingApi';
 import { Link, useParams } from "react-router-dom";
-import { FaSyncAlt, FaTruck } from "react-icons/fa";
+import { useAuth } from '../context/AuthContext';
+import { FaTruck } from "react-icons/fa";
 import "./OrderDetailsPage.css";
 
 export function OrderDetailsPage() {
   const { id } = useParams();
+  const { userName } = useAuth();
 
   const handleInvoiceDownload = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -17,53 +20,123 @@ export function OrderDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [extraItems, setExtraItems] = useState<any[]>([]);
 
+  
+  
   useEffect(() => {
     if (id) {
-      ordersApi.fetchOrderById(id).then(res => {
-        const o = res.data;
-        const mapped = {
-          id: o.order_number,
-          date: new Date(o.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
-          total: `₹${parseFloat(o.total_amount).toLocaleString("en-IN")}`,
-          shipTo: o.customer_name || (o.customer ? o.customer.full_name : "Guest"),
-          address: o.customer_address || "No address provided",
-          paymentMethod: "Online Payment", // Assumed for now
-          status: o.status,
-          companyName: o.company_name || null,
-          gstNumber: o.gst_number || null,
-          summary: {
-            itemsSubtotal: `₹${parseFloat(o.subtotal_amount || o.total_amount).toLocaleString("en-IN")}`,
-            tax: o.tax_amount ? `₹${parseFloat(o.tax_amount).toLocaleString("en-IN")}` : null,
-            shipping: "Charges Applicable",
-            grandTotal: `₹${parseFloat(o.total_amount).toLocaleString("en-IN")}`
-          },
-          items: o.items ? o.items.map((i: any) => ({
-            name: i.product ? i.product.name : "Unknown Product",
-            qty: i.qty,
-            seller: i.vendor ? i.vendor.business_name : "Assure Technologies",
-            price: `₹${parseFloat(i.price).toLocaleString("en-IN")}`,
-            image: i.product?.banner ? (i.product.banner.startsWith('http') || i.product.banner.startsWith('blob:') ? i.product.banner : `${BASE_URL.replace(/\/api$/, "")}${i.product.banner.startsWith('/') ? '' : '/'}${i.product.banner}`) : 'https://placehold.co/300x200?text=Product',
-            type: "product",
-            trackingId: i.tracking_id,
-            transportName: i.transport_name,
-            trackingUrl: i.tracking_url
-          })) : []
-        };
-        setOrderDetails(mapped);
-        setExtraItems(mapped.extraItems || []);
-        setLoading(false);
-      }).catch(err => {
-        console.error(err);
-        setLoading(false);
+      Promise.allSettled([
+        ordersApi.fetchOrderById(id),
+        getCustomerServiceBookings()
+      ]).then(([orderRes, serviceRes]) => {
+        
+        let sData = [];
+        if (serviceRes.status === 'fulfilled') {
+          sData = serviceRes.value.data?.data || serviceRes.value.data || [];
+        }
+        
+        const s = sData.find((x: any) => x.display_id === id || x.order_number === id || x.id === id);
+
+        if (s) {
+          const mappedService = {
+            id: s.display_id || s.order_number || s.id,
+            type: "service",
+            date: new Date(s.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+            total: (s.Order?.total_amount || s.total_amount) ? `₹${parseFloat(s.Order?.total_amount || s.total_amount).toLocaleString("en-IN")}` : '₹0',
+            shipTo: s.address?.line1 || userName || "Guest",
+            address: (() => {
+              if (typeof s.address === 'string') {
+                try {
+                  const p = JSON.parse(s.address);
+                  return `${p.line1 || p.line2 || ''}, ${p.city || ''}, ${p.state || ''} ${p.pincode || ''}`.replace(/^, /, '').replace(/, $/, '');
+                } catch (e) {
+                  return s.address;
+                }
+              }
+              return `${s.address?.line1 || ''}, ${s.address?.city || ''}`;
+            })(),
+            paymentMethod: "UPI", 
+            status: s.status,
+            isDroneService: (s.Service || s.service)?.service_owner_type === 'PARTNER',
+            summary: {
+              itemsSubtotal: (s.Order?.total_amount || s.total_amount) ? `₹${parseFloat(s.Order?.total_amount || s.total_amount).toLocaleString("en-IN")}` : '₹0',
+              grandTotal: (s.Order?.total_amount || s.total_amount) ? `₹${parseFloat(s.Order?.total_amount || s.total_amount).toLocaleString("en-IN")}` : '₹0',
+              prebookingPaid: (s.Order?.total_amount || s.total_amount) ? `₹${parseFloat(s.Order?.total_amount || s.total_amount).toLocaleString("en-IN")}` : '₹0' 
+            },
+            scheduledDate: s.scheduled_date ? new Date(s.scheduled_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : '',
+            scheduledTime: s.scheduled_time_slot || '09:00 AM - 11:00 AM', 
+            paymentStatus: s.payment_status === 'COMPLETED' ? 'Completed' : 'Pending',
+            items: [{
+              name: (s.Service || s.service)?.name || "Service Booking",
+              qty: 1,
+              seller: (s.Service || s.service)?.service_owner_type === 'PARTNER' ? 'Drone Partner' : 'Assure Services',
+              price: (s.Order?.total_amount || s.total_amount) ? `₹${parseFloat(s.Order?.total_amount || s.total_amount).toLocaleString("en-IN")}` : '₹0',
+              image: (s.Service || s.service)?.image ? ((s.Service || s.service).image.startsWith('http') || (s.Service || s.service).image.startsWith('blob:') ? (s.Service || s.service).image : `${BASE_URL.replace(/\/api$/, "")}${(s.Service || s.service).image.startsWith('/') ? '' : '/'}${(s.Service || s.service).image}`) : 'https://via.placeholder.com/150?text=Service',
+              type: "service",
+              returnStatus: (() => {
+                switch(s.status) {
+                  case 'NEW': return 'Waiting for admin approval';
+                  case 'ACCEPTED': return 'Accepted by admin, pending technician assignment';
+                  case 'ASSIGNED': return 'Technician assigned';
+                  case 'IN_PROGRESS': return 'Technician is currently working';
+                  case 'PENDING_APPROVAL': return 'Work completed, awaiting your approval';
+                  case 'COMPLETED': return 'Service completed successfully';
+                  case 'CANCELLED': return 'Cancelled by user';
+                  default: return s.status;
+                }
+              })()
+            }]
+          };
+          setOrderDetails(mappedService);
+          setExtraItems([]);
+          setLoading(false);
+        } else if (orderRes.status === 'fulfilled' && orderRes.value && orderRes.value.data) {
+          const o = orderRes.value.data;
+          const mapped = {
+            id: o.order_number || o.id,
+            date: new Date(o.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+            total: `₹${parseFloat(o.total_amount).toLocaleString("en-IN")}`,
+            shipTo: o.customer_name || (o.customer ? o.customer.full_name : "Guest"),
+            address: o.customer_address || "No address provided",
+            paymentMethod: "Online Payment", 
+            status: o.status,
+            companyName: o.company_name || null,
+            gstNumber: o.gst_number || null,
+            summary: {
+              itemsSubtotal: `₹${parseFloat(o.subtotal_amount || o.total_amount).toLocaleString("en-IN")}`,
+              tax: o.tax_amount ? `₹${parseFloat(o.tax_amount).toLocaleString("en-IN")}` : null,
+              shipping: "Charges Applicable",
+              grandTotal: `₹${parseFloat(o.total_amount).toLocaleString("en-IN")}`
+            },
+            items: o.items ? o.items.map((i: any) => ({
+              name: i.product ? i.product.name : "Unknown Product",
+              qty: i.qty,
+              seller: i.vendor ? i.vendor.business_name : "Assure Technologies",
+              price: `₹${parseFloat(i.price).toLocaleString("en-IN")}`,
+              image: i.product?.banner ? (i.product.banner.startsWith('http') || i.product.banner.startsWith('blob:') ? i.product.banner : `${BASE_URL.replace(/\/api$/, "")}${i.product.banner.startsWith('/') ? '' : '/'}${i.product.banner}`) : 'https://placehold.co/300x200?text=Product',
+              type: "product",
+              trackingId: i.tracking_id,
+              transportName: i.transport_name,
+              trackingUrl: i.tracking_url
+            })) : []
+          };
+          setOrderDetails(mapped);
+          setExtraItems((mapped as any).extraItems || []);
+          setLoading(false);
+        } else {
+          setOrderDetails(null);
+          setLoading(false);
+        }
       });
     }
-  }, [id]);
+  }, [id, userName]);
+
+
 
   if (loading) return <div style={{padding: "40px", textAlign: "center"}}>Loading...</div>;
   if (!orderDetails) return <div style={{padding: "40px", textAlign: "center"}}>Order not found.</div>;
 
-  const isService = orderDetails.id.startsWith("SRV") || orderDetails.id.startsWith("DRN");
-  const isDroneService = orderDetails.id.startsWith("DRN");
+  const isService = orderDetails.type === "service" || orderDetails.id.startsWith("SRV") || orderDetails.id.startsWith("DRN") || orderDetails.id.startsWith("SBK");
+  const isDroneService = orderDetails.isDroneService || orderDetails.id.startsWith("DRN");
 
   const handleApproveExtra = () => {
     setExtraItems(extraItems.map((item: any) => ({ ...item, status: 'approved' })));
@@ -247,6 +320,7 @@ export function OrderDetailsPage() {
             <div className="item-info">
               <Link to="#" className="item-name">{item.name} {item.qty > 1 ? `x${item.qty}` : ''}</Link>
               {!isService && <div className="item-price">{item.price}</div>}
+              {item.returnStatus && <div className="item-return-status" style={{ fontSize: '12px', color: '#565959', marginTop: '4px' }}>{item.returnStatus}</div>}
               {(item as any).trackingId && (
                 <div style={{ fontSize: '12px', color: '#007185', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
                   <FaTruck style={{ fontSize: '10px' }} /> {(item as any).transportName} - Tracking: {(item as any).trackingId}

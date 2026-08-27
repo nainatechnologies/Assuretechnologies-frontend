@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaSyncAlt, FaCheckCircle, FaTruck, FaClock, FaTimesCircle, FaBoxOpen, FaUndo, FaSpinner } from 'react-icons/fa';
 import { ordersApi } from '../api/ordersApi';
+import { getCustomerServiceBookings } from '../api/serviceBookingApi';
 import { useAuth } from '../context/AuthContext';
 import './OrdersPage.css';
 
@@ -40,16 +41,21 @@ export function OrdersPage() {
   const [activeTab, setActiveTab] = useState<'products' | 'services'>('products');
 
   
+  
   useEffect(() => {
-    ordersApi.fetchOrders().then(res => {
-      const mappedOrders = res.data.map((o: any) => ({
-        id: o.order_number,
+    Promise.all([
+      ordersApi.fetchOrders().catch(() => ({ data: [] })),
+      getCustomerServiceBookings().catch(() => ({ data: { data: [] } }))
+    ]).then(([ordersRes, servicesRes]) => {
+      
+      const mappedProducts = (ordersRes.data || []).map((o: any) => ({
+        id: o.order_number || o.id,
         rawId: o.id,
         date: new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
         total: `₹${parseFloat(o.total_amount).toLocaleString('en-IN')}`,
         shipTo: o.customer_name || (o.customer ? o.customer.full_name : 'Guest'),
         address: o.customer_address || 'No address provided',
-        type: 'product', // we assume product for now
+        type: 'product',
         status: o.status === 'NEW' ? 'Pending' : o.status === 'ACCEPTED' ? 'Accepted' : o.status === 'OUT_FOR_DELIVERY' ? 'Out for Delivery' : o.status === 'COMPLETED' ? 'Delivered' : o.status === 'CANCELLED' ? 'Cancelled' : o.status,
         transportName: o.transport_name,
         trackingId: o.tracking_id,
@@ -63,13 +69,44 @@ export function OrdersPage() {
           trackingUrl: i.tracking_url
         })) : []
       }));
-      setOrders(mappedOrders);
-      setLoading(false);
-    }).catch(err => {
-      console.error(err);
+
+      // The backend returns { success: true, data: { data: [...] } } or { success: true, data: [...] }
+      const sData = servicesRes.data?.data || servicesRes.data || [];
+      const mappedServices = sData.map((s: any) => ({
+        id: s.display_id || s.order_number || s.id,
+        rawId: s.id,
+        type: 'service',
+        status: s.status === 'NEW' ? 'Pending' : s.status === 'ACCEPTED' ? 'Accepted' : s.status === 'ASSIGNED' ? 'Assigned' : s.status === 'IN_PROGRESS' ? 'In Progress' : s.status === 'COMPLETED' ? 'Completed' : s.status === 'CANCELLED' ? 'Cancelled' : 'Pending',
+        paymentStatus: s.payment_status === 'COMPLETED' ? 'Completed' : 'Pending',
+        isDroneService: ((s.Service || s.service)?.name || '').toLowerCase().includes('drone'),
+        date: new Date(s.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        scheduledDate: s.scheduled_date ? new Date(s.scheduled_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+        scheduledTime: s.scheduled_time_slot || '',
+        shipTo: s.address?.line1 || userName || 'Guest',
+        items: [{
+          name: (s.Service || s.service)?.name || 'Service Booking',
+          qty: 1,
+          image: (s.Service || s.service)?.image ? ((s.Service || s.service).image.startsWith('http') || (s.Service || s.service).image.startsWith('blob:') ? (s.Service || s.service).image : `${BASE_URL.replace(/\/api$/, '')}${(s.Service || s.service).image.startsWith('/') ? '' : '/'}${(s.Service || s.service).image}`) : 'https://via.placeholder.com/150?text=Service',
+          returnStatus: (() => {
+              switch(s.status) {
+                case 'NEW': return 'Waiting for admin approval';
+                case 'ACCEPTED': return 'Accepted by admin, pending technician assignment';
+                case 'ASSIGNED': return 'Technician assigned';
+                case 'IN_PROGRESS': return 'Technician is currently working';
+                case 'PENDING_APPROVAL': return 'Work completed, awaiting your approval';
+                case 'COMPLETED': return 'Service completed successfully';
+                case 'CANCELLED': return 'Cancelled by user';
+                default: return s.status;
+              }
+            })()
+        }]
+      }));
+
+      setOrders([...mappedProducts, ...mappedServices]);
       setLoading(false);
     });
-  }, []);
+  }, [userName]);
+
 
 
   const handleInvoiceDownload = (e: React.MouseEvent) => {
@@ -132,6 +169,8 @@ export function OrdersPage() {
               </span>
               <div className="order-header-links">
                 <Link to={`/orders/${order.id}`} className="order-link">View order details</Link>
+                <span style={{ color: '#d5d9d9', margin: '0 8px' }}>|</span>
+                <button className="order-link" onClick={handleInvoiceDownload}>Invoice</button>
                 
                 {canCancel && (
                   <>
@@ -170,6 +209,9 @@ export function OrdersPage() {
                   <img src={item.image} alt={item.name} className="order-item-image" style={{ objectFit: 'cover' }} />
                   <div className="order-item-details">
                     <Link to={`/orders/${order.id}`} className="order-item-name">{item.name} {item.qty > 1 ? `x${item.qty}` : ''}</Link>
+                      {item.returnStatus && (
+                        <div style={{ fontSize: '13px', color: '#565959', marginTop: '4px' }}>{item.returnStatus}</div>
+                      )}
                     {item.trackingId && (
                       <span style={{ fontSize: '12px', color: '#007185', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
                         <FaTruck style={{fontSize: '10px'}} /> {item.transportName} - Tracking: {item.trackingId}

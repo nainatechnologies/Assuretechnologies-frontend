@@ -20,6 +20,9 @@
 /* ─── Brand ──────────────────────────────────────────────────────── */
 .nav-brand {
   flex-shrink: 0;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
 }
 
 /* Override logo text colors for dark navbar */
@@ -292,6 +295,23 @@
 .nav-dropdown-item:hover {
   background: #f0f4ff;
   color: #0d47a1;
+}
+
+.nav-dropdown-divider {
+  border-top: 1px solid #e2e8f0;
+  margin: 5px 0;
+}
+
+.nav-dropdown-btn {
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nav-download-icon {
+  margin-right: 8px;
 }
 
 /* ─── Mobile Bottom Nav (Hidden on Desktop) ──────────────────────── */
