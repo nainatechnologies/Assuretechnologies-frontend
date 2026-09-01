@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { FaMapMarkerAlt, FaBriefcase, FaClock } from 'react-icons/fa';
 import axios from 'axios';
+import { SEOHead } from './SEOHead';
+import { StructuredData } from './StructuredData';
 import './CareersPage.css';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000') + '/api';
@@ -50,45 +52,61 @@ export function CareersPage() {
   if (error) return <div className="careers-container"><div className="careers-header"><p style={{ color: 'red' }}>{error}</p></div></div>;
 
   return (
-    <div className="careers-container">
-      <div className="careers-header">
-        <h1>Open Positions at Assure Tech</h1>
-      </div>
+    <>
+      <SEOHead 
+        title="Careers & Engineering Openings"
+        description="Join Assure Technologies. Explore field engineering, certified drone pilot, solar installation, and enterprise IT support career opportunities."
+        canonicalUrl="https://assuretechnologies.com/career"
+      />
+      <StructuredData 
+        type="breadcrumb"
+        data={{
+          items: [
+            { name: 'Home', url: 'https://assuretechnologies.com/' },
+            { name: 'Careers', url: 'https://assuretechnologies.com/career' }
+          ]
+        }}
+      />
+      <div className="careers-container">
+        <div className="careers-header">
+          <h1>Open Positions at Assure Tech</h1>
+        </div>
 
-      <div className="careers-layout">
-        <main className="careers-main">
-          {jobs.length === 0 ? (
-            <div className="no-jobs-found">
-              <p>No open positions at the moment. Check back soon!</p>
-            </div>
-          ) : (
-            Object.entries(groupedJobs).map(([dept, deptJobs]) => (
-              <div key={dept} className="department-group">
-                <h2 className="department-title">
-                  {dept} <span className="job-count">{deptJobs.length} jobs</span>
-                </h2>
-                <div className="jobs-grid">
-                  {deptJobs.map(job => (
-                    <Link to={`/career/jobdetails/${(job as any).jobCode || job.id}`} key={job.id} className="job-card">
-                      <div className="job-title">
-                        {job.title}
-                        <span className="job-posted">
-                          {job.postedDate ? new Date(job.postedDate).toLocaleDateString() : 'Recently'}
-                        </span>
-                      </div>
-                      <div className="job-details">
-                        {job.location && <span className="job-badge"><FaMapMarkerAlt /> {job.location}</span>}
-                        {job.experience && <span className="job-badge"><FaBriefcase /> {job.experience}</span>}
-                        {job.employmentType && <span className="job-badge"><FaClock /> {job.employmentType}</span>}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+        <div className="careers-layout">
+          <main className="careers-main">
+            {jobs.length === 0 ? (
+              <div className="no-jobs-found">
+                <p>No open positions at the moment. Check back soon!</p>
               </div>
-            ))
-          )}
-        </main>
+            ) : (
+              Object.entries(groupedJobs).map(([dept, deptJobs]) => (
+                <div key={dept} className="department-group">
+                  <h2 className="department-title">
+                    {dept} <span className="job-count">{deptJobs.length} jobs</span>
+                  </h2>
+                  <div className="jobs-grid">
+                    {deptJobs.map(job => (
+                      <Link to={`/career/jobdetails/${(job as any).jobCode || job.id}`} key={job.id} className="job-card">
+                        <div className="job-title">
+                          {job.title}
+                          <span className="job-posted">
+                            {job.postedDate ? new Date(job.postedDate).toLocaleDateString() : 'Recently'}
+                          </span>
+                        </div>
+                        <div className="job-details">
+                          {job.location && <span className="job-badge"><FaMapMarkerAlt /> {job.location}</span>}
+                          {job.experience && <span className="job-badge"><FaBriefcase /> {job.experience}</span>}
+                          {job.employmentType && <span className="job-badge"><FaClock /> {job.employmentType}</span>}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </main>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

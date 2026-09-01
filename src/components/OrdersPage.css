@@ -456,6 +456,12 @@
 }
 
 /* New Service Statuses - Solid */
+.status-solid-payment-pending {
+  background-color: #d97706;
+  color: #ffffff;
+  border-color: #d97706;
+}
+
 .status-solid-pending {
   background-color: #b45309;
   color: #ffffff;

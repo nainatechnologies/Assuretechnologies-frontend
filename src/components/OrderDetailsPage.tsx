@@ -109,7 +109,7 @@ export function OrderDetailsPage() {
             } : null
           };
 
-          const mappedExtra = (s.extra_items || []).map((item) => ({
+          const mappedExtra = (s.extra_items || []).map((item: any) => ({
             id: item.id,
             description: item.description,
             qty: item.qty,
@@ -137,7 +137,7 @@ export function OrderDetailsPage() {
               shipping: "Charges Applicable",
               grandTotal: '₹' + parseFloat(o.total_amount).toLocaleString("en-IN")
             },
-            items: o.items ? o.items.map((i) => ({
+            items: o.items ? o.items.map((i: any) => ({
               name: i.product ? i.product.name : "Unknown Product",
               qty: i.qty,
               seller: i.vendor ? i.vendor.business_name : "Assure Technologies",
@@ -150,7 +150,7 @@ export function OrderDetailsPage() {
             })) : []
           };
           setOrderDetails(mapped);
-          setExtraItems(mapped.extraItems || []);
+          setExtraItems([]);
           setLoading(false);
         } else {
           setOrderDetails(null);
@@ -166,32 +166,32 @@ export function OrderDetailsPage() {
   const isService = orderDetails.type === "service" || orderDetails.id.startsWith("SRV") || orderDetails.id.startsWith("DRN") || orderDetails.id.startsWith("SBK");
   const isDroneService = orderDetails.isDroneService || orderDetails.id.startsWith("DRN");
 
-  const handleApproveExtra = async (item) => {
+  const handleApproveExtra = async (item: any) => {
     try {
-      const bookingId = orderDetails.rawId || orderDetails.id;
+      const bookingId = (orderDetails as any).rawId || orderDetails.id;
       await updateExtraItemStatus(bookingId, item.id, 'APPROVED');
-      setExtraItems(prev => prev.map((i) => i.id === item.id ? { ...i, status: 'approved' } : i));
+      setExtraItems(prev => prev.map((i: any) => i.id === item.id ? { ...i, status: 'approved' } : i));
       alert("Extra item '" + item.description + "' approved successfully!");
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       alert('Failed to approve extra item: ' + (err.response?.data?.message || err.message));
     }
   };
 
-  const handleDeclineExtra = async (item) => {
+  const handleDeclineExtra = async (item: any) => {
     try {
-      const bookingId = orderDetails.rawId || orderDetails.id;
+      const bookingId = (orderDetails as any).rawId || orderDetails.id;
       await updateExtraItemStatus(bookingId, item.id, 'REJECTED');
-      setExtraItems(prev => prev.map((i) => i.id === item.id ? { ...i, status: 'declined' } : i));
+      setExtraItems(prev => prev.map((i: any) => i.id === item.id ? { ...i, status: 'declined' } : i));
       alert("Extra item '" + item.description + "' declined.");
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       alert('Failed to decline extra item: ' + (err.response?.data?.message || err.message));
     }
   };
 
-  const pendingExtraItems = extraItems.filter((i) => i.status === 'pending');
-  const approvedExtraItems = extraItems.filter((i) => i.status === 'approved');
+  const pendingExtraItems = extraItems.filter((i: any) => i.status === 'pending');
+  const approvedExtraItems = extraItems.filter((i: any) => i.status === 'approved');
 
   return (
     <div className="order-details-container">
@@ -340,7 +340,7 @@ export function OrderDetailsPage() {
 
       <div className="item-details-card">
         <h2 className="item-title">{orderDetails.items.length} item{orderDetails.items.length !== 1 ? 's' : ''}</h2>
-        {orderDetails.items.map((item, index) => (
+        {orderDetails.items.map((item: any, index: number) => (
           <div className="item-flex" key={index} style={{ marginBottom: index !== orderDetails.items.length - 1 ? '30px' : '0' }}>
             <img src={item.image} alt={item.name} className="item-img" />
             <div className="item-info">
@@ -357,32 +357,32 @@ export function OrderDetailsPage() {
         ))}
       </div>
 
-      {isService && (orderDetails).progress && (
+      {isService && (orderDetails as any).progress && (
         <div className="details-card" style={{ marginTop: '20px' }}>
           <h2 className="item-title" style={{ padding: '0 20px', paddingTop: '20px' }}>Technician Progress</h2>
           <div className="info-grid">
 
-            {(orderDetails).progress.startPhotos?.length > 0 && (
+            {(orderDetails as any).progress.startPhotos?.length > 0 && (
               <div className="info-col" style={{ gridColumn: '1 / -1' }}>
                 <h3>Start Work Info</h3>
-                {(orderDetails).progress.startDescription && (
+                {(orderDetails as any).progress.startDescription && (
                   <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '4px', borderLeft: '4px solid #3b82f6', marginTop: '10px' }}>
-                    <div style={{ fontSize: '14px', color: '#334155' }}>{(orderDetails).progress.startDescription}</div>
+                    <div style={{ fontSize: '14px', color: '#334155' }}>{(orderDetails as any).progress.startDescription}</div>
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                  {(orderDetails).progress.startPhotos.map((img, i) => (
+                  {(orderDetails as any).progress.startPhotos.map((img: string, i: number) => (
                     <img key={i} src={img} alt={'Start work ' + i} style={{ width: '120px', height: '90px', objectFit: 'cover', borderRadius: '4px' }} />
                   ))}
                 </div>
               </div>
             )}
 
-            {(orderDetails).progress.dailyUpdates?.length > 0 && (
+            {(orderDetails as any).progress.dailyUpdates?.length > 0 && (
               <div className="info-col" style={{ gridColumn: '1 / -1', marginTop: '10px' }}>
                 <h3>Work Updates</h3>
                 <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {(orderDetails).progress.dailyUpdates.map((update, i) => (
+                  {(orderDetails as any).progress.dailyUpdates.map((update: any, i: number) => (
                     <div key={i} style={{ padding: '12px', background: '#f8fafc', borderRadius: '4px', borderLeft: '4px solid #10b981' }}>
                       <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>{update.date}</div>
                       <div style={{ fontSize: '14px', color: '#334155' }}>{update.text}</div>
@@ -392,11 +392,11 @@ export function OrderDetailsPage() {
               </div>
             )}
 
-            {(orderDetails).progress.completedPhotos?.length > 0 && (
+            {(orderDetails as any).progress.completedPhotos?.length > 0 && (
               <div className="info-col" style={{ gridColumn: '1 / -1', marginTop: '10px' }}>
                 <h3>Completed Photos</h3>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                  {(orderDetails).progress.completedPhotos.map((img, i) => (
+                  {(orderDetails as any).progress.completedPhotos.map((img: string, i: number) => (
                     <img key={i} src={img} alt={'Completed work ' + i} style={{ width: '120px', height: '90px', objectFit: 'cover', borderRadius: '4px' }} />
                   ))}
                 </div>

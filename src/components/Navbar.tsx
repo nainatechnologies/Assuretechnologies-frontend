@@ -85,8 +85,8 @@ function SearchBar({ isMobile }: { isMobile?: boolean }) {
   };
 
   return (
-    <div className={`nav-search ${isMobile ? 'mobile-search' : ''}`} ref={wrapperRef}>
-      <form onSubmit={handleSearch} className="search-form">
+    <div className={`nav-search-wrapper ${isMobile ? 'mobile' : ''}`} ref={wrapperRef}>
+      <form onSubmit={handleSearch} className={isMobile ? 'nav-search-bar-mobile' : 'nav-search-bar'}>
         <input
           type="text"
           placeholder="Search products or services..."
@@ -99,20 +99,20 @@ function SearchBar({ isMobile }: { isMobile?: boolean }) {
             if (query.trim()) setShowSuggestions(true);
           }}
           onKeyDown={handleKeyDown}
-          className="search-input"
+          className="nav-search-input"
           aria-label="Search products and services"
         />
-        <button type="submit" className="search-btn" aria-label="Submit search">
+        <button type="submit" className="nav-search-btn" aria-label="Submit search">
           <FaSearch />
         </button>
       </form>
 
       {showSuggestions && suggestions.length > 0 && (
-        <ul className="suggestions-dropdown" role="listbox">
+        <ul className="search-autocomplete-dropdown" role="listbox">
           {suggestions.map((item, index) => (
             <li
               key={index}
-              className={`suggestion-item ${index === highlightedIndex ? 'highlighted' : ''}`}
+              className={`search-suggestion-item ${index === highlightedIndex ? 'highlighted' : ''}`}
               onClick={() => {
                 setQuery(item);
                 handleSearch(undefined, item);
@@ -121,8 +121,8 @@ function SearchBar({ isMobile }: { isMobile?: boolean }) {
               role="option"
               aria-selected={index === highlightedIndex}
             >
-              <FaSearch className="suggestion-icon" />
-              <span>{item}</span>
+              <FaSearch className="suggestion-search-icon" />
+              <span className="suggestion-text">{item}</span>
             </li>
           ))}
         </ul>
@@ -165,58 +165,61 @@ export function Navbar() {
 
         <div className={`nav-actions ${isMobileMenuOpen ? 'is-open' : ''}`}>
 
-          {/* Profile Dropdown */}
-          <div 
-            className="nav-dropdown-wrapper" 
-            ref={dropdownRef} 
-            onMouseEnter={() => setIsDropdownOpen(true)} 
-            onMouseLeave={() => setIsDropdownOpen(false)}
-          >
-            <button 
-              className={`nav-action-item ${isDropdownOpen ? 'active' : ''}`}
-              onClick={() => setIsDropdownOpen(prev => !prev)}
-              aria-expanded={isDropdownOpen}
-              aria-label="Profile"
+          {/* Profile / Login */}
+          {isLoggedIn ? (
+            <div 
+              className="nav-dropdown-wrapper" 
+              ref={dropdownRef} 
+              onMouseEnter={() => setIsDropdownOpen(true)} 
+              onMouseLeave={() => setIsDropdownOpen(false)}
+            >
+              <button 
+                className={`nav-action-item ${isDropdownOpen ? 'active' : ''}`}
+                onClick={() => setIsDropdownOpen(prev => !prev)}
+                aria-expanded={isDropdownOpen}
+                aria-label="Profile"
+              >
+                <FaUserCircle className="action-icon" />
+                <span className="action-text">{userName ? userName.split(' ')[0] : 'Account'}</span>
+              </button>
+
+              {isDropdownOpen && (
+                <div className="nav-dropdown-menu">
+                  <Link to="/profile" className="nav-dropdown-item" onClick={() => { setIsDropdownOpen(false); setIsMobileMenuOpen(false); }}>
+                    My Profile
+                  </Link>
+                  <Link to="/orders" className="nav-dropdown-item" onClick={() => { setIsDropdownOpen(false); setIsMobileMenuOpen(false); }}>
+                    My Orders
+                  </Link>
+                  <div className="nav-dropdown-divider" />
+                  <button 
+                    className="nav-dropdown-item logout-btn" 
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      setIsMobileMenuOpen(false);
+                      logout();
+                      navigate('/');
+                    }}
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link 
+              to="/login" 
+              className="nav-action-item" 
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                setIsDropdownOpen(false);
+              }}
+              aria-label="Login"
             >
               <FaUserCircle className="action-icon" />
-              <span className="action-text">{isLoggedIn && userName ? userName.split(' ')[0] : 'Login'}</span>
-            </button>
-
-            {isDropdownOpen && (
-              <div className="nav-dropdown-menu">
-                {isLoggedIn ? (
-                  <>
-                    <Link to="/profile" className="nav-dropdown-item" onClick={() => setIsDropdownOpen(false)}>
-                      My Profile
-                    </Link>
-                    <Link to="/orders" className="nav-dropdown-item" onClick={() => setIsDropdownOpen(false)}>
-                      My Orders
-                    </Link>
-                    <div className="nav-dropdown-divider" />
-                    <button 
-                      className="nav-dropdown-item logout-btn" 
-                      onClick={() => {
-                        setIsDropdownOpen(false);
-                        logout();
-                        navigate('/');
-                      }}
-                    >
-                      Logout
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link to="/login" className="nav-dropdown-item" onClick={() => setIsDropdownOpen(false)}>
-                      Login
-                    </Link>
-                    <Link to="/register" className="nav-dropdown-item" onClick={() => setIsDropdownOpen(false)}>
-                      Register
-                    </Link>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+              <span className="action-text">Login</span>
+            </Link>
+          )}
 
           <Link className="nav-action-item desktop-cart" to="/cart">
             <div className="cart-icon-wrapper">
@@ -233,9 +236,7 @@ export function Navbar() {
         </div>
       </div>
 
-      <div className="nav-mobile-search-row">
-        <SearchBar isMobile />
-      </div>
+      <SearchBar isMobile />
 
       <div className="mobile-bottom-nav">
         {BOTTOM_NAV.map((item) => {

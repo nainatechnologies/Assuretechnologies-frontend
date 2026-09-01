@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
 
 interface AuthContextType {
   isLoggedIn: boolean;
@@ -11,8 +11,6 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Try to load from localStorage initially
-  // If a placeholder token was stored previously (dev artifact), remove it.
   const rawToken = localStorage.getItem('authToken');
   if (rawToken === 'auth-cookie-set') {
     localStorage.removeItem('authToken');
@@ -22,22 +20,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const isLoggedIn = !!token;
 
-  const login = (newToken: string, newUserName: string) => {
+  const login = useCallback((newToken: string, newUserName: string) => {
     localStorage.setItem('authToken', newToken);
     localStorage.setItem('userName', newUserName);
     setToken(newToken);
     setUserName(newUserName);
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('userName');
     setToken(null);
     setUserName(null);
-  };
+  }, []);
+
+  const value = useMemo(() => ({
+    isLoggedIn,
+    userName,
+    token,
+    login,
+    logout
+  }), [isLoggedIn, userName, token, login, logout]);
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, userName, token, login, logout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

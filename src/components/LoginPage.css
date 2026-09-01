@@ -39,10 +39,13 @@
 
 .auth-input {
   width: 100%;
-  padding: 10px 12px;
+  height: 46px;
+  min-height: 46px;
+  padding: 0 12px;
   border: 1px solid #b7bfc9;
   border-radius: 8px;
   font-size: 1rem;
+  line-height: 44px;
   color: #334155;
   outline: none;
   transition: all 0.2s;
@@ -71,7 +74,7 @@
 .auth-password-toggle {
   position: absolute;
   right: 14px;
-  top: 21px; /* changed from 50% so it stays aligned with input when error text appears */
+  top: 23px; /* centered in 46px input */
   transform: translateY(-50%);
   background: none;
   border: none;
