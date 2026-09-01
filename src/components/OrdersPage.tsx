@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaSyncAlt, FaCheckCircle, FaTruck, FaClock, FaTimesCircle, FaBoxOpen, FaUndo, FaSpinner } from 'react-icons/fa';
 import { ordersApi } from '../api/ordersApi';
-import { getCustomerServiceBookings } from '../api/serviceBookingApi';
+import { getCustomerServiceBookings, cancelServiceBooking, acceptServiceBookingWork } from '../api/serviceBookingApi';
 import { useAuth } from '../context/AuthContext';
 import './OrdersPage.css';
 
@@ -76,9 +76,9 @@ export function OrdersPage() {
         id: s.display_id || s.order_number || s.id,
         rawId: s.id,
         type: 'service',
-        status: s.status === 'NEW' ? 'Pending' : s.status === 'ACCEPTED' ? 'Accepted' : s.status === 'ASSIGNED' ? 'Assigned' : s.status === 'IN_PROGRESS' ? 'In Progress' : s.status === 'COMPLETED' ? 'Completed' : s.status === 'CANCELLED' ? 'Cancelled' : 'Pending',
+        status: s.status === 'NEW' ? 'Pending' : s.status === 'ACCEPTED' ? 'Accepted' : s.status === 'ASSIGNED' ? 'Assigned' : s.status === 'IN_PROGRESS' ? 'In Progress' : (s.status === 'PENDING_APPROVAL' || s.status === 'AWAITING_APPROVAL' || s.status === 'Awaiting Approval') ? 'Awaiting Approval' : s.status === 'COMPLETED' ? 'Completed' : s.status === 'CANCELLED' ? 'Cancelled' : (s.status || 'Pending'),
         paymentStatus: s.payment_status === 'COMPLETED' ? 'Completed' : 'Pending',
-        isDroneService: ((s.Service || s.service)?.name || '').toLowerCase().includes('drone'),
+        isPartnerService: (s.Service || s.service)?.service_owner_type === 'PARTNER',
         date: new Date(s.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
         scheduledDate: s.scheduled_date ? new Date(s.scheduled_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
         scheduledTime: s.scheduled_time_slot || '',
@@ -114,20 +114,37 @@ export function OrdersPage() {
     alert('Invoice download started...');
   };
 
-  const handleCancelOrder = (orderId: string) => {
-    ordersApi.cancelOrder(orderId).then(() => {
-      alert(`Order ${orderId} cancelled successfully!`);
+    const handleCancelOrder = (order: any) => {
+    let reason = '';
+    if (order.type === 'service') {
+      const userReason = window.prompt("Are you sure you want to cancel this service? Please enter a reason (optional):");
+      if (userReason === null) return; // User clicked Cancel on the prompt
+      reason = userReason;
+    }
+
+    const cancelPromise = order.type === 'service'
+      ? cancelServiceBooking(order.rawId || order.id, reason)
+      : ordersApi.cancelOrder(order.id);
+
+    cancelPromise.then(() => {
+      alert(`${order.type === 'service' ? 'Service' : 'Order'} ${order.id} cancelled successfully!`);
       // Update local state to reflect cancellation
-      setOrders(orders.map(o => o.id === orderId ? { ...o, status: 'Cancelled' } : o));
+      setOrders(orders.map(o => o.id === order.id ? { ...o, status: 'Cancelled' } : o));
     }).catch(err => {
       console.error(err);
-      alert('Failed to cancel order: ' + (err.response?.data?.message || err.message));
+      alert(`Failed to cancel ${order.type === 'service' ? 'service' : 'order'}: ` + (err.response?.data?.message || err.message));
     });
   };
 
-  const handleAcceptWork = (orderId: string) => {
-    alert(`Service ${orderId} work accepted!`);
-    setOrders(orders.map(o => o.id === orderId ? { ...o, status: 'Completed' } : o));
+  const handleAcceptWork = (order: any) => {
+    const bookingId = order.rawId || order.id;
+    acceptServiceBookingWork(bookingId).then(() => {
+      alert(`Service ${order.id} work accepted successfully!`);
+      setOrders(orders.map(o => o.id === order.id ? { ...o, status: 'Completed' } : o));
+    }).catch(err => {
+      console.error(err);
+      alert('Failed to accept work: ' + (err.response?.data?.message || err.message));
+    });
   };
 
   const renderOrder = (order: any, index: number) => {
@@ -140,7 +157,7 @@ export function OrdersPage() {
 
     return (
       <div key={`${order.id}-${index}`} className="order-card">
-        <div className={`order-header header-solid status-solid-${order.status.replace(/\s+/g, '-').toLowerCase()}`}>
+        <div className={`order-header header-solid status-solid-${(order.status || 'pending').replace(/\s+/g, '-').toLowerCase()}`}>
           <div className="order-header-left">
             <div className="order-header-col">
               <span className="order-header-label">{isService ? getServiceDateLabel(order.status) : 'Order Placed'}</span>
@@ -165,7 +182,7 @@ export function OrdersPage() {
             <div className="order-header-col">
               <span className="order-header-label" style={{ color: '#565959', fontWeight: '400', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
                 ORDER # {order.id}
-                {order.isDroneService && <span style={{ background: 'rgba(255, 255, 255, 0.25)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.5)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>DRONE SERVICE</span>}
+                {order.isPartnerService && <span style={{ background: 'rgba(255, 255, 255, 0.25)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.5)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>{(order.items?.[0]?.name || 'PARTNER SERVICE').toUpperCase()}</span>}
               </span>
               <div className="order-header-links">
                 <Link to={`/orders/${order.id}`} className="order-link">View order details</Link>
@@ -174,11 +191,11 @@ export function OrdersPage() {
                 
                 {canCancel && (
                   <>
-                    <span style={{ color: '#d5d9d9' }}>|</span>
+                    <span style={{ color: '#d5d9d9', margin: '0 8px' }}>|</span>
                     <button
                       className="order-link"
                       style={{ color: '#c5221f' }}
-                      onClick={() => handleCancelOrder(order.id)}
+                      onClick={() => handleCancelOrder(order)}
                     >
                       Cancel {isService ? 'service' : 'order'}
                     </button>
@@ -186,11 +203,11 @@ export function OrdersPage() {
                 )}
                 {canAcceptWork && (
                   <>
-                    <span style={{ color: '#d5d9d9' }}>|</span>
+                    <span style={{ color: '#d5d9d9', margin: '0 8px' }}>|</span>
                     <button
                       className="order-link"
-                      style={{ color: '#10b981', fontWeight: 'bold' }}
-                      onClick={() => handleAcceptWork(order.id)}
+                      style={{ color: '#ffffff', fontWeight: 'bold' }}
+                      onClick={() => handleAcceptWork(order)}
                     >
                       Accept Work
                     </button>
