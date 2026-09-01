@@ -150,7 +150,7 @@ export function OrderDetailsPage() {
             })) : []
           };
           setOrderDetails(mapped);
-          setExtraItems((mapped as any).extraItems || []);
+          setExtraItems(mapped.extraItems || []);
           setLoading(false);
         } else {
           setOrderDetails(null);
