@@ -29,6 +29,11 @@ export interface ServiceBookingResponse {
   requires_payment?: boolean;
 }
 
+export type CustomerActionPayload =
+  | { action: 'ACCEPT_WORK' }
+  | { action: 'CANCEL'; reason?: string }
+  | { action: 'UPDATE_EXTRA_ITEM'; item_id: string; status: 'APPROVED' | 'REJECTED' };
+
 export const createServiceBooking = async (payload: CreateServiceBookingPayload) => {
   const response = await axiosInstance.post('/customer/service-bookings', payload);
   return response.data as ServiceBookingResponse;
@@ -46,14 +51,30 @@ export const verifyServiceBookingPayment = async (
   return response.data;
 };
 
-export const getCustomerServiceBookings = async () => {
-  const response = await axiosInstance.get('/customer/service-bookings');
+export const getCustomerServiceBookings = async (bookingId?: string) => {
+  const url = bookingId ? '/customer/service-bookings/' + bookingId : '/customer/service-bookings';
+  const response = await axiosInstance.get(url);
   return response.data;
 };
 
-export const cancelServiceBooking = async (bookingId: string) => {
-  const response = await axiosInstance.put(`/customer/service-bookings/${bookingId}/status`, {
-    status: 'CANCELLED'
+export const handleCustomerAction = async (bookingId: string, payload: CustomerActionPayload) => {
+  const response = await axiosInstance.patch('/customer/service-bookings/' + bookingId + '/action', payload);
+  return response.data;
+};
+
+export const acceptServiceBookingWork = async (bookingId: string) => {
+  return handleCustomerAction(bookingId, { action: 'ACCEPT_WORK' });
+};
+
+export const updateExtraItemStatus = async (bookingId: string, itemId: string, status: 'APPROVED' | 'REJECTED') => {
+  return handleCustomerAction(bookingId, { action: 'UPDATE_EXTRA_ITEM', item_id: itemId, status });
+};
+
+export const cancelServiceBooking = async (bookingId: string, reason: string = 'No reason provided') => {
+  const response = await axiosInstance.patch('/customer/service-bookings/' + bookingId + '/action', {
+    action: 'CANCEL',
+    reason: reason
   });
   return response.data;
 };
+
