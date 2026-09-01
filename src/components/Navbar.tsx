@@ -5,6 +5,7 @@ import { Logo } from './Logo';
 import { PRODUCTS } from '../data/products';
 import { useServices } from '../hooks/useServices';
 import { useClickOutside } from '../hooks/useClickOutside';
+import type { BackendService } from '../api/servicesApi';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import './Navbar.css';
@@ -34,7 +35,7 @@ function SearchBar({ isMobile }: { isMobile?: boolean }) {
     const q = query.toLowerCase();
     const phrases = new Set<string>();
 
-    services.forEach(s => {
+    services.forEach((s: BackendService) => {
       phrases.add(s.name.toLowerCase());
       if (s.category?.name) phrases.add(`${s.category.name.toLowerCase()} services`);
     });
@@ -60,55 +61,71 @@ function SearchBar({ isMobile }: { isMobile?: boolean }) {
 
   const handleSearch = (e?: React.FormEvent, submitQuery = query) => {
     if (e) e.preventDefault();
-    setShowSuggestions(false);
-    const params = new URLSearchParams();
-    if (submitQuery.trim()) params.set('q', submitQuery.trim());
-    navigate(`/order-products?${params.toString()}`);
+    if (submitQuery.trim()) {
+      setShowSuggestions(false);
+      navigate(`/search?q=${encodeURIComponent(submitQuery.trim())}`);
+    }
   };
 
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (!showSuggestions) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlightedIndex(i => Math.min(i + 1, suggestions.length - 1)); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlightedIndex(i => Math.max(i - 1, -1)); }
-    else if (e.key === 'Enter' && highlightedIndex >= 0) { e.preventDefault(); setQuery(suggestions[highlightedIndex]); handleSearch(undefined, suggestions[highlightedIndex]); }
-    else if (e.key === 'Escape') setShowSuggestions(false);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex(prev => (prev > 0 ? prev - 1 : suggestions.length - 1));
+    } else if (e.key === 'Enter' && highlightedIndex >= 0) {
+      e.preventDefault();
+      setQuery(suggestions[highlightedIndex]);
+      handleSearch(undefined, suggestions[highlightedIndex]);
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+    }
   };
 
   return (
-    <div className={`nav-search-wrapper ${isMobile ? 'mobile' : ''}`} ref={wrapperRef}>
-      <form className={isMobile ? 'nav-search-bar-mobile' : 'nav-search-bar'} onSubmit={handleSearch}>
+    <div className={`nav-search ${isMobile ? 'mobile-search' : ''}`} ref={wrapperRef}>
+      <form onSubmit={handleSearch} className="search-form">
         <input
-          className="nav-search-input"
           type="text"
-          placeholder={isMobile ? 'Search for products, services...' : 'Search for products, services and more...'}
+          placeholder="Search products or services..."
           value={query}
-          onChange={e => setQuery(e.target.value)}
-          onFocus={() => { if (query) setShowSuggestions(true); }}
-          onKeyDown={onKeyDown}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setShowSuggestions(true);
+          }}
+          onFocus={() => {
+            if (query.trim()) setShowSuggestions(true);
+          }}
+          onKeyDown={handleKeyDown}
+          className="search-input"
+          aria-label="Search products and services"
         />
-        <button className="nav-search-btn" type="submit" aria-label="Search"><FaSearch /></button>
+        <button type="submit" className="search-btn" aria-label="Submit search">
+          <FaSearch />
+        </button>
       </form>
 
       {showSuggestions && suggestions.length > 0 && (
-        <div className="search-autocomplete-dropdown">
-          {suggestions.map((s, i) => {
-            const idx = s.indexOf(query.toLowerCase());
-            return (
-              <div
-                key={s}
-                className={`search-suggestion-item ${i === highlightedIndex ? 'highlighted' : ''}`}
-                onClick={() => { setQuery(s); handleSearch(undefined, s); }}
-              >
-                <FaSearch className="suggestion-search-icon" />
-                <span className="suggestion-text">
-                  {idx > 0 && <strong>{s.slice(0, idx)}</strong>}
-                  {s.slice(idx, idx + query.length)}
-                  {idx + query.length < s.length && <strong>{s.slice(idx + query.length)}</strong>}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+        <ul className="suggestions-dropdown" role="listbox">
+          {suggestions.map((item, index) => (
+            <li
+              key={index}
+              className={`suggestion-item ${index === highlightedIndex ? 'highlighted' : ''}`}
+              onClick={() => {
+                setQuery(item);
+                handleSearch(undefined, item);
+              }}
+              onMouseEnter={() => setHighlightedIndex(index)}
+              role="option"
+              aria-selected={index === highlightedIndex}
+            >
+              <FaSearch className="suggestion-icon" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
@@ -125,8 +142,6 @@ export function Navbar() {
 
   useClickOutside(dropdownRef, useCallback(() => setIsDropdownOpen(false), []));
   useEffect(() => { setIsMobileMenuOpen(false); }, [pathname]);
-
-  const closeDropdown = () => setIsDropdownOpen(false);
 
   return (
     <nav className="nav-container">
@@ -151,10 +166,15 @@ export function Navbar() {
         <div className={`nav-actions ${isMobileMenuOpen ? 'is-open' : ''}`}>
 
           {/* Profile Dropdown */}
-          <div className="nav-dropdown-wrapper" ref={dropdownRef} onMouseEnter={() => setIsDropdownOpen(true)} onMouseLeave={() => setIsDropdownOpen(false)}>
-            <button
-              className="nav-action-item"
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+          <div 
+            className="nav-dropdown-wrapper" 
+            ref={dropdownRef} 
+            onMouseEnter={() => setIsDropdownOpen(true)} 
+            onMouseLeave={() => setIsDropdownOpen(false)}
+          >
+            <button 
+              className={`nav-action-item ${isDropdownOpen ? 'active' : ''}`}
+              onClick={() => setIsDropdownOpen(prev => !prev)}
               aria-expanded={isDropdownOpen}
               aria-label="Profile"
             >
@@ -166,50 +186,74 @@ export function Navbar() {
               <div className="nav-dropdown-menu">
                 {isLoggedIn ? (
                   <>
-                    <Link to="/profile" className="nav-dropdown-item" onClick={closeDropdown}>My Profile</Link>
-                    <Link to="/orders" className="nav-dropdown-item" onClick={closeDropdown}>My Orders</Link>
+                    <Link to="/profile" className="nav-dropdown-item" onClick={() => setIsDropdownOpen(false)}>
+                      My Profile
+                    </Link>
+                    <Link to="/orders" className="nav-dropdown-item" onClick={() => setIsDropdownOpen(false)}>
+                      My Orders
+                    </Link>
                     <div className="nav-dropdown-divider" />
-                    <button className="nav-dropdown-item nav-dropdown-btn" onClick={() => { closeDropdown(); logout(); navigate('/'); }}>Logout</button>
+                    <button 
+                      className="nav-dropdown-item logout-btn" 
+                      onClick={() => {
+                        setIsDropdownOpen(false);
+                        logout();
+                        navigate('/');
+                      }}
+                    >
+                      Logout
+                    </button>
                   </>
                 ) : (
                   <>
-                    <Link to="/login" className="nav-dropdown-item" onClick={closeDropdown}>Login</Link>
-                    <Link to="/register" className="nav-dropdown-item" onClick={closeDropdown}>Register</Link>
+                    <Link to="/login" className="nav-dropdown-item" onClick={() => setIsDropdownOpen(false)}>
+                      Login
+                    </Link>
+                    <Link to="/register" className="nav-dropdown-item" onClick={() => setIsDropdownOpen(false)}>
+                      Register
+                    </Link>
                   </>
                 )}
               </div>
             )}
           </div>
 
-          <div className="nav-divider" />
-
-          <Link className="nav-action-item cart-btn" to="/cart" aria-label="Cart">
+          <Link className="nav-action-item desktop-cart" to="/cart">
             <div className="cart-icon-wrapper">
               <FaShoppingCart className="action-icon" />
               {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
             </div>
-            <span className="action-text">My Cart</span>
+            <span className="action-text">Cart</span>
           </Link>
 
-          <Link className="nav-download-btn" to="/download-app">
-            <FaDownload className="nav-download-icon" /> Download App
-          </Link>
+          <a href="/app-download" className="nav-download-btn">
+            <FaDownload />
+            <span>Download App</span>
+          </a>
         </div>
       </div>
 
-      <SearchBar isMobile />
+      <div className="nav-mobile-search-row">
+        <SearchBar isMobile />
+      </div>
 
       <div className="mobile-bottom-nav">
-        {BOTTOM_NAV.map(({ to, label, icon: Icon, exact }) => (
-          <Link
-            key={to}
-            to={to}
-            className={`bottom-nav-item ${exact ? pathname === to ? 'active' : '' : pathname.startsWith(to) ? 'active' : ''}`}
-          >
-            <Icon className="bottom-nav-icon" />
-            <span>{label}</span>
-          </Link>
-        ))}
+        {BOTTOM_NAV.map((item) => {
+          const Icon = item.icon;
+          const isActive = item.exact
+            ? pathname === item.to
+            : pathname.startsWith(item.to);
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={`mobile-bottom-nav-item ${isActive ? 'active' : ''}`}
+            >
+              <Icon className="mobile-bottom-nav-icon" />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );

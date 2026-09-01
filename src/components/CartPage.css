@@ -687,3 +687,22 @@
     align-self: flex-start;
   }
 }
+
+.form-group input.input-error,
+.form-group select.input-error {
+  border-color: #ef4444 !important;
+}
+
+.form-group input.input-error:focus,
+.form-group select.input-error:focus {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+.form-group .error-text {
+  color: #ef4444;
+  font-size: 12px;
+  margin-top: 2px;
+  display: block;
+  font-weight: 500;
+}
