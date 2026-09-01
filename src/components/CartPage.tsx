@@ -1,17 +1,20 @@
 import { BASE_URL } from '../services/api';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { FaTrash, FaPlus, FaMinus, FaShieldAlt } from 'react-icons/fa';
+import { FaTrash, FaPlus, FaMinus, FaShieldAlt, FaEdit, FaCheckCircle } from 'react-icons/fa';
+import Swal from 'sweetalert2';
 import { productsApi } from '../api/productsApi';
 import { ordersApi } from '../api/ordersApi';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import API from '../api/axiosConfig';
+import { SEOHead } from './SEOHead';
 import './CartPage.css';
 import { Toast } from '../utils/errorHandler';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { StateSelect } from './StateSelect';
 
 
 declare global {
@@ -36,8 +39,7 @@ interface Address {
 const addressFormSchema = z.object({
   fullName: z
     .string()
-    .min(3, 'Full name must be at least 3 characters long')
-    .regex(/^[A-Za-z\s]+$/, 'Name can only contain letters and spaces')
+    .min(3, 'Full name must be at least 3 characters')
     .max(100, 'Full name is too long'),
   mobileNumber: z
     .string()
@@ -47,14 +49,20 @@ const addressFormSchema = z.object({
     .regex(/^\d{6}$/, 'Pincode must be exactly 6 digits'),
   city: z
     .string()
-    .min(3, 'Town/City must be at least 3 characters long'),
+    .min(2, 'City must be at least 2 characters')
+    .max(50, 'City name is too long'),
   addressLine1: z
     .string()
-    .min(5, 'Flat / House No. is required (at least 5 characters)'),
+    .min(5, 'Flat/House No. must be at least 5 characters')
+    .max(150, 'Address is too long'),
   addressLine2: z
     .string()
-    .min(3, 'Area / Street is required (at least 3 characters)'),
-  landmark: z.string().optional().or(z.literal('')),
+    .max(150, 'Address line 2 is too long')
+    .optional(),
+  landmark: z
+    .string()
+    .max(100, 'Landmark is too long')
+    .optional(),
   state: z
     .string()
     .min(2, 'Please select a state')
@@ -75,11 +83,15 @@ export function CartPage() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
 
   const {
     register: registerAddress,
     handleSubmit: handleAddressFormSubmit,
     reset: resetAddressForm,
+    setValue: setAddressValue,
+    watch: watchAddress,
+    clearErrors: clearAddressErrors,
     formState: { errors: addressErrors, isSubmitting: isSavingAddress }
   } = useForm<AddressFormValues>({
     resolver: zodResolver(addressFormSchema),
@@ -95,33 +107,44 @@ export function CartPage() {
     }
   });
 
+  const selectedCartState = watchAddress('state');
+
   const [products, setProducts] = useState<any[]>([]);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (isLoggedIn) {
-      API.get('/auth/customer/addresses').then(res => {
-        if (res.data.success) {
-          const mapped = res.data.data.map((a: any) => ({
-            id: a.id,
-            fullName: a.full_name,
-            mobileNumber: a.mobile_number,
-            pincode: a.pincode,
-            addressLine1: a.address_line1,
-            addressLine2: a.address_line2,
-            landmark: a.landmark,
-            city: a.city,
-            state: a.state,
-            isDefault: a.isDefault
-          }));
-          setAddresses(mapped);
-          if (mapped.length > 0) setSelectedAddressId(mapped[0].id);
+  const fetchAddresses = useCallback(async () => {
+    if (!isLoggedIn) return;
+    try {
+      const res = await API.get('/auth/customer/addresses');
+      if (res.data.success) {
+        const mapped: Address[] = res.data.data.map((a: any) => ({
+          id: a.id,
+          fullName: a.full_name,
+          mobileNumber: a.mobile_number,
+          pincode: a.pincode,
+          addressLine1: a.address_line1,
+          addressLine2: a.address_line2 || '',
+          landmark: a.landmark || '',
+          city: a.city || '',
+          state: a.state,
+          isDefault: Boolean(a.is_default ?? a.isDefault)
+        }));
+        setAddresses(mapped);
+        if (mapped.length > 0) {
+          const defaultAddr = mapped.find(a => a.isDefault);
+          setSelectedAddressId(prev => (mapped.some(a => a.id === prev) ? prev : (defaultAddr ? defaultAddr.id : mapped[0].id)));
         }
-      }).catch(err => console.error('Failed to load addresses', err));
+      }
+    } catch (err) {
+      console.error('Failed to load addresses', err);
     }
   }, [isLoggedIn]);
+
+  useEffect(() => {
+    fetchAddresses();
+  }, [fetchAddresses]);
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -206,34 +229,101 @@ export function CartPage() {
         mobile_number: data.mobileNumber,
         pincode: data.pincode,
         address_line1: data.addressLine1,
-        address_line2: data.addressLine2,
+        address_line2: data.addressLine2 || '',
         landmark: data.landmark || '',
         city: data.city,
         state: data.state
       };
-      const res = await API.post('/auth/customer/addresses', payload);
-      if (res.data.success) {
-        const a = res.data.data;
-        const addedAddress: Address = {
-          id: a.id,
-          fullName: a.full_name,
-          mobileNumber: a.mobile_number,
-          pincode: a.pincode,
-          addressLine1: a.address_line1,
-          addressLine2: a.address_line2,
-          landmark: a.landmark,
-          city: a.city,
-          state: a.state
-        };
-        setAddresses(prev => [...prev, addedAddress]);
-        setSelectedAddressId(a.id);
-        setShowNewAddressForm(false);
-        resetAddressForm();
-        Toast.fire({ icon: 'success', title: 'Address saved successfully!' });
+
+      if (editingAddressId) {
+        // Edit existing address
+        const res = await API.put(`/auth/customer/addresses/${editingAddressId}`, payload);
+        if (res.data.success) {
+          setEditingAddressId(null);
+          resetAddressForm();
+          Toast.fire({ icon: 'success', title: 'Address updated successfully!' });
+          await fetchAddresses();
+        }
+      } else {
+        // Add new address
+        const res = await API.post('/auth/customer/addresses', {
+          ...payload,
+          is_default: addresses.length === 0
+        });
+        if (res.data.success) {
+          setShowNewAddressForm(false);
+          resetAddressForm();
+          Toast.fire({ icon: 'success', title: 'Address saved successfully!' });
+          await fetchAddresses();
+          if (res.data.data?.id) setSelectedAddressId(res.data.data.id);
+        }
       }
     } catch (err: any) {
-      console.error('Failed to add address', err);
+      console.error('Failed to save address', err);
       Toast.fire({ icon: 'error', title: err.response?.data?.message || 'Failed to save address.' });
+    }
+  };
+
+  const handleStartEditAddress = (addr: Address) => {
+    setShowNewAddressForm(false);
+    setEditingAddressId(addr.id);
+    resetAddressForm({
+      fullName: addr.fullName,
+      mobileNumber: addr.mobileNumber,
+      pincode: addr.pincode,
+      city: addr.city,
+      addressLine1: addr.addressLine1,
+      addressLine2: addr.addressLine2 || '',
+      landmark: addr.landmark || '',
+      state: addr.state
+    });
+  };
+
+  const handleCancelEditAddress = () => {
+    setEditingAddressId(null);
+    resetAddressForm();
+  };
+
+  const handleDeleteAddress = async (addressId: string) => {
+    const result = await Swal.fire({
+      title: 'Delete Address?',
+      text: 'Are you sure you want to remove this delivery address?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Yes, delete it'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const res = await API.delete(`/auth/customer/addresses/${addressId}`);
+        if (res.data.success) {
+          Toast.fire({ icon: 'success', title: 'Address deleted successfully!' });
+          if (editingAddressId === addressId) {
+            setEditingAddressId(null);
+            resetAddressForm();
+          }
+          await fetchAddresses();
+        }
+      } catch (err: any) {
+        console.error('Failed to delete address', err);
+        Toast.fire({ icon: 'error', title: err.response?.data?.message || 'Failed to delete address.' });
+      }
+    }
+  };
+
+  const handleSetDefaultAddress = async (addressId: string) => {
+    try {
+      const res = await API.patch(`/auth/customer/addresses/${addressId}/default`);
+      if (res.data.success) {
+        Toast.fire({ icon: 'success', title: 'Default address updated!' });
+        setSelectedAddressId(addressId);
+        await fetchAddresses();
+      }
+    } catch (err: any) {
+      console.error('Failed to set default address', err);
+      Toast.fire({ icon: 'error', title: err.response?.data?.message || 'Failed to update default address.' });
     }
   };
 
@@ -370,7 +460,12 @@ export function CartPage() {
   }
 
   return (
-    <div className="cart-page">
+    <>
+      <SEOHead 
+        title="Shopping Cart & Secure Checkout"
+        noindex={true}
+      />
+      <div className="cart-page">
       {/* Fullscreen Blur Overlay during Payment Verification */}
       {isVerifyingPayment && (
         <div style={{
@@ -485,32 +580,214 @@ export function CartPage() {
                 <h2>Select Delivery Address</h2>
               </div>
               <div className="address-list">
-                {addresses.map(addr => (
-                  <div key={addr.id} className={`address-card ${selectedAddressId === addr.id ? 'selected' : ''}`}>
-                    <label className="address-radio-label">
-                      <input
-                        type="radio"
-                        name="delivery_address"
-                        checked={selectedAddressId === addr.id}
-                        onChange={() => setSelectedAddressId(addr.id)}
-                      />
-                      <div className="address-details">
-                        <span className="address-name">{addr.fullName} <span className="address-type-tag">{addr.isDefault ? 'Default' : 'Home'}</span></span>
-                        <span className="address-phone">{addr.mobileNumber}</span>
-                        <span className="address-full">
-                          {addr.addressLine1}, {addr.addressLine2}, {addr.landmark ? `${addr.landmark}, ` : ''}
-                          {addr.city}, {addr.state} - <span className="address-pin">{addr.pincode}</span>
-                        </span>
+                {addresses.map(addr => {
+                  const isEditingThis = editingAddressId === addr.id;
+                  const isSelected = selectedAddressId === addr.id;
 
-                        {selectedAddressId === addr.id && (
-                          <button type="button" className="btn-deliver-here" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeliverHere(); }}>
-                            Deliver Here
-                          </button>
-                        )}
-                      </div>
-                    </label>
-                  </div>
-                ))}
+                  return (
+                    <div key={addr.id} className={`address-card ${isSelected ? 'selected' : ''} ${isEditingThis ? 'is-editing' : ''}`}>
+                      {isEditingThis ? (
+                        <div className="edit-address-form-container">
+                          <div className="address-form-header">
+                            <h3>Edit Address</h3>
+                            <button type="button" className="btn-close-edit" onClick={handleCancelEditAddress} aria-label="Cancel editing">
+                              ✕
+                            </button>
+                          </div>
+                          <form className="new-address-form" onSubmit={handleAddressFormSubmit(onSaveAddress)} noValidate>
+                            <div className="form-row">
+                              <div className="form-group">
+                                <label>Full Name</label>
+                                <input
+                                  type="text"
+                                  className={addressErrors.fullName ? 'input-error' : ''}
+                                  placeholder="Full Name"
+                                  maxLength={100}
+                                  {...registerAddress('fullName')}
+                                />
+                                {addressErrors.fullName && <span className="error-text">{addressErrors.fullName.message}</span>}
+                              </div>
+                              <div className="form-group">
+                                <label>Mobile Number</label>
+                                <input
+                                  type="tel"
+                                  className={addressErrors.mobileNumber ? 'input-error' : ''}
+                                  placeholder="10-digit Mobile Number"
+                                  maxLength={10}
+                                  {...registerAddress('mobileNumber')}
+                                />
+                                {addressErrors.mobileNumber && <span className="error-text">{addressErrors.mobileNumber.message}</span>}
+                              </div>
+                            </div>
+
+                            <div className="form-row">
+                              <div className="form-group">
+                                <label>Pincode</label>
+                                <input
+                                  type="text"
+                                  className={addressErrors.pincode ? 'input-error' : ''}
+                                  placeholder="6-digit Pincode"
+                                  maxLength={6}
+                                  {...registerAddress('pincode')}
+                                />
+                                {addressErrors.pincode && <span className="error-text">{addressErrors.pincode.message}</span>}
+                              </div>
+                              <div className="form-group">
+                                <label>Town/City</label>
+                                <input
+                                  type="text"
+                                  className={addressErrors.city ? 'input-error' : ''}
+                                  placeholder="City / Town"
+                                  maxLength={50}
+                                  {...registerAddress('city')}
+                                />
+                                {addressErrors.city && <span className="error-text">{addressErrors.city.message}</span>}
+                              </div>
+                            </div>
+
+                            <div className="form-group">
+                              <label>Flat, House no., Building, Company, Apartment</label>
+                              <input
+                                type="text"
+                                className={addressErrors.addressLine1 ? 'input-error' : ''}
+                                placeholder="Flat / House No. / Building"
+                                maxLength={150}
+                                {...registerAddress('addressLine1')}
+                              />
+                              {addressErrors.addressLine1 && <span className="error-text">{addressErrors.addressLine1.message}</span>}
+                            </div>
+
+                            <div className="form-group">
+                              <label>Area, Street, Sector, Village</label>
+                              <input
+                                type="text"
+                                className={addressErrors.addressLine2 ? 'input-error' : ''}
+                                placeholder="Area / Street / Sector"
+                                maxLength={150}
+                                {...registerAddress('addressLine2')}
+                              />
+                              {addressErrors.addressLine2 && <span className="error-text">{addressErrors.addressLine2.message}</span>}
+                            </div>
+
+                            <div className="form-row">
+                              <div className="form-group">
+                                <label>Landmark (Optional)</label>
+                                <input
+                                  type="text"
+                                  className={addressErrors.landmark ? 'input-error' : ''}
+                                  placeholder="E.g. near Apollo Hospital"
+                                  maxLength={100}
+                                  {...registerAddress('landmark')}
+                                />
+                                {addressErrors.landmark && <span className="error-text">{addressErrors.landmark.message}</span>}
+                              </div>
+                              <div className="form-group">
+                                <label>State</label>
+                                <StateSelect
+                                  value={selectedCartState}
+                                  onChange={(val) => {
+                                    setAddressValue('state', val, { shouldValidate: true });
+                                    if (val) clearAddressErrors('state');
+                                  }}
+                                  error={Boolean(addressErrors.state)}
+                                  placeholder="Select State"
+                                />
+                                {addressErrors.state && <span className="error-text">{addressErrors.state.message}</span>}
+                              </div>
+                            </div>
+
+                            <div className="form-actions">
+                              <button type="submit" className="btn-save-address" disabled={isSavingAddress}>
+                                {isSavingAddress ? 'Saving...' : 'Save Changes'}
+                              </button>
+                              <button type="button" className="btn-cancel-address" onClick={handleCancelEditAddress}>
+                                Cancel
+                              </button>
+                            </div>
+                          </form>
+                        </div>
+                      ) : (
+                        <div className="address-card-inner">
+                          <label className="address-radio-label">
+                            <input
+                              type="radio"
+                              name="delivery_address"
+                              checked={isSelected}
+                              onChange={() => setSelectedAddressId(addr.id)}
+                            />
+                            <div className="address-details">
+                              <div className="address-title-row">
+                                <span className="address-name">{addr.fullName}</span>
+                                {addr.isDefault && <span className="address-type-tag is-default">DEFAULT</span>}
+                              </div>
+
+                              <span className="address-phone">{addr.mobileNumber}</span>
+                              <span className="address-full">
+                                {[addr.addressLine1, addr.addressLine2, addr.landmark, addr.city, addr.state].filter(Boolean).join(', ')} - <span className="address-pin">{addr.pincode}</span>
+                              </span>
+
+                              <div className="address-card-footer">
+                                <div className="address-actions-bar">
+                                  <button
+                                    type="button"
+                                    className="btn-address-action btn-edit-address"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleStartEditAddress(addr);
+                                    }}
+                                  >
+                                    <FaEdit size={13} /> Edit
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className="btn-address-action btn-delete-address"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleDeleteAddress(addr.id);
+                                    }}
+                                  >
+                                    <FaTrash size={12} /> Delete
+                                  </button>
+
+                                  {!addr.isDefault && (
+                                    <button
+                                      type="button"
+                                      className="btn-address-action btn-default-address"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleSetDefaultAddress(addr.id);
+                                      }}
+                                    >
+                                      <FaCheckCircle size={13} /> Set as Default
+                                    </button>
+                                  )}
+                                </div>
+
+                                {isSelected && (
+                                  <button
+                                    type="button"
+                                    className="btn-deliver-here"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleDeliverHere();
+                                    }}
+                                  >
+                                    Deliver Here
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
 
                 {!showNewAddressForm ? (
                   <div className="add-new-address-btn" onClick={() => setShowNewAddressForm(true)}>
@@ -608,14 +885,15 @@ export function CartPage() {
                         </div>
                         <div className="form-group">
                           <label>State</label>
-                          <select
-                            className={addressErrors.state ? 'input-error' : ''}
-                            {...registerAddress('state')}
-                          >
-                            <option value="" disabled>Select State</option>
-                            <option value="Andhra Pradesh">Andhra Pradesh</option>
-                            <option value="Telangana">Telangana</option>
-                          </select>
+                          <StateSelect
+                            value={selectedCartState}
+                            onChange={(val) => {
+                              setAddressValue('state', val, { shouldValidate: true });
+                              if (val) clearAddressErrors('state');
+                            }}
+                            error={Boolean(addressErrors.state)}
+                            placeholder="Select State"
+                          />
                           {addressErrors.state && <span className="error-text">{addressErrors.state.message}</span>}
                         </div>
                       </div>
@@ -716,12 +994,7 @@ export function CartPage() {
 
           <div className="summary-row">
             <span>Price ({cartItems.length} items)</span>
-            <span>₹{(subtotal + totalSavings).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-          </div>
-
-          <div className="summary-row discount">
-            <span>Discount</span>
-            <span>−₹{totalSavings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            <span>₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
           </div>
 
           <div className="summary-row">
@@ -760,6 +1033,7 @@ export function CartPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

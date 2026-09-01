@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { productsApi } from '../api/productsApi';
 import { useAuth } from './AuthContext';
@@ -11,7 +11,7 @@ interface CartContextType {
   updateCartItem: (productId: string, quantity: number) => Promise<void>;
   removeFromCart: (productId: string) => Promise<void>;
   fetchCart: () => Promise<void>;
-  setCart: React.Dispatch<React.SetStateAction<Record<string, number>>>; // Keep for backward compatibility initially
+  setCart: React.Dispatch<React.SetStateAction<Record<string, number>>>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -28,13 +28,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const { isLoggedIn } = useAuth();
 
-  const fetchCart = async () => {
+  const fetchCart = useCallback(async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error('No token');
-      // Attempt to load from API. If auth fails, fallback to local storage could be added here, 
-      // but the requirement is server-side cart.
       const res = await productsApi.getCart();
       const cartItems = res.data.cartItems || [];
       const newCart: Record<string, number> = {};
@@ -46,15 +44,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setCart(newCart);
     } catch (err) {
       console.error('Failed to fetch cart', err);
-      // Already initialized from local storage synchronously
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (isLoggedIn) {
-      // Sync guest cart to backend if exists
       const saved = localStorage.getItem('cart');
       if (saved) {
         try {
@@ -67,8 +63,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
           }
           if (promises.length > 0) {
             Promise.allSettled(promises).then(() => {
-               localStorage.removeItem('cart');
-               fetchCart();
+              localStorage.removeItem('cart');
+              fetchCart();
             });
             return;
           } else {
@@ -80,43 +76,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       fetchCart();
     } else {
-      // Clear cart on logout
       setCart({});
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, fetchCart]);
 
-  // Sync to local storage ONLY for guest carts
   useEffect(() => {
     if (!isLoggedIn) {
       localStorage.setItem('cart', JSON.stringify(cart));
     }
   }, [cart, isLoggedIn]);
 
-  const addToCart = async (productId: string, quantity: number = 1) => {
+  const addToCart = useCallback(async (productId: string, quantity: number = 1) => {
     try {
       await productsApi.addToCart(productId, quantity);
       setCart(prev => ({ ...prev, [productId]: (prev[productId] || 0) + quantity }));
     } catch (err) {
       console.error('Add to cart failed', err);
-      // Optimistic update fallback
       setCart(prev => ({ ...prev, [productId]: (prev[productId] || 0) + quantity }));
     }
-  };
+  }, []);
 
-  const updateCartItem = async (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      return removeFromCart(productId);
-    }
-    try {
-      await productsApi.updateCartItem(productId, quantity);
-      setCart(prev => ({ ...prev, [productId]: quantity }));
-    } catch (err) {
-      console.error('Update cart item failed', err);
-      setCart(prev => ({ ...prev, [productId]: quantity }));
-    }
-  };
-
-  const removeFromCart = async (productId: string) => {
+  const removeFromCart = useCallback(async (productId: string) => {
     try {
       await productsApi.removeFromCart(productId);
       setCart(prev => {
@@ -132,12 +112,38 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return copy;
       });
     }
-  };
+  }, []);
 
-  const cartCount = Object.values(cart || {}).reduce((sum, qty) => sum + qty, 0);
+  const updateCartItem = useCallback(async (productId: string, quantity: number) => {
+    if (quantity <= 0) {
+      return removeFromCart(productId);
+    }
+    try {
+      await productsApi.updateCartItem(productId, quantity);
+      setCart(prev => ({ ...prev, [productId]: quantity }));
+    } catch (err) {
+      console.error('Update cart item failed', err);
+      setCart(prev => ({ ...prev, [productId]: quantity }));
+    }
+  }, [removeFromCart]);
+
+  const cartCount = useMemo(() => {
+    return Object.values(cart || {}).reduce((sum, qty) => sum + qty, 0);
+  }, [cart]);
+
+  const contextValue = useMemo(() => ({
+    cart,
+    cartCount,
+    loading,
+    addToCart,
+    updateCartItem,
+    removeFromCart,
+    fetchCart,
+    setCart
+  }), [cart, cartCount, loading, addToCart, updateCartItem, removeFromCart, fetchCart]);
 
   return (
-    <CartContext.Provider value={{ cart, cartCount, loading, addToCart, updateCartItem, removeFromCart, fetchCart, setCart }}>
+    <CartContext.Provider value={contextValue}>
       {children}
     </CartContext.Provider>
   );
@@ -150,7 +156,3 @@ export function useCart() {
   }
   return context;
 }
-
-
-
-

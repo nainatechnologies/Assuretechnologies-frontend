@@ -1,0 +1,35 @@
+# robots.txt for Assure Technologies
+User-agent: *
+Allow: /
+Allow: /book-service
+Allow: /book-service?*
+Allow: /order-products
+Allow: /order-products?*
+Allow: /career
+Allow: /career/*
+Allow: /sitemap
+Allow: /login
+Allow: /register
+
+# Disallow private user-specific and transient checkout paths
+Disallow: /cart
+Disallow: /profile
+Disallow: /profile/*
+Disallow: /orders
+Disallow: /orders/*
+
+# Specific crawler directives
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+# Reference to Master XML Sitemap
+Sitemap: https://assuretechnologies.com/sitemap.xml

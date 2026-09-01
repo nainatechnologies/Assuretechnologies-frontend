@@ -1,0 +1,206 @@
+/* ─── Searchable State Select Component ────────────────────────────── */
+
+.state-select-container {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.state-select-trigger {
+  width: 100%;
+  height: 46px;
+  min-height: 46px;
+  padding: 0 12px;
+  background-color: #ffffff;
+  border: 1px solid #b7bfc9;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  box-sizing: border-box;
+  font-size: 1rem;
+  line-height: 44px;
+  color: #334155;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  outline: none;
+}
+
+.state-select-trigger:hover {
+  border-color: #8da2b5;
+}
+
+.state-select-container.is-open .state-select-trigger,
+.state-select-trigger:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.state-select-container.has-error .state-select-trigger {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.state-select-container.has-error.is-open .state-select-trigger {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.state-select-value {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #334155;
+}
+
+.state-select-value.is-placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.state-select-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.state-select-chevron {
+  color: #6b7280;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.state-select-chevron.rotate {
+  transform: rotate(180deg);
+  color: #2563eb;
+}
+
+/* ─── Dropdown Menu ─────────────────────────────────────────────────── */
+.state-select-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  z-index: 1050;
+  overflow: hidden;
+  animation: stateDropdownSlide 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes stateDropdownSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── Search Box Inside Dropdown ────────────────────────────────────── */
+.state-search-box {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  background: #f9fafb;
+  gap: 8px;
+}
+
+.state-search-icon {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.state-search-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.88rem;
+  font-family: inherit;
+  color: #111827;
+  padding: 4px 0;
+}
+
+.state-search-input::placeholder {
+  color: #9ca3af;
+}
+
+.state-search-clear {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.state-search-clear:hover {
+  color: #4b5563;
+}
+
+/* ─── Options List ──────────────────────────────────────────────────── */
+.state-options-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.state-options-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.state-options-list::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 4px;
+}
+
+.state-option-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.state-option-item:hover,
+.state-option-item.highlighted {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+.state-option-item.selected {
+  background-color: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.state-check-icon {
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.state-no-results {
+  padding: 18px 12px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.85rem;
+}

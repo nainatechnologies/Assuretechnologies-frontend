@@ -6,6 +6,8 @@ import { ordersApi } from '../api/ordersApi';
 import { getCustomerServiceBookings, cancelServiceBooking, acceptServiceBookingWork } from '../api/serviceBookingApi';
 import { useAuth } from '../context/AuthContext';
 import './OrdersPage.css';
+import Pagination from './Pagination';
+import { Toast } from '../utils/errorHandler';
 
 const getStatusIcon = (status: string) => {
   switch (status) {
@@ -14,6 +16,7 @@ const getStatusIcon = (status: string) => {
     case 'Out for Delivery': return <FaTruck />;
     case 'Processing': return <FaClock />;
     case 'Pending': return <FaClock />;
+    case 'Payment Pending': return <FaClock />;
     case 'Accepted': return <FaClock />;
     case 'Assigned': return <FaClock />;
     case 'In Progress': return <FaSyncAlt className="spin" />;
@@ -23,6 +26,34 @@ const getStatusIcon = (status: string) => {
     case 'Shipped': return <FaBoxOpen />;
     case 'Refunded': return <FaUndo />;
     default: return null;
+  }
+};
+
+const getItemStatusText = (orderStatus: string, paymentStatus: string) => {
+  if (paymentStatus && paymentStatus !== 'PAID') {
+    return 'Payment Pending • Awaiting payment completion';
+  }
+  switch (orderStatus) {
+    case 'NEW':
+    case 'Pending':
+      return 'Order Placed • Awaiting Confirmation';
+    case 'ACCEPTED':
+    case 'Accepted':
+      return 'Order Accepted • Packing Item';
+    case 'OUT_FOR_DELIVERY':
+    case 'Out for Delivery':
+      return 'Dispatched • Out for Delivery';
+    case 'COMPLETED':
+    case 'Delivered':
+      return 'Delivered Successfully';
+    case 'CANCELLED':
+    case 'Cancelled':
+      return 'Order Cancelled';
+    case 'REJECTED':
+    case 'Rejected':
+      return 'Order Rejected';
+    default:
+      return orderStatus ? `Status: ${orderStatus}` : 'Order Placed';
   }
 };
 
@@ -39,86 +70,139 @@ export function OrdersPage() {
   const [productFilter, setProductFilter] = useState('All');
   const [serviceFilter, setServiceFilter] = useState('All');
   const [activeTab, setActiveTab] = useState<'products' | 'services'>('products');
+  const [productPage, setProductPage] = useState(1);
+  const [servicePage, setServicePage] = useState(1);
+  const itemsPerPage = 5;
 
-  
-  
   useEffect(() => {
-    Promise.all([
-      ordersApi.fetchOrders().catch(() => ({ data: [] })),
-      getCustomerServiceBookings().catch(() => ({ data: { data: [] } }))
-    ]).then(([ordersRes, servicesRes]) => {
-      
-      const mappedProducts = (ordersRes.data || []).map((o: any) => ({
-        id: o.order_number || o.id,
-        rawId: o.id,
-        date: new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
-        total: `₹${parseFloat(o.total_amount).toLocaleString('en-IN')}`,
-        shipTo: o.customer_name || (o.customer ? o.customer.full_name : 'Guest'),
-        address: o.customer_address || 'No address provided',
-        type: 'product',
-        status: o.status === 'NEW' ? 'Pending' : o.status === 'ACCEPTED' ? 'Accepted' : o.status === 'OUT_FOR_DELIVERY' ? 'Out for Delivery' : o.status === 'COMPLETED' ? 'Delivered' : o.status === 'CANCELLED' ? 'Cancelled' : o.status,
-        transportName: o.transport_name,
-        trackingId: o.tracking_id,
-        trackingUrl: o.tracking_url,
-        items: o.items ? o.items.map((i: any) => ({
-          name: i.product ? i.product.name : 'Unknown Product',
-          qty: i.qty,
-          image: i.product?.banner ? (i.product.banner.startsWith('http') || i.product.banner.startsWith('blob:') ? i.product.banner : `${BASE_URL.replace(/\/api$/, '')}${i.product.banner.startsWith('/') ? '' : '/'}${i.product.banner}`) : 'https://placehold.co/300x200?text=Product',
-          transportName: i.transport_name,
-          trackingId: i.tracking_id,
-          trackingUrl: i.tracking_url
-        })) : []
-      }));
+    // Check if redirected from Razorpay payment
+    const urlParams = new URLSearchParams(window.location.search);
+    const payment = urlParams.get('payment');
+    if (payment === 'success') {
+      Toast.fire({ icon: 'success', title: 'Payment successful and order placed!' });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (payment === 'failed') {
+      Toast.fire({ icon: 'error', title: 'Payment was cancelled or could not be completed.' });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
 
-      // The backend returns { success: true, data: { data: [...] } } or { success: true, data: [...] }
-      const sData = servicesRes.data?.data || servicesRes.data || [];
-      const mappedServices = sData.map((s: any) => ({
-        id: s.display_id || s.order_number || s.id,
-        rawId: s.id,
-        type: 'service',
-        status: s.status === 'NEW' ? 'Pending' : s.status === 'ACCEPTED' ? 'Accepted' : s.status === 'ASSIGNED' ? 'Assigned' : s.status === 'IN_PROGRESS' ? 'In Progress' : (s.status === 'PENDING_APPROVAL' || s.status === 'AWAITING_APPROVAL' || s.status === 'Awaiting Approval') ? 'Awaiting Approval' : s.status === 'COMPLETED' ? 'Completed' : s.status === 'CANCELLED' ? 'Cancelled' : (s.status || 'Pending'),
-        paymentStatus: s.payment_status === 'COMPLETED' ? 'Completed' : 'Pending',
-        isPartnerService: (s.Service || s.service)?.service_owner_type === 'PARTNER',
-        date: new Date(s.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-        scheduledDate: s.scheduled_date ? new Date(s.scheduled_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
-        scheduledTime: s.scheduled_time_slot || '',
-        shipTo: s.address?.line1 || userName || 'Guest',
-        items: [{
-          name: (s.Service || s.service)?.name || 'Service Booking',
-          qty: 1,
-          image: (s.Service || s.service)?.image ? ((s.Service || s.service).image.startsWith('http') || (s.Service || s.service).image.startsWith('blob:') ? (s.Service || s.service).image : `${BASE_URL.replace(/\/api$/, '')}${(s.Service || s.service).image.startsWith('/') ? '' : '/'}${(s.Service || s.service).image}`) : 'https://via.placeholder.com/150?text=Service',
-          returnStatus: (() => {
-              switch(s.status) {
-                case 'NEW': return 'Waiting for admin approval';
-                case 'ACCEPTED': return 'Accepted by admin, pending technician assignment';
-                case 'ASSIGNED': return 'Technician assigned';
-                case 'IN_PROGRESS': return 'Technician is currently working';
-                case 'PENDING_APPROVAL': return 'Work completed, awaiting your approval';
-                case 'COMPLETED': return 'Service completed successfully';
-                case 'CANCELLED': return 'Cancelled by user';
-                default: return s.status;
-              }
-            })()
-        }]
-      }));
+    Promise.allSettled([
+      ordersApi.fetchOrders(),
+      getCustomerServiceBookings()
+    ]).then(([ordersResult, servicesResult]) => {
+      let mappedProducts: any[] = [];
+      if (ordersResult.status === 'fulfilled') {
+        const res = ordersResult.value;
+        const rawList = Array.isArray(res.data) ? res.data : (Array.isArray(res.data?.data) ? res.data.data : []);
+        mappedProducts = rawList.map((o: any) => {
+          const isPaid = o.payment_status === 'PAID';
+          const displayStatus = !isPaid && o.status === 'NEW'
+            ? 'Payment Pending'
+            : o.status === 'NEW'
+              ? 'Pending'
+              : o.status === 'ACCEPTED'
+                ? 'Accepted'
+                : o.status === 'OUT_FOR_DELIVERY'
+                  ? 'Out for Delivery'
+                  : o.status === 'COMPLETED'
+                    ? 'Delivered'
+                    : o.status === 'CANCELLED'
+                      ? 'Cancelled'
+                      : o.status;
+
+          return {
+            id: o.order_number || o.id,
+            rawId: o.id,
+            date: new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+            total: `₹${parseFloat(o.total_amount || 0).toLocaleString('en-IN')}`,
+            paymentStatus: o.payment_status || 'PENDING',
+            shipTo: o.customer_name || (o.customer ? o.customer.full_name : 'Guest'),
+            address: o.customer_address || 'No address provided',
+            type: 'product',
+            status: displayStatus,
+            transportName: o.transport_name,
+            trackingId: o.tracking_id,
+            trackingUrl: o.tracking_url,
+            items: o.items ? o.items.map((i: any) => ({
+              name: i.product ? i.product.name : 'Unknown Product',
+              qty: i.qty,
+              image: i.product?.banner ? (i.product.banner.startsWith('http') || i.product.banner.startsWith('blob:') ? i.product.banner : `${BASE_URL.replace(/\/api$/, '')}${i.product.banner.startsWith('/') ? '' : '/'}${i.product.banner}`) : 'https://placehold.co/300x200?text=Product',
+              returnStatus: getItemStatusText(o.status, o.payment_status),
+              transportName: i.transport_name,
+              trackingId: i.tracking_id,
+              trackingUrl: i.tracking_url
+            })) : []
+          };
+        });
+      }
+
+      let mappedServices: any[] = [];
+      if (servicesResult.status === 'fulfilled') {
+        const servicesRes = servicesResult.value;
+        const sData = servicesRes.data?.data || servicesRes.data || [];
+        if (Array.isArray(sData)) {
+          mappedServices = sData.map((s: any) => {
+            const rawAddress = s.address;
+            const formattedAddr = typeof rawAddress === 'string'
+              ? rawAddress
+              : rawAddress && typeof rawAddress === 'object'
+                ? [rawAddress.line1, rawAddress.line2, rawAddress.city, rawAddress.state, rawAddress.pincode].filter(Boolean).join(', ')
+                : 'No address provided';
+
+            return {
+              id: s.display_id || s.order_number || s.id,
+              rawId: s.id,
+              type: 'service',
+              status: s.status === 'NEW' ? 'Pending' : s.status === 'ACCEPTED' ? 'Accepted' : s.status === 'ASSIGNED' ? 'Assigned' : s.status === 'IN_PROGRESS' ? 'In Progress' : (s.status === 'PENDING_APPROVAL' || s.status === 'AWAITING_APPROVAL' || s.status === 'Awaiting Approval') ? 'Awaiting Approval' : s.status === 'COMPLETED' ? 'Completed' : s.status === 'CANCELLED' ? 'Cancelled' : (s.status || 'Pending'),
+              paymentStatus: s.payment_status === 'COMPLETED' ? 'Completed' : 'Pending',
+              isPartnerService: (s.Service || s.service)?.service_owner_type === 'PARTNER',
+              date: new Date(s.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+              scheduledDate: s.scheduled_date ? new Date(s.scheduled_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+              scheduledTime: s.scheduled_time_slot || '',
+              shipTo: (typeof rawAddress === 'object' && rawAddress?.line1) || userName || 'Guest',
+              address: formattedAddr,
+              total: s.total_amount ? `₹${parseFloat(s.total_amount).toLocaleString('en-IN')}` : undefined,
+              items: [{
+                name: (s.Service || s.service)?.name || 'Service Booking',
+                qty: s.quantity || 1,
+                image: (s.Service || s.service)?.image ? ((s.Service || s.service).image.startsWith('http') || (s.Service || s.service).image.startsWith('blob:') ? (s.Service || s.service).image : `${BASE_URL.replace(/\/api$/, '')}${(s.Service || s.service).image.startsWith('/') ? '' : '/'}${(s.Service || s.service).image}`) : 'https://via.placeholder.com/150?text=Service',
+                returnStatus: (() => {
+                  switch(s.status) {
+                    case 'NEW': return 'Waiting for admin approval';
+                    case 'ACCEPTED': return 'Accepted by admin, pending technician assignment';
+                    case 'ASSIGNED': return 'Technician assigned';
+                    case 'IN_PROGRESS': return 'Technician is currently working';
+                    case 'PENDING_APPROVAL':
+                    case 'AWAITING_APPROVAL': return 'Work completed, awaiting your approval';
+                    case 'COMPLETED': return 'Service completed successfully';
+                    case 'CANCELLED': return 'Cancelled by user';
+                    default: return s.status;
+                  }
+                })()
+              }]
+            };
+          });
+        }
+      }
 
       setOrders([...mappedProducts, ...mappedServices]);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
       setLoading(false);
     });
   }, [userName]);
 
-
-
   const handleInvoiceDownload = (e: React.MouseEvent) => {
     e.preventDefault();
-    alert('Invoice download started...');
+    Toast.fire({ icon: 'success', title: 'Invoice download started...' });
   };
 
-    const handleCancelOrder = (order: any) => {
+  const handleCancelOrder = (order: any) => {
     let reason = '';
     if (order.type === 'service') {
       const userReason = window.prompt("Are you sure you want to cancel this service? Please enter a reason (optional):");
-      if (userReason === null) return; // User clicked Cancel on the prompt
+      if (userReason === null) return; // User clicked Cancel on prompt
       reason = userReason;
     }
 
@@ -127,23 +211,22 @@ export function OrdersPage() {
       : ordersApi.cancelOrder(order.id);
 
     cancelPromise.then(() => {
-      alert(`${order.type === 'service' ? 'Service' : 'Order'} ${order.id} cancelled successfully!`);
-      // Update local state to reflect cancellation
+      Toast.fire({ icon: 'success', title: `${order.type === 'service' ? 'Service' : 'Order'} ${order.id} cancelled successfully!` });
       setOrders(orders.map(o => o.id === order.id ? { ...o, status: 'Cancelled' } : o));
     }).catch(err => {
       console.error(err);
-      alert(`Failed to cancel ${order.type === 'service' ? 'service' : 'order'}: ` + (err.response?.data?.message || err.message));
+      Toast.fire({ icon: 'error', title: `Failed to cancel ${order.type === 'service' ? 'service' : 'order'}: ` + (err.response?.data?.message || err.message) });
     });
   };
 
   const handleAcceptWork = (order: any) => {
     const bookingId = order.rawId || order.id;
     acceptServiceBookingWork(bookingId).then(() => {
-      alert(`Service ${order.id} work accepted successfully!`);
+      Toast.fire({ icon: 'success', title: `Service ${order.id} work accepted successfully!` });
       setOrders(orders.map(o => o.id === order.id ? { ...o, status: 'Completed' } : o));
     }).catch(err => {
       console.error(err);
-      alert('Failed to accept work: ' + (err.response?.data?.message || err.message));
+      Toast.fire({ icon: 'error', title: 'Failed to accept work: ' + (err.response?.data?.message || err.message) });
     });
   };
 
@@ -173,8 +256,8 @@ export function OrdersPage() {
               <span className="order-header-label">Ship To</span>
               <span className="order-header-value" style={{ color: '#007185', cursor: 'pointer' }}>{userName || order.shipTo} ⌄</span>
               <div className="ship-to-tooltip">
-                <span className="ship-to-tooltip-name">{userName || order.shipTo}</span>
-                {order.address}
+                <p className="tooltip-name">{userName || order.shipTo}</p>
+                <p className="tooltip-address">{order.address}</p>
               </div>
             </div>
           </div>
@@ -206,7 +289,7 @@ export function OrdersPage() {
                     <span style={{ color: '#d5d9d9', margin: '0 8px' }}>|</span>
                     <button
                       className="order-link"
-                      style={{ color: '#ffffff', fontWeight: 'bold' }}
+                      style={{ color: '#10b981', fontWeight: 'bold' }}
                       onClick={() => handleAcceptWork(order)}
                     >
                       Accept Work
@@ -220,18 +303,18 @@ export function OrdersPage() {
 
         <div className="order-body order-body-flex">
           <div className="order-body-items">
-            {order.items?.map((item: any, index: number) => (
-              <div key={index} className="order-item" style={{ marginBottom: index === order.items.length - 1 ? 0 : '20px' }}>
+            {order.items?.map((item: any, idx: number) => (
+              <div key={idx} className="order-item" style={{ marginBottom: idx === order.items.length - 1 ? 0 : '20px' }}>
                 <div className="order-item-left">
                   <img src={item.image} alt={item.name} className="order-item-image" style={{ objectFit: 'cover' }} />
                   <div className="order-item-details">
                     <Link to={`/orders/${order.id}`} className="order-item-name">{item.name} {item.qty > 1 ? `x${item.qty}` : ''}</Link>
-                      {item.returnStatus && (
-                        <div style={{ fontSize: '13px', color: '#565959', marginTop: '4px' }}>{item.returnStatus}</div>
-                      )}
+                    {item.returnStatus && (
+                      <div style={{ fontSize: '13px', color: '#565959', marginTop: '4px' }}>{item.returnStatus}</div>
+                    )}
                     {item.trackingId && (
                       <span style={{ fontSize: '12px', color: '#007185', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                        <FaTruck style={{fontSize: '10px'}} /> {item.transportName} - Tracking: {item.trackingId}
+                        <FaTruck style={{ fontSize: '10px' }} /> {item.transportName} - Tracking: {item.trackingId}
                       </span>
                     )}
                   </div>
@@ -240,7 +323,7 @@ export function OrdersPage() {
             ))}
           </div>
           <div className="order-body-status">
-            <span className={`order-status-badge status-solid-${order.status.replace(/\s+/g, '-').toLowerCase()}`}>
+            <span className={`order-status-badge status-solid-${(order.status || 'pending').replace(/\s+/g, '-').toLowerCase()}`}>
               {getStatusIcon(order.status)}
               <span>{order.status}</span>
             </span>
@@ -278,7 +361,12 @@ export function OrdersPage() {
   };
 
   const productOrders = orders.filter(o => o.type === 'product' && (productFilter === 'All' || o.status === productFilter));
+  const totalProductPages = Math.ceil(productOrders.length / itemsPerPage) || 1;
+  const paginatedProductOrders = productOrders.slice((productPage - 1) * itemsPerPage, productPage * itemsPerPage);
+
   const serviceOrders = orders.filter(o => o.type === 'service' && (serviceFilter === 'All' || o.status === serviceFilter));
+  const totalServicePages = Math.ceil(serviceOrders.length / itemsPerPage) || 1;
+  const paginatedServiceOrders = serviceOrders.slice((servicePage - 1) * itemsPerPage, servicePage * itemsPerPage);
 
   return (
     <div className="orders-page-container">
@@ -309,8 +397,9 @@ export function OrdersPage() {
             <div className="orders-column">
               <div className="orders-column-header">
                 <h2>Product Orders</h2>
-                <select value={productFilter} onChange={(e) => setProductFilter(e.target.value)} className="orders-filter">
+                <select value={productFilter} onChange={(e) => { setProductFilter(e.target.value); setProductPage(1); }} className="orders-filter">
                   <option value="All">All Statuses</option>
+                  <option value="Payment Pending">Payment Pending</option>
                   <option value="Pending">Pending</option>
                   <option value="Accepted">Accepted</option>
                   <option value="Out for Delivery">Out for Delivery</option>
@@ -320,14 +409,19 @@ export function OrdersPage() {
                 </select>
               </div>
               <div className="orders-list">
-                {productOrders.length > 0 ? productOrders.map(renderOrder) : <p className="no-orders-msg">No product orders found.</p>}
+                {paginatedProductOrders.length > 0 ? paginatedProductOrders.map(renderOrder) : <p className="no-orders-msg">No product orders found.</p>}
               </div>
+              <Pagination
+                currentPage={productPage}
+                totalPages={totalProductPages}
+                onPageChange={setProductPage}
+              />
             </div>
 
             <div className="orders-column">
               <div className="orders-column-header">
                 <h2>Service Orders</h2>
-                <select value={serviceFilter} onChange={(e) => setServiceFilter(e.target.value)} className="orders-filter">
+                <select value={serviceFilter} onChange={(e) => { setServiceFilter(e.target.value); setServicePage(1); }} className="orders-filter">
                   <option value="All">All Statuses</option>
                   <option value="Pending">Pending</option>
                   <option value="Accepted">Accepted</option>
@@ -339,8 +433,13 @@ export function OrdersPage() {
                 </select>
               </div>
               <div className="orders-list">
-                {serviceOrders.length > 0 ? serviceOrders.map(renderOrder) : <p className="no-orders-msg">No service orders found.</p>}
+                {paginatedServiceOrders.length > 0 ? paginatedServiceOrders.map(renderOrder) : <p className="no-orders-msg">No service orders found.</p>}
               </div>
+              <Pagination
+                currentPage={servicePage}
+                totalPages={totalServicePages}
+                onPageChange={setServicePage}
+              />
             </div>
           </div>
         </>
@@ -348,6 +447,7 @@ export function OrdersPage() {
     </div>
   );
 }
+
 
 
 
