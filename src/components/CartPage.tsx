@@ -543,7 +543,7 @@ export function CartPage() {
                       {product!.originalPrice > product!.price && (
                         <>
                           <span className="cart-item-original">₹{product!.originalPrice.toLocaleString('en-IN')}</span>
-                          <span className="cart-item-discount">{product!.discount}% off</span>
+                          <span className="cart-item-discount">{Number(product!.discount)}% off</span>
                         </>
                       )}
                     </div>

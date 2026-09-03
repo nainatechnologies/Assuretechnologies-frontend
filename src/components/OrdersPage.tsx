@@ -1,3 +1,4 @@
+import Swal from 'sweetalert2';
 import { BASE_URL } from '../services/api';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -8,6 +9,8 @@ import { useAuth } from '../context/AuthContext';
 import './OrdersPage.css';
 import Pagination from './Pagination';
 import { Toast } from '../utils/errorHandler';
+import { generateAndPrintInvoice } from '../utils/invoiceGenerator';
+import { getProductOrderStatus, getServiceBookingStatus, getPaymentMethodLabel } from '../utils/orderStatus';
 
 const getStatusIcon = (status: string) => {
   switch (status) {
@@ -75,8 +78,19 @@ export function OrdersPage() {
   const itemsPerPage = 5;
 
   useEffect(() => {
-    // Check if redirected from Razorpay payment
+    // Check if redirected from Razorpay payment or Service booking
     const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab');
+    if (tab === 'services' || tab === 'service') {
+      setActiveTab('services');
+    }
+
+    const booking = urlParams.get('booking');
+    if (booking === 'success') {
+      Toast.fire({ icon: 'success', title: 'Service booking placed and confirmed successfully!' });
+      window.history.replaceState({}, document.title, window.location.pathname + (tab ? `?tab=${tab}` : ''));
+    }
+
     const payment = urlParams.get('payment');
     if (payment === 'success') {
       Toast.fire({ icon: 'success', title: 'Payment successful and order placed!' });
@@ -94,38 +108,42 @@ export function OrdersPage() {
       if (ordersResult.status === 'fulfilled') {
         const res = ordersResult.value;
         const rawList = Array.isArray(res.data) ? res.data : (Array.isArray(res.data?.data) ? res.data.data : []);
-        mappedProducts = rawList.map((o: any) => {
-          const isPaid = o.payment_status === 'PAID';
-          const displayStatus = !isPaid && o.status === 'NEW'
-            ? 'Payment Pending'
-            : o.status === 'NEW'
-              ? 'Pending'
-              : o.status === 'ACCEPTED'
-                ? 'Accepted'
-                : o.status === 'OUT_FOR_DELIVERY'
-                  ? 'Out for Delivery'
-                  : o.status === 'COMPLETED'
-                    ? 'Delivered'
-                    : o.status === 'CANCELLED'
-                      ? 'Cancelled'
-                      : o.status;
-
+        mappedProducts = rawList
+          .filter((o: any) => !o.order_number?.startsWith('SBK'))
+          .map((o: any) => {
           return {
             id: o.order_number || o.id,
             rawId: o.id,
             date: new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
             total: `₹${parseFloat(o.total_amount || 0).toLocaleString('en-IN')}`,
+            subtotalAmount: o.subtotal_amount ? Number(o.subtotal_amount) : undefined,
+            taxAmount: o.tax_amount ? Number(o.tax_amount) : undefined,
+            totalAmount: o.total_amount ? Number(o.total_amount) : undefined,
+            customerContact: o.customer_contact || (o.customer ? o.customer.contact_number : undefined),
+            customerEmail: o.customer_email || (o.customer ? o.customer.email : undefined),
+            companyName: o.company_name || undefined,
+            gstNumber: o.gst_number || undefined,
             paymentStatus: o.payment_status || 'PENDING',
+            paymentMethod: getPaymentMethodLabel(o.payment_method, undefined, o.payment_status === 'PAID'),
+            razorpayPaymentId: o.razorpay_payment_id || undefined,
+            paidAt: o.paid_at ? new Date(o.paid_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : undefined,
             shipTo: o.customer_name || (o.customer ? o.customer.full_name : 'Guest'),
             address: o.customer_address || 'No address provided',
             type: 'product',
-            status: displayStatus,
+            status: getProductOrderStatus(o.status, o.payment_status),
+            refundStatus: o.refund_status,
+            refundAmount: o.refund_amount,
+            refundReason: o.refund_reason,
+            refundRejectionReason: o.refund_rejection_reason,
+            refundId: o.refund_id,
             transportName: o.transport_name,
             trackingId: o.tracking_id,
             trackingUrl: o.tracking_url,
             items: o.items ? o.items.map((i: any) => ({
               name: i.product ? i.product.name : 'Unknown Product',
               qty: i.qty,
+              price: i.price != null ? Number(i.price) : undefined,
+              subtotal: i.subtotal != null ? Number(i.subtotal) : undefined,
               image: i.product?.banner ? (i.product.banner.startsWith('http') || i.product.banner.startsWith('blob:') ? i.product.banner : `${BASE_URL.replace(/\/api$/, '')}${i.product.banner.startsWith('/') ? '' : '/'}${i.product.banner}`) : 'https://placehold.co/300x200?text=Product',
               returnStatus: getItemStatusText(o.status, o.payment_status),
               transportName: i.transport_name,
@@ -142,6 +160,7 @@ export function OrdersPage() {
         const sData = servicesRes.data?.data || servicesRes.data || [];
         if (Array.isArray(sData)) {
           mappedServices = sData.map((s: any) => {
+            const isPaid = s.Order?.payment_status === 'PAID' || s.prebooking_paid;
             const rawAddress = s.address;
             const formattedAddr = typeof rawAddress === 'string'
               ? rawAddress
@@ -149,22 +168,39 @@ export function OrdersPage() {
                 ? [rawAddress.line1, rawAddress.line2, rawAddress.city, rawAddress.state, rawAddress.pincode].filter(Boolean).join(', ')
                 : 'No address provided';
 
+            const formattedTotal = (s.Order?.total_amount || s.total_amount) 
+              ? `₹${parseFloat(s.Order?.total_amount || s.total_amount).toLocaleString('en-IN')}` 
+              : undefined;
+
             return {
               id: s.display_id || s.order_number || s.id,
               rawId: s.id,
               type: 'service',
-              status: s.status === 'NEW' ? 'Pending' : s.status === 'ACCEPTED' ? 'Accepted' : s.status === 'ASSIGNED' ? 'Assigned' : s.status === 'IN_PROGRESS' ? 'In Progress' : (s.status === 'PENDING_APPROVAL' || s.status === 'AWAITING_APPROVAL' || s.status === 'Awaiting Approval') ? 'Awaiting Approval' : s.status === 'COMPLETED' ? 'Completed' : s.status === 'CANCELLED' ? 'Cancelled' : (s.status || 'Pending'),
-              paymentStatus: s.payment_status === 'COMPLETED' ? 'Completed' : 'Pending',
+              status: getServiceBookingStatus(s.status),
+              refundStatus: s.Order?.refund_status,
+              refundAmount: s.Order?.refund_amount,
+              refundReason: s.Order?.refund_reason,
+              refundRejectionReason: s.Order?.refund_rejection_reason,
+              refundId: s.Order?.refund_id,
+              paymentStatus: isPaid ? 'PAID' : 'PENDING',
+              paymentMethod: getPaymentMethodLabel(s.Order?.payment_method, s.Order?.payment_details, isPaid),
               isPartnerService: (s.Service || s.service)?.service_owner_type === 'PARTNER',
               date: new Date(s.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
               scheduledDate: s.scheduled_date ? new Date(s.scheduled_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
               scheduledTime: s.scheduled_time_slot || '',
               shipTo: (typeof rawAddress === 'object' && rawAddress?.line1) || userName || 'Guest',
               address: formattedAddr,
-              total: s.total_amount ? `₹${parseFloat(s.total_amount).toLocaleString('en-IN')}` : undefined,
+              total: formattedTotal,
+              subtotalAmount: s.Order?.subtotal_amount ? Number(s.Order.subtotal_amount) : (s.Order?.total_amount ? Number(s.Order.total_amount) : undefined),
+              taxAmount: s.Order?.tax_amount ? Number(s.Order.tax_amount) : undefined,
+              totalAmount: s.Order?.total_amount ? Number(s.Order.total_amount) : (s.total_amount ? Number(s.total_amount) : undefined),
+              customerContact: s.Order?.customer_contact || undefined,
+              customerEmail: s.Order?.customer?.email || undefined,
+              razorpayPaymentId: s.Order?.razorpay_payment_id || undefined,
+              paidAt: s.Order?.paid_at ? new Date(s.Order.paid_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : undefined,
               items: [{
                 name: (s.Service || s.service)?.name || 'Service Booking',
-                qty: s.quantity || 1,
+                qty: s.quantity != null ? Number(s.quantity) : 1,
                 image: (s.Service || s.service)?.image ? ((s.Service || s.service).image.startsWith('http') || (s.Service || s.service).image.startsWith('blob:') ? (s.Service || s.service).image : `${BASE_URL.replace(/\/api$/, '')}${(s.Service || s.service).image.startsWith('/') ? '' : '/'}${(s.Service || s.service).image}`) : 'https://via.placeholder.com/150?text=Service',
                 returnStatus: (() => {
                   switch(s.status) {
@@ -197,30 +233,119 @@ export function OrdersPage() {
     });
   }, [userName]);
 
-  const handleInvoiceDownload = (e: React.MouseEvent) => {
+  const handleInvoiceDownload = (order: any, e: React.MouseEvent) => {
     e.preventDefault();
-    Toast.fire({ icon: 'success', title: 'Invoice download started...' });
+    if (!order) return;
+    
+    generateAndPrintInvoice({
+      orderNumber: order.id || 'N/A',
+      orderDate: order.date || new Date().toLocaleDateString('en-IN'),
+      customerName: order.shipTo || userName || 'Customer',
+      customerContact: order.customerContact,
+      customerEmail: order.customerEmail,
+      customerAddress: order.address || 'Customer Address',
+      companyName: order.companyName,
+      gstNumber: order.gstNumber,
+      items: (order.items || []).map((item: any) => ({
+        name: item.name,
+        qty: item.qty || 1,
+        price: item.price != null ? item.price : (order.subtotalAmount || order.totalAmount || order.total),
+        subtotal: item.subtotal != null ? item.subtotal : (item.price != null ? (item.price * (item.qty || 1)) : (order.subtotalAmount || order.totalAmount || order.total))
+      })),
+      subtotal: order.subtotalAmount,
+      taxAmount: order.taxAmount,
+      totalAmount: order.totalAmount || order.total || '0',
+      paymentStatus: order.paymentStatus || 'PAID',
+      paymentMethod: order.paymentMethod,
+      razorpayPaymentId: order.razorpayPaymentId,
+      paidAt: order.paidAt,
+      isService: order.type === 'service'
+    });
   };
 
-  const handleCancelOrder = (order: any) => {
-    let reason = '';
-    if (order.type === 'service') {
-      const userReason = window.prompt("Are you sure you want to cancel this service? Please enter a reason (optional):");
-      if (userReason === null) return; // User clicked Cancel on prompt
-      reason = userReason;
+    const handleCancelOrder = async (order: any) => {
+    const isService = order.type === 'service';
+    const isPrepaid = order.paymentStatus === 'PAID' || order.paymentStatus === 'Paid' || order.paymentStatus === 'Completed';
+
+    const { value: reason } = await Swal.fire({
+      title: `Cancel ${isService ? 'Service' : 'Order'} #${order.id}?`,
+      html: isPrepaid 
+        ? '<p style="color: #475569; font-size: 0.92rem; margin-bottom: 8px;">As this order was prepaid, cancelling will submit a <strong>Refund Request</strong> to our store administrators for review.</p>'
+        : '<p style="color: #475569; font-size: 0.92rem; margin-bottom: 8px;">Are you sure you want to cancel this order?</p>',
+      input: 'select',
+      inputOptions: {
+        'Changed my mind': 'Changed my mind',
+        'Ordered by mistake': 'Ordered by mistake',
+        'Schedule / delivery conflict': 'Schedule / delivery conflict',
+        'Found a better alternative': 'Found a better alternative',
+        'Other': 'Other reason'
+      },
+      inputPlaceholder: 'Select a reason for cancellation',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Yes, Cancel Order',
+      inputValidator: (value: string) => {
+        if (!value) {
+          return 'Please select a reason for cancellation';
+        }
+      }
+    });
+
+    if (!reason) return;
+
+    let finalReason = reason;
+    if (reason === 'Other') {
+      const { value: customReason } = await Swal.fire({
+        title: 'Specify Reason',
+        input: 'textarea',
+        inputPlaceholder: 'Please describe the reason for cancellation...',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Submit Cancellation',
+        inputValidator: (val: string) => {
+          if (!val || !val.trim()) {
+            return 'Please describe the reason for cancellation';
+          }
+        }
+      });
+      if (!customReason) return;
+      finalReason = customReason.trim();
     }
 
-    const cancelPromise = order.type === 'service'
-      ? cancelServiceBooking(order.rawId || order.id, reason)
-      : ordersApi.cancelOrder(order.id);
+    try {
+      if (isService) {
+        await cancelServiceBooking(order.rawId || order.id, finalReason);
+      } else {
+        await ordersApi.cancelOrder(order.id, { reason: finalReason });
+      }
 
-    cancelPromise.then(() => {
-      Toast.fire({ icon: 'success', title: `${order.type === 'service' ? 'Service' : 'Order'} ${order.id} cancelled successfully!` });
-      setOrders(orders.map(o => o.id === order.id ? { ...o, status: 'Cancelled' } : o));
-    }).catch(err => {
+      Swal.fire({
+        icon: 'success',
+        title: 'Order Cancelled',
+        text: isPrepaid 
+          ? 'Your cancellation and refund request has been submitted for administrator review.'
+          : 'Your order has been cancelled successfully.',
+        confirmButtonColor: '#4f46e5'
+      });
+
+      setOrders(orders.map(o => o.id === order.id ? { 
+        ...o, 
+        status: 'Cancelled',
+        paymentStatus: isPrepaid ? 'REFUND_PENDING' : o.paymentStatus,
+        refundStatus: isPrepaid ? 'REQUESTED' : 'NONE',
+        refundReason: reason
+      } : o));
+    } catch (err: any) {
       console.error(err);
-      Toast.fire({ icon: 'error', title: `Failed to cancel ${order.type === 'service' ? 'service' : 'order'}: ` + (err.response?.data?.message || err.message) });
-    });
+      Swal.fire({
+        icon: 'error',
+        title: 'Cancellation Failed',
+        text: err.response?.data?.message || err.message,
+        confirmButtonColor: '#ef4444'
+      });
+    }
   };
 
   const handleAcceptWork = (order: any) => {
@@ -250,20 +375,34 @@ export function OrdersPage() {
               <span className="order-header-label">{isService ? getServiceDateLabel(order.status) : 'Order Placed'}</span>
               <span className="order-header-value">{isService && order.scheduledDate ? `${order.scheduledDate}, ${order.scheduledTime}` : order.date}</span>
             </div>
+            <div className="order-header-col">
+              <span className="order-header-label">Total</span>
+              <span className="order-header-value">{order.total || '—'}</span>
+            </div>
+            <div className="order-header-col">
+              <span className="order-header-label">Payment</span>
+              <span className="order-header-value">
+                {(order.paymentStatus === 'PAID' || order.paymentStatus === 'Paid' || order.paymentStatus === 'Completed') ? (
+                  <span style={{ color: '#166534', fontWeight: 'bold', fontSize: '12px' }}>
+                    Paid {order.paymentMethod ? `(${order.paymentMethod})` : ''}
+                  </span>
+                ) : (
+                  <span style={{ color: '#b45309', fontWeight: 'bold', fontSize: '12px' }}>
+                    ● Pending
+                  </span>
+                )}
+              </span>
+            </div>
             {!isService && (
-              <div className="order-header-col">
-                <span className="order-header-label">Total</span>
-                <span className="order-header-value">{order.total}</span>
+              <div className="order-header-col ship-to-container">
+                <span className="order-header-label">Ship To</span>
+                <span className="order-header-value" style={{ color: '#007185', cursor: 'pointer' }}>{userName || order.shipTo} ⌄</span>
+                <div className="ship-to-tooltip">
+                  <p className="tooltip-name">{userName || order.shipTo}</p>
+                  <p className="tooltip-address">{order.address}</p>
+                </div>
               </div>
             )}
-            <div className="order-header-col ship-to-container">
-              <span className="order-header-label">Ship To</span>
-              <span className="order-header-value" style={{ color: '#007185', cursor: 'pointer' }}>{userName || order.shipTo} ⌄</span>
-              <div className="ship-to-tooltip">
-                <p className="tooltip-name">{userName || order.shipTo}</p>
-                <p className="tooltip-address">{order.address}</p>
-              </div>
-            </div>
           </div>
           <div className="order-header-right">
             <div className="order-header-col">
@@ -273,8 +412,12 @@ export function OrdersPage() {
               </span>
               <div className="order-header-links">
                 <Link to={`/orders/${order.id}`} className="order-link">View order details</Link>
-                <span style={{ color: '#d5d9d9', margin: '0 8px' }}>|</span>
-                <button className="order-link" onClick={handleInvoiceDownload}>Invoice</button>
+                {(isService ? (order.status === 'Completed' || order.status === 'COMPLETED') : (order.status === 'Delivered' || order.status === 'COMPLETED')) && (
+                  <>
+                    <span style={{ color: '#d5d9d9', margin: '0 8px' }}>|</span>
+                    <button className="order-link" onClick={(e) => handleInvoiceDownload(order, e)}>Invoice</button>
+                  </>
+                )}
                 
                 {canCancel && (
                   <>
@@ -312,7 +455,7 @@ export function OrdersPage() {
                 <div className="order-item-left">
                   <img src={item.image} alt={item.name} className="order-item-image" style={{ objectFit: 'cover' }} />
                   <div className="order-item-details">
-                    <Link to={`/orders/${order.id}`} className="order-item-name">{item.name} {item.qty > 1 ? `x${item.qty}` : ''}</Link>
+                    <Link to={`/orders/${order.id}`} className="order-item-name">{item.name} {Number(item.qty) > 1 ? `x${Number(item.qty)}` : ''}</Link>
                     {item.returnStatus && (
                       <div style={{ fontSize: '13px', color: '#565959', marginTop: '4px' }}>{item.returnStatus}</div>
                     )}
@@ -333,11 +476,11 @@ export function OrdersPage() {
             </span>
             {isService && (
               <div style={{ marginTop: '12px', fontSize: '13px' }}>
-                <strong style={{ color: '#565959' }}>Payment Status: </strong>
-                {order.paymentStatus === 'Completed' ? (
-                  <span style={{ color: '#166534', fontWeight: 'bold' }}>Completed</span>
+                <strong style={{ color: '#565959' }}>Payment: </strong>
+                {(order.paymentStatus === 'PAID' || order.paymentStatus === 'Paid' || order.paymentStatus === 'Completed') ? (
+                  <span style={{ color: '#166534', fontWeight: 'bold' }}>Paid {order.paymentMethod ? `(${order.paymentMethod})` : ''}</span>
                 ) : (
-                  <span style={{ color: '#b45309', fontWeight: 'bold' }}>Pending</span>
+                  <span style={{ color: '#b45309', fontWeight: 'bold' }}>● Pending</span>
                 )}
               </div>
             )}

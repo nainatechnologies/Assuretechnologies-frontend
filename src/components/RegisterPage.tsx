@@ -155,7 +155,7 @@ export function RegisterPage() {
       .then((res) => {
         if (res.data.success) {
           loginUser(res.data.data.user);
-          login('auth-cookie-set', res.data.data.user.full_name || 'Customer');
+          login(res.data.data.token || 'customer-session', res.data.data.user.full_name || 'Customer');
           
           Swal.fire({
             title: 'Registration Complete!',

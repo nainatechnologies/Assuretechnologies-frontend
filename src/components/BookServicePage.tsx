@@ -1,7 +1,9 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useServices } from '../hooks/useServices';
+import { useAuth } from '../context/AuthContext';
 import { createServiceBooking, verifyServiceBookingPayment } from '../api/serviceBookingApi';
+import { Toast, showApiError } from '../utils/errorHandler';
 import { CustomFieldInput } from './CustomFieldInput';
 import { SEOHead } from './SEOHead';
 import { StructuredData } from './StructuredData';
@@ -76,11 +78,24 @@ function MapUpdater({ center, zoom }: { center: L.LatLngTuple; zoom: number }) {
 
 export function BookServicePage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { userName } = useAuth();
   const serviceQuery = searchParams.get('service') || '';
   const categoryQuery = searchParams.get('category') || '';
   const autoOpen = searchParams.get('autoOpen') === 'true';
 
   const { services: allServices, loading } = useServices();
+
+  const loadRazorpay = () => {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) return resolve(true);
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
   const normalizedQuery = (serviceQuery || categoryQuery || '').trim().toLowerCase();
 
@@ -160,23 +175,29 @@ export function BookServicePage() {
       return;
     }
 
-    if (!form.date || !form.timeSlot) { alert('Please select a date and time slot.'); return; }
+    if (!form.date || !form.timeSlot) { 
+      Toast.fire({ icon: 'warning', title: 'Please select a date and time slot.' }); 
+      return; 
+    }
 
     const { pincode, city, addressLine1, addressLine2, stateName } = form;
     if ([pincode, city, addressLine1, addressLine2, stateName].some(v => !v.trim())) {
-      alert('Please enter your complete address details (excluding optional landmark).'); return;
+      Toast.fire({ icon: 'warning', title: 'Please enter complete address details.' }); 
+      return;
     }
 
     if (selectedServiceObj.custom_fields) {
       for (const f of selectedServiceObj.custom_fields) {
         if (f.required && !customResponses[f.id]?.trim()) {
-          alert(`Please fill out the required field: ${f.label}`); return;
+          Toast.fire({ icon: 'warning', title: `Please fill required field: ${f.label}` }); 
+          return;
         }
       }
     }
 
     if (serviceRate && (!bookingQuantity || Number(bookingQuantity) <= 0)) {
-      alert(`Please enter the number of ${pricingUnit.toLowerCase()}.`); return;
+      Toast.fire({ icon: 'warning', title: `Please enter number of ${pricingUnit.toLowerCase()}.` }); 
+      return;
     }
 
     setIsProcessing(true);
@@ -208,22 +229,68 @@ export function BookServicePage() {
       const bookingResult = await createServiceBooking(bookingPayload);
 
       if (bookingResult.requires_payment && bookingResult.booking_id && bookingResult.razorpay_order_id) {
-        await verifyServiceBookingPayment(bookingResult.booking_id, {
-          razorpay_order_id: bookingResult.razorpay_order_id,
-          razorpay_payment_id: `mock_${Date.now()}`,
-          razorpay_signature: 'mock_signature',
+        const sdkLoaded = await loadRazorpay();
+        if (!sdkLoaded) {
+          Toast.fire({ icon: 'error', title: 'Razorpay SDK failed to load. Please check your connection.' });
+          setIsProcessing(false);
+          return;
+        }
+
+        const razorpayKey = bookingResult.razorpay_key_id || (import.meta as any).env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TUJt0fwUv206Vf';
+
+        const options = {
+          key: razorpayKey,
+          amount: Math.round(Number(bookingResult.total_amount || bookingTotal) * 100),
+          currency: 'INR',
+          name: 'Assure Technologies',
+          description: `Service Booking: ${selectedService}`,
+          order_id: bookingResult.razorpay_order_id,
+          handler: async function (response: any) {
+            try {
+              setIsProcessing(true);
+              await verifyServiceBookingPayment(bookingResult.booking_id!, {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              });
+
+              handleClose();
+              navigate('/orders?tab=services&booking=success');
+            } catch (vErr: any) {
+              const errMsg = vErr?.response?.data?.message || 'Payment verification failed. Please contact support.';
+              Toast.fire({ icon: 'error', title: errMsg });
+            } finally {
+              setIsProcessing(false);
+            }
+          },
+          modal: {
+            ondismiss: function () {
+              setIsProcessing(false);
+              Toast.fire({ icon: 'warning', title: 'Payment cancelled. You can retry anytime.' });
+            }
+          },
+          prefill: {
+            name: userName || 'Customer',
+            contact: '',
+            email: ''
+          },
+          theme: {
+            color: '#2563eb'
+          }
+        };
+
+        const paymentObject = new (window as any).Razorpay(options);
+        paymentObject.on('payment.failed', function (response: any) {
+          setIsProcessing(false);
+          Toast.fire({ icon: 'error', title: response.error?.description || 'Payment failed. Please retry.' });
         });
-
-        alert(`Payment of ₹${bookingTotal.toLocaleString('en-IN')} Successful!\n\nYour booking for ${selectedService} is confirmed.`);
+        paymentObject.open();
       } else {
-        alert(`Success! Your booking for ${selectedService} is confirmed.`);
+        handleClose();
+        navigate('/orders?tab=services&booking=success');
       }
-
-      handleClose();
     } catch (error: any) {
-      const backendMessage = error?.response?.data?.message || error?.response?.data?.error || error?.message;
-      alert(backendMessage || 'Unable to create booking right now. Please try again.');
-    } finally {
+      showApiError(error, 'Unable to create booking right now. Please try again.');
       setIsProcessing(false);
     }
   };

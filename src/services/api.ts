@@ -8,6 +8,19 @@ const API = axios.create({
   withCredentials: true,
 });
 
+API.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('authToken');
+    if (token && config.headers && token !== 'customer-session' && token !== 'auth-cookie-set') {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 API.interceptors.response.use(
   (response) => response,
   (error) => {

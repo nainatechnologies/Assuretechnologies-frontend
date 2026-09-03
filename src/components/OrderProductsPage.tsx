@@ -154,8 +154,8 @@ export function OrderProductsPage() {
               <>
                 {products.map(product => (
                   <div key={product.id} className="op-card">
-                    {product.discount > 0 && (
-                      <span className="op-discount-tag">{product.discount}% OFF</span>
+                    {Number(product.discount) > 0 && (
+                      <span className="op-discount-tag">{Number(product.discount)}% OFF</span>
                     )}
                     <div className="op-card-img">
                       <img src={product.image} alt={product.name} loading="lazy" />

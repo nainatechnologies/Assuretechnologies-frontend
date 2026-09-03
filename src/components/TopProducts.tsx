@@ -21,10 +21,12 @@ export function TopProducts() {
         products = products.map((p: any) => {
           const base = parseFloat(p.base_price) || 0;
           const disc = parseFloat(p.discount) || 0;
+          const cleanDisc = disc % 1 === 0 ? Math.round(disc) : parseFloat(disc.toFixed(2));
           return {
             ...p,
             originalPrice: base,
             price: base - (base * (disc / 100)),
+            discount: cleanDisc,
             rating: p.rating || 4,
             reviewCount: p.reviewCount || 15,
             service: p.category || 'General',
@@ -83,8 +85,8 @@ export function TopProducts() {
           ) : (
             topProducts.map(product => (
               <div key={product.id} className="tp-card">
-                {product.discount > 0 && (
-                  <span className="tp-discount-badge">{product.discount}% OFF</span>
+                {Number(product.discount) > 0 && (
+                  <span className="tp-discount-badge">{Number(product.discount)}% OFF</span>
                 )}
                 <div className="tp-card-img">
                   <img src={product.image} alt={product.name} loading="lazy" />
