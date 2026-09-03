@@ -3,6 +3,9 @@ import { useSearchParams } from 'react-router-dom';
 import { useServices } from '../hooks/useServices';
 import { createServiceBooking, verifyServiceBookingPayment } from '../api/serviceBookingApi';
 import { CustomFieldInput } from './CustomFieldInput';
+import { SEOHead } from './SEOHead';
+import { StructuredData } from './StructuredData';
+import { StateSelect } from './StateSelect';
 import './BookServicePage.css';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -238,12 +241,31 @@ export function BookServicePage() {
   }
 
   return (
-    <section id="book-service">
-      <div className="bs-header">
-        <h2>Our Services</h2>
-        <div className="bs-underline" />
-        <p>Comprehensive technology and infrastructure solutions for every need</p>
-      </div>
+    <>
+      <SEOHead 
+        title="Book Professional Services & On-Demand Technicians"
+        description="Book certified field engineers for AgriTech drone spraying, optical networking, solar power rooftop systems, and CCTV security installations across India."
+        canonicalUrl="https://assuretechnologies.com/book-service"
+      />
+      <StructuredData 
+        type="service" 
+        data={{ category: 'Field Technical & Drone Operations' }}
+      />
+      <StructuredData 
+        type="breadcrumb"
+        data={{
+          items: [
+            { name: 'Home', url: 'https://assuretechnologies.com/' },
+            { name: 'Book a Service', url: 'https://assuretechnologies.com/book-service' }
+          ]
+        }}
+      />
+      <section id="book-service">
+        <div className="bs-header">
+          <h2>Our Services</h2>
+          <div className="bs-underline" />
+          <p>Comprehensive technology and infrastructure solutions for every need</p>
+        </div>
 
       <div className="bs-grid">
         {filteredServices.length > 0 ? (
@@ -313,11 +335,12 @@ export function BookServicePage() {
                   </div>
                   <div className="form-group">
                     <label>State</label>
-                    <select required value={form.stateName} onChange={e => updateForm('stateName', e.target.value)}>
-                      <option value="" disabled>Select State</option>
-                      <option value="Andhra Pradesh">Andhra Pradesh</option>
-                      <option value="Telangana">Telangana</option>
-                    </select>
+                    <StateSelect
+                      value={form.stateName}
+                      onChange={(val) => updateForm('stateName', val)}
+                      placeholder="Select State"
+                      required
+                    />
                   </div>
                 </div>
               </div>
@@ -400,5 +423,6 @@ export function BookServicePage() {
         </div>
       )}
     </section>
+    </>
   );
 }

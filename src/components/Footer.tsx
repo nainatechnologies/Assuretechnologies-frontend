@@ -34,6 +34,7 @@ export function Footer() {
             <li><a href="/ventures">Ventures</a></li>
             <li><a href="#investors">Investors</a></li>
             <li><Link to="/career" target="_blank" rel="noopener noreferrer">Careers</Link></li>
+            <li><Link to="/sitemap">Sitemap (SEO)</Link></li>
           </ul>
         </div>
 

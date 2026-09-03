@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { FaPlus, FaMinus, FaShoppingCart } from 'react-icons/fa';
 import { productsApi } from '../api/productsApi';
 import { useCart } from '../context/CartContext';
+import { SEOHead } from './SEOHead';
+import { StructuredData } from './StructuredData';
 import './OrderProductsPage.css';
 
 export function OrderProductsPage() {
@@ -102,7 +104,22 @@ export function OrderProductsPage() {
   };
 
   return (
-    <div className="op-page">
+    <>
+      <SEOHead 
+        title={category ? `${category} Equipment & Hardware Store` : 'Order Certified Products & Hardware'}
+        description={`Browse genuine hardware, components, networking gear, and solar systems at Assure Technologies.`}
+        canonicalUrl="https://assuretechnologies.com/order-products"
+      />
+      <StructuredData 
+        type="breadcrumb"
+        data={{
+          items: [
+            { name: 'Home', url: 'https://assuretechnologies.com/' },
+            { name: 'Order Products', url: 'https://assuretechnologies.com/order-products' }
+          ]
+        }}
+      />
+      <div className="op-page">
       <div className="op-layout">
         <main className="op-main">
           
@@ -206,5 +223,6 @@ export function OrderProductsPage() {
         </main>
       </div>
     </div>
+    </>
   );
 }

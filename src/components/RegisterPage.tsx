@@ -10,6 +10,8 @@ import { loginUser } from '../services/auth';
 import { useAuth } from '../context/AuthContext';
 import './LoginPage.css'; // Reuse auth styles
 import './RegisterPage.css';
+import { Toast } from '../utils/errorHandler';
+import { StateSelect } from './StateSelect';
 
 const registerSchema = z.object({
   fullName: z.string().min(3, 'Name must be at least 3 characters long').regex(/^[A-Za-z\s]+$/, 'Name can only contain letters and spaces'),
@@ -23,21 +25,19 @@ const registerSchema = z.object({
     .max(72, 'Password must be at most 72 characters long')
     .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
     .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .regex(/\d/, 'Password must contain at least one number')
+    .regex(/[0-9]/, 'Password must contain at least one number')
     .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
-  confirmPassword: z.string(),
-  termsAccepted: z.boolean().refine(val => val === true, {
-    message: 'Please accept the terms and conditions to register'
-  })
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ['confirmPassword']
+  confirmPassword: z.string().min(1, 'Please confirm your password'),
+  termsAccepted: z.boolean().refine(val => val === true, 'You must accept the terms and conditions')
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"]
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const otpSchema = z.object({
-  otp: z.string().length(6, 'Please enter a 6-digit OTP')
+  otp: z.string().regex(/^\d{6}$/, 'OTP must be exactly 6 digits')
 });
 
 type OtpFormValues = z.infer<typeof otpSchema>;
@@ -55,6 +55,9 @@ export function RegisterPage() {
     register: registerForm,
     handleSubmit: handleRegisterSubmit,
     setError: setRegisterError,
+    setValue: setRegisterValue,
+    watch: watchRegister,
+    clearErrors: clearRegisterErrors,
     formState: { errors: registerErrors }
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -70,6 +73,8 @@ export function RegisterPage() {
       termsAccepted: false
     }
   });
+
+  const selectedState = watchRegister('stateName');
 
   const {
     register: registerOtp,
@@ -237,14 +242,15 @@ export function RegisterPage() {
               </div>
 
               <div className="auth-input-group">
-                <select
-                  className={`auth-input auth-select ${registerErrors.stateName ? 'input-error' : ''}`}
-                  {...registerForm('stateName')}
-                >
-                  <option value="" disabled>Select State</option>
-                  <option value="Andhra Pradesh">Andhra Pradesh</option>
-                  <option value="Telangana">Telangana</option>
-                </select>
+                <StateSelect
+                  value={selectedState}
+                  onChange={(val) => {
+                    setRegisterValue('stateName', val, { shouldValidate: true });
+                    if (val) clearRegisterErrors('stateName');
+                  }}
+                  error={Boolean(registerErrors.stateName)}
+                  placeholder="Select State"
+                />
                 {registerErrors.stateName && <span className="error-text">{registerErrors.stateName.message}</span>}
               </div>
             </div>
@@ -331,7 +337,7 @@ export function RegisterPage() {
 
             <div className="auth-resend">
               Didn't receive code? 
-              <button type="button" onClick={() => alert('OTP Resent! (Use 123456)')}>
+              <button type="button" onClick={() => Toast.fire({ icon: 'info', title: 'OTP Resent! (Use 123456)' })}>
                 Resend OTP
               </button>
             </div>

@@ -27,14 +27,15 @@
 }
 
 /* Adjust position for mobile to sit above the bottom navigation */
-@media (max-width: 768px) {
+@media (max-width: 991px) {
   .whatsapp-fab {
-    bottom: 90px;
-    right: 20px;
-    width: 54px;
-    height: 54px;
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    right: 18px;
+    width: 52px;
+    height: 52px;
+    box-shadow: 0 4px 16px rgba(37, 211, 102, 0.45);
   }
   .whatsapp-icon {
-    font-size: 30px;
+    font-size: 28px;
   }
 }
