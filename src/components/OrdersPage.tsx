@@ -95,7 +95,11 @@ export function OrdersPage() {
                 case 'IN_PROGRESS': return 'Technician is currently working';
                 case 'PENDING_APPROVAL': return 'Work completed, awaiting your approval';
                 case 'COMPLETED': return 'Service completed successfully';
-                case 'CANCELLED': return 'Cancelled by user';
+                case 'CANCELLED': {
+                const r = (s.cancellation_reason || '').trim();
+                const isGeneric = !r || ['cancelled by admin', 'cancelled by administrator', 'rejected by admin', 'unable to fulfill booking at scheduled time'].includes(r.toLowerCase());
+                return s.cancelled_by === 'ADMIN' ? (isGeneric ? 'Cancelled by Assure Team' : `Cancelled by Assure Team (${r})`) : 'Cancelled by You';
+              }
                 default: return s.status;
               }
             })()

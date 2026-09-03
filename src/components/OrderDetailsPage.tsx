@@ -67,6 +67,8 @@ export function OrderDetailsPage() {
             address: parsedAddress || "Service address",
             paymentMethod: s.Order?.payment_status === 'PAID' ? "Online Payment (Paid)" : (s.prebooking_paid ? "Prebooking Paid" : "Manual Payment"),
             status: s.status === 'NEW' ? 'Pending' : s.status === 'ACCEPTED' ? 'Accepted' : s.status === 'ASSIGNED' ? 'Assigned' : s.status === 'IN_PROGRESS' ? 'In Progress' : (s.status === 'PENDING_APPROVAL' || s.status === 'AWAITING_APPROVAL') ? 'Awaiting Approval' : s.status === 'COMPLETED' ? 'Completed' : s.status === 'CANCELLED' ? 'Cancelled' : s.status,
+            cancelledBy: s.cancelled_by,
+            cancellationReason: s.cancellation_reason,
             isDroneService: (s.Service || s.service)?.service_owner_type === 'PARTNER',
             technician: s.assigned_technician ? {
               name: s.assigned_technician.full_name || s.assigned_technician.name || 'Assigned Technician',
@@ -96,7 +98,11 @@ export function OrderDetailsPage() {
                   case 'AWAITING_APPROVAL':
                   case 'PENDING_APPROVAL': return 'Work completed, awaiting your approval';
                   case 'COMPLETED': return 'Service completed successfully';
-                  case 'CANCELLED': return 'Cancelled by user';
+                  case 'CANCELLED': {
+                    const r = (s.cancellation_reason || '').trim();
+                    const isGeneric = !r || ['cancelled by admin', 'cancelled by administrator', 'rejected by admin', 'unable to fulfill booking at scheduled time'].includes(r.toLowerCase());
+                    return s.cancelled_by === 'ADMIN' ? (isGeneric ? 'Cancelled by Assure Team' : `Cancelled by Assure Team (${r})`) : 'Cancelled by You';
+                  }
                   default: return s.status;
                 }
               })()
@@ -215,6 +221,34 @@ export function OrderDetailsPage() {
           {orderDetails.status === 'Completed' && <button className="invoice-btn" onClick={handleInvoiceDownload}>Invoice</button>}
         </div>
       </div>
+
+      {orderDetails.status === 'Cancelled' && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderLeft: '5px solid #ef4444', padding: '16px 20px', borderRadius: '8px', marginBottom: '24px' }}>
+          <h3 style={{ color: '#991b1b', margin: '0 0 6px 0', fontSize: '16px', fontWeight: '600' }}>
+            {orderDetails.cancelledBy === 'ADMIN' ? 'Service Cancelled by Assure Team' : 'Service Cancelled by You'}
+          </h3>
+          <p style={{ margin: 0, color: '#7f1d1d', fontSize: '14px', lineHeight: '1.5' }}>
+            {orderDetails.cancelledBy === 'ADMIN' 
+              ? (orderDetails.cancellationReason && !['cancelled by admin', 'cancelled by administrator', 'rejected by admin', 'unable to fulfill booking at scheduled time'].includes(orderDetails.cancellationReason.toLowerCase().trim())
+                  ? `Reason: ${orderDetails.cancellationReason}` 
+                  : 'We were unable to fulfill this service booking at your requested scheduled time.')
+              : (orderDetails.cancellationReason && orderDetails.cancellationReason.toLowerCase().trim() !== 'no reason provided'
+                  ? `Reason: ${orderDetails.cancellationReason}`
+                  : 'This service booking was cancelled as requested.')}
+          </p>
+
+          {((orderDetails).summary?.prebookingPaid || orderDetails.prebookingPaid) && (
+            <div style={{ background: '#ffffff', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px 14px', marginTop: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div>
+                <strong style={{ color: '#166534', fontSize: '14px' }}>100% Pre-Booking Refund Initiated</strong>
+                <div style={{ color: '#15803d', fontSize: '13px', marginTop: '2px' }}>
+                  The advance fee of {(orderDetails).summary?.prebookingPaid || ('?' + orderDetails.prebookingPaid)} will be credited back to your original payment source within 3�5 working days.
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {pendingExtraItems.length > 0 && (
         <div style={{ background: '#fffbeb', borderLeft: '4px solid #f59e0b', padding: '16px', borderRadius: '8px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
