@@ -11,12 +11,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const rawToken = localStorage.getItem('authToken');
-  if (rawToken === 'auth-cookie-set') {
-    localStorage.removeItem('authToken');
-  }
-  const [token, setToken] = useState<string | null>(rawToken === 'auth-cookie-set' ? null : rawToken);
-  const [userName, setUserName] = useState<string | null>(localStorage.getItem('userName'));
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('authToken'));
+  const [userName, setUserName] = useState<string | null>(() => localStorage.getItem('userName'));
   
   const isLoggedIn = !!token;
 

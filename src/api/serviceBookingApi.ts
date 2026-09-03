@@ -26,6 +26,7 @@ export interface ServiceBookingResponse {
   order_number?: string;
   total_amount?: number;
   razorpay_order_id?: string | null;
+  razorpay_key_id?: string | null;
   requires_payment?: boolean;
 }
 

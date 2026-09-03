@@ -7,10 +7,10 @@ export const ordersApi = {
   fetchOrderById: async (id: string) => {
     return axiosInstance.get(`/orders/${id}`);
   },
-  fetchOrders: async () => {
-    return axiosInstance.get('/orders');
+  fetchOrders: async (params?: any) => {
+    return axiosInstance.get('/orders', { params });
   },
-  cancelOrder: async (orderId: string) => {
-    return axiosInstance.post(`/orders/${orderId}/cancel`);
+  cancelOrder: async (orderId: string, payload?: { reason?: string }) => {
+    return axiosInstance.post(`/orders/${orderId}/cancel`, payload || {});
   }
 };
