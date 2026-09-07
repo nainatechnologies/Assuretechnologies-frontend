@@ -7,7 +7,7 @@ import { useCart } from '../context/CartContext';
 import './TopProducts.css';
 
 export function TopProducts() {
-  const { cart, setCart } = useCart();
+  const { cart, addToCart, updateCartItem, removeFromCart } = useCart();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [topProducts, setTopProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,17 +54,16 @@ export function TopProducts() {
     }
   };
 
-  const updateQuantity = (id: string, delta: number) => {
-    setCart(prev => {
-      const current = prev[id] || 0;
-      const next = current + delta;
-      if (next <= 0) {
-        const copy = { ...prev };
-        delete copy[id];
-        return copy;
-      }
-      return { ...prev, [id]: next };
-    });
+  const updateQuantity = async (id: string, delta: number) => {
+    const current = cart[id] || 0;
+    const next = current + delta;
+    if (next <= 0) {
+      await removeFromCart(id);
+    } else if (current === 0) {
+      await addToCart(id, next);
+    } else {
+      await updateCartItem(id, next);
+    }
   };
 
   return (
