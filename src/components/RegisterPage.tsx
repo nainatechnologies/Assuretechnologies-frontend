@@ -325,7 +325,7 @@ export function RegisterPage() {
               <input
                 type="text"
                 className={`auth-input ${otpErrors.otp ? 'input-error' : ''}`}
-                placeholder="Enter OTP (Use 123456)"
+                placeholder="Enter OTP"
                 {...registerOtp('otp')}
               />
               {otpErrors.otp && <span className="error-text">{otpErrors.otp.message}</span>}
@@ -337,7 +337,7 @@ export function RegisterPage() {
 
             <div className="auth-resend">
               Didn't receive code? 
-              <button type="button" onClick={() => Toast.fire({ icon: 'info', title: 'OTP Resent! (Use 123456)' })}>
+              <button type="button" onClick={() => Toast.fire({ icon: 'info', title: 'OTP Resent!' })}>
                 Resend OTP
               </button>
             </div>

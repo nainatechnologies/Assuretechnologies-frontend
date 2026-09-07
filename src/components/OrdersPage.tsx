@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import './OrdersPage.css';
 import Pagination from './Pagination';
 import { Toast } from '../utils/errorHandler';
-import { generateAndPrintInvoice } from '../utils/invoiceGenerator';
+
 import { getProductOrderStatus, getServiceBookingStatus, getPaymentMethodLabel } from '../utils/orderStatus';
 
 const getStatusIcon = (status: string) => {
@@ -176,6 +176,7 @@ export function OrdersPage() {
               id: s.display_id || s.order_number || s.id,
               rawId: s.id,
               type: 'service',
+              hasInvoice: !!s.has_invoice,
               status: getServiceBookingStatus(s.status),
               refundStatus: s.Order?.refund_status,
               refundAmount: s.Order?.refund_amount,
@@ -204,8 +205,8 @@ export function OrdersPage() {
                 image: (s.Service || s.service)?.image ? ((s.Service || s.service).image.startsWith('http') || (s.Service || s.service).image.startsWith('blob:') ? (s.Service || s.service).image : `${BASE_URL.replace(/\/api$/, '')}${(s.Service || s.service).image.startsWith('/') ? '' : '/'}${(s.Service || s.service).image}`) : 'https://via.placeholder.com/150?text=Service',
                 returnStatus: (() => {
                   switch(s.status) {
-                    case 'NEW': return 'Waiting for admin approval';
-                    case 'ACCEPTED': return 'Accepted by admin, pending technician assignment';
+                    case 'NEW': return 'Awaiting confirmation';
+                    case 'ACCEPTED': return 'Accepted, pending technician assignment';
                     case 'ASSIGNED': return 'Technician assigned';
                     case 'IN_PROGRESS': return 'Technician is currently working';
                     case 'PENDING_APPROVAL':
@@ -233,34 +234,36 @@ export function OrdersPage() {
     });
   }, [userName]);
 
-  const handleInvoiceDownload = (order: any, e: React.MouseEvent) => {
+  const handleInvoiceDownload = (e: React.MouseEvent, order: any) => {
     e.preventDefault();
-    if (!order) return;
-    
-    generateAndPrintInvoice({
-      orderNumber: order.id || 'N/A',
-      orderDate: order.date || new Date().toLocaleDateString('en-IN'),
-      customerName: order.shipTo || userName || 'Customer',
-      customerContact: order.customerContact,
-      customerEmail: order.customerEmail,
-      customerAddress: order.address || 'Customer Address',
-      companyName: order.companyName,
-      gstNumber: order.gstNumber,
-      items: (order.items || []).map((item: any) => ({
-        name: item.name,
-        qty: item.qty || 1,
-        price: item.price != null ? item.price : (order.subtotalAmount || order.totalAmount || order.total),
-        subtotal: item.subtotal != null ? item.subtotal : (item.price != null ? (item.price * (item.qty || 1)) : (order.subtotalAmount || order.totalAmount || order.total))
-      })),
-      subtotal: order.subtotalAmount,
-      taxAmount: order.taxAmount,
-      totalAmount: order.totalAmount || order.total || '0',
-      paymentStatus: order.paymentStatus || 'PAID',
-      paymentMethod: order.paymentMethod,
-      razorpayPaymentId: order.razorpayPaymentId,
-      paidAt: order.paidAt,
-      isService: order.type === 'service'
-    });
+    if (order.type === 'service') {
+      Toast.fire({ icon: 'info', title: 'Downloading invoice...' });
+      const token = localStorage.getItem('authToken');
+      const orderId = order.rawId || order.id;
+      fetch(`http://localhost:5000/api/invoices/service/${orderId}/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include'
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to download invoice');
+        return res.blob();
+      })
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Invoice-${order.id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      })
+      .catch(err => {
+        console.error(err);
+        Toast.fire({ icon: 'error', title: 'Failed to download invoice' });
+      });
+    } else {
+      Toast.fire({ icon: 'info', title: 'Product invoice coming soon.' });
+    }
   };
 
     const handleCancelOrder = async (order: any) => {
@@ -412,10 +415,10 @@ export function OrdersPage() {
               </span>
               <div className="order-header-links">
                 <Link to={`/orders/${order.id}`} className="order-link">View order details</Link>
-                {(isService ? (order.status === 'Completed' || order.status === 'COMPLETED') : (order.status === 'Delivered' || order.status === 'COMPLETED')) && (
+                {order.hasInvoice && (
                   <>
                     <span style={{ color: '#d5d9d9', margin: '0 8px' }}>|</span>
-                    <button className="order-link" onClick={(e) => handleInvoiceDownload(order, e)}>Invoice</button>
+                    <button className="order-link" onClick={(e) => handleInvoiceDownload(e, order)}>Invoice</button>
                   </>
                 )}
                 
@@ -594,6 +597,8 @@ export function OrdersPage() {
     </div>
   );
 }
+
+
 
 
 
