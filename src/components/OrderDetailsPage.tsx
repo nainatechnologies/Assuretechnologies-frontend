@@ -1,3 +1,4 @@
+
 import { BASE_URL } from '../services/api';
 import { useState, useEffect } from "react";
 import { ordersApi } from "../api/ordersApi";
@@ -5,8 +6,8 @@ import { getCustomerServiceBookings, updateExtraItemStatus } from '../api/servic
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from '../context/AuthContext';
 import { FaTruck } from "react-icons/fa";
-import { generateAndPrintInvoice } from '../utils/invoiceGenerator';
 import { getProductOrderStatus, getServiceBookingStatus, getPaymentMethodLabel } from '../utils/orderStatus';
+import { Toast } from '../utils/errorHandler';
 import "./OrderDetailsPage.css";
 
 export function OrderDetailsPage() {
@@ -18,35 +19,35 @@ export function OrderDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [extraItems, setExtraItems] = useState<any[]>([]);
 
-  const handleInvoiceDownload = (e: React.MouseEvent) => {
+  const handleInvoiceDownload = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (!orderDetails) return;
-    
-    generateAndPrintInvoice({
-      orderNumber: orderDetails.id || id || 'N/A',
-      orderDate: orderDetails.date || new Date().toLocaleDateString('en-IN'),
-      customerName: orderDetails.shipTo || userName || 'Customer',
-      customerContact: orderDetails.customerContact,
-      customerEmail: orderDetails.customerEmail,
-      customerAddress: orderDetails.address || 'Service address',
-      companyName: orderDetails.companyName,
-      gstNumber: orderDetails.gstNumber,
-      items: (orderDetails.items || []).map((item: any) => ({
-        name: item.name,
-        qty: item.qty || 1,
-        price: item.price || orderDetails.total,
-        subtotal: item.subtotal || item.price
-      })),
-      subtotal: orderDetails.rawSubtotal,
-      taxAmount: orderDetails.rawTax,
-      totalAmount: orderDetails.total,
-      paymentStatus: orderDetails.paymentStatus || 'PAID',
-      paymentMethod: orderDetails.paymentMethod,
-      paymentDetails: orderDetails.paymentDetails,
-      razorpayPaymentId: orderDetails.razorpayPaymentId,
-      paidAt: orderDetails.paidAt,
-      isService: !orderDetails.summary
-    });
+    const orderId = orderDetails.rawId || orderDetails.id || id || '';
+    const displayId = orderDetails.id || id || 'Invoice';
+    Toast.fire({ icon: 'info', title: 'Downloading invoice...' });
+    const token = localStorage.getItem('authToken');
+    const downloadUrl = `${BASE_URL.replace(/\/api$/, '')}/api/invoices/service/${orderId}/download${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+
+    try {
+      const res = await fetch(downloadUrl, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error('Failed to download invoice');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Invoice-${displayId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      Toast.fire({ icon: 'success', title: 'Invoice downloaded successfully' });
+    } catch (err) {
+      console.error(err);
+      Toast.fire({ icon: 'error', title: 'Failed to download invoice' });
+    }
   };
 
   useEffect(() => {
@@ -60,7 +61,7 @@ export function OrderDetailsPage() {
           const payload = serviceRes.value.data;
           sData = Array.isArray(payload) ? payload : (payload?.data || []);
         }
-        
+
         const s = sData.find((x: any) => x.display_id === id || x.order_number === id || x.id === id);
 
         if (s) {
@@ -97,7 +98,7 @@ export function OrderDetailsPage() {
             total: serviceTotalFormatted,
             shipTo: parsedAddress.split(',')[0] || s.Order?.customer_name || userName || "Customer",
             address: parsedAddress || "Service address",
-            paymentMethod: isPaid 
+            paymentMethod: isPaid
               ? (getPaymentMethodLabel(s.Order?.payment_method, s.Order?.payment_details, isPaid) || (s.prebooking_paid ? "Prebooking Paid" : "Online Payment (Paid)"))
               : (s.prebooking_paid ? "Prebooking Paid" : "Pending Payment"),
             status: getServiceBookingStatus(s.status),
@@ -136,7 +137,7 @@ export function OrderDetailsPage() {
               image: (s.Service || s.service)?.image || 'https://via.placeholder.com/150?text=Service',
               type: "service",
               returnStatus: (() => {
-                switch(s.status) {
+                switch (s.status) {
                   case 'NEW': return 'Waiting for admin approval';
                   case 'ACCEPTED': return 'Accepted by admin, pending technician assignment';
                   case 'ASSIGNED': return 'Technician assigned';
@@ -158,7 +159,10 @@ export function OrderDetailsPage() {
               startPhotos: startProgress?.photos || [],
               dailyUpdates: dailyUpdates,
               completedPhotos: completedProgress?.photos || []
-            } : null
+            } : null,
+            remainingBalance: s.Order?.remaining_balance ? parseFloat(s.Order.remaining_balance) : 0,
+            remainingBalancePaid: s.Order?.remaining_balance_paid !== undefined ? s.Order.remaining_balance_paid : true,
+            rawOrderNumber: s.Order?.order_number
           };
 
           const mappedExtra = (s.extra_items || []).map((item: any) => ({
@@ -179,7 +183,7 @@ export function OrderDetailsPage() {
             total: '₹' + parseFloat(o.total_amount).toLocaleString("en-IN"),
             shipTo: o.customer_name || (o.customer ? o.customer.full_name : "Guest"),
             address: o.customer_address || "No address provided",
-            paymentMethod: getPaymentMethodLabel(o.payment_method, o.payment_details, o.payment_status === 'PAID') || "Online Payment", 
+            paymentMethod: getPaymentMethodLabel(o.payment_method, o.payment_details, o.payment_status === 'PAID') || "Online Payment",
             paymentStatus: o.payment_status || "PENDING",
             refundStatus: o.refund_status,
             refundAmount: o.refund_amount,
@@ -217,7 +221,10 @@ export function OrderDetailsPage() {
               trackingId: i.tracking_id || o.tracking_id,
               transportName: i.transport_name || o.transport_name,
               trackingUrl: i.tracking_url || o.tracking_url
-            })) : []
+            })) : [],
+            remainingBalance: o.remaining_balance ? parseFloat(o.remaining_balance) : 0,
+            remainingBalancePaid: o.remaining_balance_paid !== undefined ? o.remaining_balance_paid : true,
+            rawOrderNumber: o.order_number
           };
           setOrderDetails(mapped);
           setExtraItems([]);
@@ -230,8 +237,8 @@ export function OrderDetailsPage() {
     }
   }, [id, userName]);
 
-  if (loading) return <div style={{padding: "40px", textAlign: "center"}}>Loading...</div>;
-  if (!orderDetails) return <div style={{padding: "40px", textAlign: "center"}}>Order not found.</div>;
+  if (loading) return <div style={{ padding: "40px", textAlign: "center" }}>Loading...</div>;
+  if (!orderDetails) return <div style={{ padding: "40px", textAlign: "center" }}>Order not found.</div>;
 
   const isService = orderDetails.type === "service" || orderDetails.id.startsWith("SRV") || orderDetails.id.startsWith("DRN") || orderDetails.id.startsWith("SBK");
   const isDroneService = orderDetails.isDroneService || orderDetails.id.startsWith("DRN");
@@ -241,10 +248,10 @@ export function OrderDetailsPage() {
       const bookingId = (orderDetails as any).rawId || orderDetails.id;
       await updateExtraItemStatus(bookingId, item.id, 'APPROVED');
       setExtraItems(prev => prev.map((i: any) => i.id === item.id ? { ...i, status: 'approved' } : i));
-      alert("Extra item '" + item.description + "' approved successfully!");
+      Toast.fire({ icon: 'success', title: "Extra item '" + item.description + "' approved successfully!" });
     } catch (err: any) {
       console.error(err);
-      alert('Failed to approve extra item: ' + (err.response?.data?.message || err.message));
+      Toast.fire({ icon: 'error', title: 'Failed to approve extra item: ' + (err.response?.data?.message || err.message) });
     }
   };
 
@@ -253,15 +260,80 @@ export function OrderDetailsPage() {
       const bookingId = (orderDetails as any).rawId || orderDetails.id;
       await updateExtraItemStatus(bookingId, item.id, 'REJECTED');
       setExtraItems(prev => prev.map((i: any) => i.id === item.id ? { ...i, status: 'declined' } : i));
-      alert("Extra item '" + item.description + "' declined.");
+      Toast.fire({ icon: 'info', title: "Extra item '" + item.description + "' declined." });
     } catch (err: any) {
       console.error(err);
-      alert('Failed to decline extra item: ' + (err.response?.data?.message || err.message));
+      Toast.fire({ icon: 'error', title: 'Failed to decline extra item: ' + (err.response?.data?.message || err.message) });
     }
   };
 
   const pendingExtraItems = extraItems.filter((i: any) => i.status === 'pending');
   const approvedExtraItems = extraItems.filter((i: any) => i.status === 'approved');
+
+  const loadRazorpay = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handlePayBalance = async () => {
+    try {
+      const resLoaded = await loadRazorpay();
+      if (!resLoaded) {
+        Toast.fire({ icon: 'error', title: 'Razorpay SDK failed to load.' });
+        return;
+      }
+
+      const orderNumber = orderDetails.rawOrderNumber || orderDetails.id;
+      const res = await ordersApi.payRemainingBalance(orderNumber);
+
+      if (!res.data || !res.data.razorpayOrderId) {
+        throw new Error('Failed to create Razorpay order');
+      }
+
+      const options = {
+        key: res.data.razorpayKeyId,
+        amount: res.data.amount * 100,
+        currency: 'INR',
+        name: 'Assure Technologies',
+        description: 'Remaining Balance Payment',
+        order_id: res.data.razorpayOrderId,
+        handler: async function (response: any) {
+          try {
+            await ordersApi.verifyRemainingBalancePayment(orderNumber, {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            });
+            Toast.fire({ icon: 'success', title: 'Payment Successful!' });
+            window.location.reload();
+          } catch (err) {
+            console.error(err);
+            Toast.fire({ icon: 'error', title: 'Payment verification failed' });
+          }
+        },
+        prefill: {
+          name: orderDetails.customerName,
+          email: orderDetails.customerEmail,
+          contact: orderDetails.customerContact
+        },
+        theme: {
+          color: '#3399cc'
+        }
+      };
+
+      const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.open();
+
+    } catch (err: any) {
+      console.error(err);
+      Toast.fire({ icon: 'error', title: err.response?.data?.message || 'Failed to initiate payment' });
+    }
+  };
 
   return (
     <div className="order-details-container">
@@ -294,9 +366,10 @@ export function OrderDetailsPage() {
           </div>
         </div>
         <div>
-          {(isService ? (orderDetails.status === 'Completed' || orderDetails.status === 'COMPLETED') : (orderDetails.status === 'Delivered' || orderDetails.status === 'COMPLETED')) && (
-            <button className="invoice-btn" onClick={handleInvoiceDownload}>Invoice</button>
-          )}
+          {(isService ? (orderDetails.status === 'Completed' || orderDetails.status === 'COMPLETED') : (orderDetails.status === 'Delivered' || orderDetails.status === 'COMPLETED')) &&
+            (orderDetails.remainingBalance === 0 || orderDetails.remainingBalancePaid) && (
+              <button className="invoice-btn" onClick={handleInvoiceDownload}>Invoice</button>
+            )}
         </div>
       </div>
 
@@ -306,13 +379,13 @@ export function OrderDetailsPage() {
             {orderDetails.cancelledBy === 'ADMIN' ? 'Service Cancelled by Assure Team' : 'Service Cancelled by You'}
           </h3>
           <p style={{ margin: 0, color: '#7f1d1d', fontSize: '14px', lineHeight: '1.5' }}>
-            {orderDetails.cancelledBy === 'ADMIN' 
+            {orderDetails.cancelledBy === 'ADMIN'
               ? (orderDetails.cancellationReason && !['cancelled by admin', 'cancelled by administrator', 'rejected by admin', 'unable to fulfill booking at scheduled time'].includes(orderDetails.cancellationReason.toLowerCase().trim())
-                  ? `Reason: ${orderDetails.cancellationReason}` 
-                  : 'We were unable to fulfill this service booking at your requested scheduled time.')
+                ? `Reason: ${orderDetails.cancellationReason}`
+                : 'We were unable to fulfill this service booking at your requested scheduled time.')
               : (orderDetails.cancellationReason && orderDetails.cancellationReason.toLowerCase().trim() !== 'no reason provided'
-                  ? `Reason: ${orderDetails.cancellationReason}`
-                  : 'This service booking was cancelled as requested.')}
+                ? `Reason: ${orderDetails.cancellationReason}`
+                : 'This service booking was cancelled as requested.')}
           </p>
 
           {((orderDetails).summary?.prebookingPaid || orderDetails.prebookingPaid) && (
@@ -366,7 +439,22 @@ export function OrderDetailsPage() {
         </div>
       )}
 
-      
+      {orderDetails.remainingBalance > 0 && !orderDetails.remainingBalancePaid && (
+        <div style={{ background: '#f0f9ff', borderLeft: '4px solid #0284c7', padding: '16px', borderRadius: '8px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{ color: '#0369a1', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              Action Required: Final Payment Pending
+            </h3>
+            <p style={{ margin: '0', color: '#075985', fontSize: '14px' }}>
+              Your final invoice has been generated. Please pay the remaining balance of <strong>₹{orderDetails.remainingBalance.toLocaleString('en-IN')}</strong> for the extra items to complete this service.
+            </p>
+          </div>
+          <button onClick={handlePayBalance} style={{ background: '#0284c7', border: 'none', color: 'white', padding: '10px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', whiteSpace: 'nowrap', marginLeft: '16px' }}>
+            Pay ₹{orderDetails.remainingBalance.toLocaleString('en-IN')}
+          </button>
+        </div>
+      )}
+
       {/* Refund Information Banner */}
       {orderDetails.refundStatus && orderDetails.refundStatus !== 'NONE' && (
         <div style={{
@@ -524,10 +612,10 @@ export function OrderDetailsPage() {
                 <span>{orderDetails.summary?.itemsSubtotal}</span>
               </div>
               {orderDetails.summary?.tax && (
-              <div className="summary-row">
-                <span>Tax (18% GST):</span>
-                <span>{orderDetails.summary?.tax}</span>
-              </div>
+                <div className="summary-row">
+                  <span>Tax (18% GST):</span>
+                  <span>{orderDetails.summary?.tax}</span>
+                </div>
               )}
               <div className="summary-row">
                 <span>Shipping:</span>
@@ -542,13 +630,37 @@ export function OrderDetailsPage() {
             <div className="info-col">
               <h3>Pricing Details</h3>
               <div className="summary-row">
-                <span>Total Amount:</span>
+                <span>Base Service Amount:</span>
                 <span>{orderDetails.summary?.grandTotal || orderDetails.total}</span>
               </div>
               <div className="summary-row" style={{ color: '#166534', fontWeight: '500', marginTop: '6px' }}>
-                <span>Amount Paid:</span>
+                <span>Base Amount Paid:</span>
                 <span>{(orderDetails.paymentStatus === 'PAID' || orderDetails.paymentStatus === 'Completed') ? (orderDetails.summary?.amountPaid || orderDetails.total) : '₹0'}</span>
               </div>
+
+              {orderDetails.remainingBalance > 0 && (
+                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed #cbd5e1' }}>
+                  <div className="summary-row" style={{ color: '#475569', fontSize: '13px', marginTop: '4px' }}>
+                    <span>Extra Items Amount:</span>
+                    <span>₹{Math.round(orderDetails.remainingBalance / 1.18).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="summary-row" style={{ color: '#475569', fontSize: '13px', marginTop: '4px' }}>
+                    <span>GST on Extra Items (18%):</span>
+                    <span>₹{Math.round(orderDetails.remainingBalance - (orderDetails.remainingBalance / 1.18)).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="summary-row" style={{ color: '#b45309', fontWeight: '600', marginTop: '6px', fontSize: '15px' }}>
+                    <span>Total Remaining Balance:</span>
+                    <span>₹{orderDetails.remainingBalance.toLocaleString('en-IN')}</span>
+                  </div>
+
+                  {orderDetails.remainingBalancePaid && (
+                    <div className="summary-row" style={{ color: '#166534', fontWeight: '600', marginTop: '6px' }}>
+                      <span>Remaining Balance Paid:</span>
+                      <span>₹{orderDetails.remainingBalance.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

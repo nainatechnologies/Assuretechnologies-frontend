@@ -12,5 +12,11 @@ export const ordersApi = {
   },
   cancelOrder: async (orderId: string, payload?: { reason?: string }) => {
     return axiosInstance.post(`/orders/${orderId}/cancel`, payload || {});
+  },
+  payRemainingBalance: async (orderId: string) => {
+    return axiosInstance.post(`/orders/${orderId}/pay-balance`);
+  },
+  verifyRemainingBalancePayment: async (orderId: string, paymentData: any) => {
+    return axiosInstance.post(`/orders/${orderId}/verify-balance-payment`, paymentData);
   }
 };

@@ -142,7 +142,13 @@ export function BookServicePage() {
 
   const serviceRate = getServiceRate(selectedServiceObj);
   const pricingUnit = selectedServiceObj?.pricingUnitName || 'Quantity';
-  const bookingTotal = serviceRate && bookingQuantity ? serviceRate * Number(bookingQuantity) : 0;
+  // Dynamically check for a tax rate from the backend service object, fallback to 18%
+  const dynamicTaxRate = (selectedServiceObj as any)?.tax_rate || (selectedServiceObj as any)?.gst_rate || 18;
+  const taxMultiplier = dynamicTaxRate / 100;
+  
+  const baseTotal = serviceRate && bookingQuantity ? serviceRate * Number(bookingQuantity) : 0;
+  const gstAmount = baseTotal * taxMultiplier;
+  const bookingTotal = baseTotal + gstAmount;
 
   useEffect(() => {
     if (mapPosition) setGeolocation(`${mapPosition[0].toFixed(6)}, ${mapPosition[1].toFixed(6)}`);
@@ -162,16 +168,16 @@ export function BookServicePage() {
   };
 
   const handleGetLocation = () => {
-    if (!navigator.geolocation) { alert('Geolocation is not supported by your browser.'); return; }
+    if (!navigator.geolocation) { Toast.fire({ icon: 'error', title: 'Geolocation is not supported by your browser.' }); return; }
     navigator.geolocation.getCurrentPosition(
       pos => { setMapPosition([pos.coords.latitude, pos.coords.longitude]); setMapZoom(16); },
-      () => alert('Unable to retrieve your location. Please check browser permissions.'),
+      () => Toast.fire({ icon: 'error', title: 'Unable to retrieve your location. Please check browser permissions.' }),
     );
   };
 
   const handleConfirm = async () => {
     if (!selectedServiceObj) {
-      alert('Please select a valid service.');
+      Toast.fire({ icon: 'warning', title: 'Please select a valid service.' });
       return;
     }
 
@@ -363,7 +369,12 @@ export function BookServicePage() {
             <div className="booking-modal-body">
               <div className="form-group">
                 <label>Preferred Installation Date</label>
-                <input type="date" value={form.date} onChange={e => updateForm('date', e.target.value)} />
+                <input 
+                  type="date" 
+                  value={form.date} 
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={e => updateForm('date', e.target.value)} 
+                />
               </div>
 
               <div className="form-group">
@@ -470,10 +481,20 @@ export function BookServicePage() {
                       />
                     </div>
                   </div>
-                  {bookingTotal > 0 && (
-                    <div className="bs-pricing-total">
-                      <div className="bs-pricing-total-label">Estimated Total</div>
-                      <div className="bs-pricing-total-amount">₹{bookingTotal.toLocaleString('en-IN')}</div>
+                  {baseTotal > 0 && (
+                    <div className="bs-pricing-breakdown" style={{ marginTop: '12px', padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#64748b' }}>
+                        <span>Base Amount:</span>
+                        <span>₹{baseTotal.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#64748b' }}>
+                        <span>GST ({dynamicTaxRate}%):</span>
+                        <span>₹{gstAmount.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', color: '#0f172a', borderTop: '1px solid #cbd5e1', paddingTop: '8px' }}>
+                        <span>Estimated Total:</span>
+                        <span>₹{bookingTotal.toLocaleString('en-IN')}</span>
+                      </div>
                     </div>
                   )}
                 </div>

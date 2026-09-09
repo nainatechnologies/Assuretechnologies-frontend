@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import API from '../services/api';
+import { Toast } from '../utils/errorHandler';
 import './LoginPage.css';
 
 export function ForgotPasswordPage() {
@@ -14,7 +15,7 @@ export function ForgotPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
   const [errors, setErrors] = useState({
     identifier: '',
     otp: '',
@@ -28,7 +29,7 @@ export function ForgotPasswordPage() {
 
   const handleSendOtp = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const newErrors = { ...errors, identifier: '' };
     setErrors(newErrors);
 
@@ -40,7 +41,7 @@ export function ForgotPasswordPage() {
         if (res.data.success) {
           Swal.fire({
             title: 'OTP Sent',
-            text: res.data.message || 'Please check your mobile/email.',
+            text: res.data.message || 'Please check your mobile.',
             icon: 'info',
             timer: 2000,
             showConfirmButton: false
@@ -65,7 +66,7 @@ export function ForgotPasswordPage() {
 
   const handleResetPassword = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     let hasError = false;
     const newErrors = { ...errors, newPassword: '', confirmPassword: '', otp: '' };
 
@@ -122,7 +123,7 @@ export function ForgotPasswordPage() {
   return (
     <div className="auth-page-container">
       <div className="auth-card">
-        
+
         {step === 1 && (
           <>
             <h2 className="auth-title">Forgot Password</h2>
@@ -156,7 +157,7 @@ export function ForgotPasswordPage() {
           <>
             <h2 className="auth-title">Reset Password</h2>
             <form className="auth-form" onSubmit={handleResetPassword} noValidate>
-              
+
               <div className="auth-input-group">
                 <input
                   type="text"
@@ -219,10 +220,10 @@ export function ForgotPasswordPage() {
               <button type="submit" className="auth-submit-btn">
                 Reset Password
               </button>
-              
+
               <div className="auth-resend">
-                Didn't receive code? 
-                <button type="button" onClick={() => alert('OTP Resent!')}>
+                Didn't receive code?
+                <button type="button" onClick={() => Toast.fire({ icon: 'info', title: 'OTP Resent!' })}>
                   Resend OTP
                 </button>
               </div>
