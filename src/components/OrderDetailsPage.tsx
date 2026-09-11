@@ -1,4 +1,3 @@
-
 import { BASE_URL } from '../services/api';
 import { useState, useEffect } from "react";
 import { ordersApi } from "../api/ordersApi";
@@ -78,17 +77,39 @@ export function OrderDetailsPage() {
             parsedAddress = [rawAddress.line1, rawAddress.line2, rawAddress.city, rawAddress.state, rawAddress.pincode].filter(Boolean).join(', ');
           }
 
+          const parsePhotos = (raw: any): string[] => {
+            if (!raw) return [];
+            if (Array.isArray(raw)) return raw;
+            if (typeof raw === 'string') {
+              try {
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed : [raw];
+              } catch (e) {
+                return [raw];
+              }
+            }
+            return [];
+          };
+
           const startProgress = (s.progress_updates || []).find((p: any) => p.update_type === 'START');
           const dailyUpdates = (s.progress_updates || [])
             .filter((p: any) => p.update_type === 'PROGRESS')
             .map((p: any) => ({
               date: new Date(p.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + new Date(p.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              text: p.description
+              text: p.description,
+              photos: parsePhotos(p.photos)
             }));
           const completedProgress = (s.progress_updates || []).find((p: any) => p.update_type === 'COMPLETE');
 
-          const isPaid = s.Order?.payment_status === 'PAID' || s.prebooking_paid;
-          const serviceTotalFormatted = (s.Order?.total_amount || s.total_amount) ? '₹' + parseFloat(s.Order?.total_amount || s.total_amount).toLocaleString("en-IN") : '₹0';
+          const linkedOrder = (orderRes.status === 'fulfilled' && orderRes.value && orderRes.value.data) ? orderRes.value.data : null;
+          const isPaid = s.Order?.payment_status === 'PAID' || s.Order?.payment_status === 'REFUND_PENDING' || s.Order?.payment_status === 'REFUNDED' || s.prebooking_paid || linkedOrder?.payment_status === 'PAID';
+          const serviceTotalFormatted = (s.Order?.total_amount || linkedOrder?.total_amount || s.total_amount) ? '₹' + parseFloat(s.Order?.total_amount || linkedOrder?.total_amount || s.total_amount).toLocaleString("en-IN") : '₹0';
+          const isCancelled = s.status === 'CANCELLED';
+          const refundAmountVal = s.Order?.refund_amount || linkedOrder?.refund_amount || (isCancelled && isPaid ? (s.Order?.total_amount || linkedOrder?.total_amount || s.total_amount) : null);
+          const refundStatusVal = s.Order?.refund_status || linkedOrder?.refund_status || (isCancelled && isPaid ? 'REQUESTED' : null);
+          const paymentStatusVal = (isCancelled && isPaid && (!s.Order?.payment_status || s.Order?.payment_status === 'PAID')) 
+            ? 'REFUND_PENDING' 
+            : (s.Order?.payment_status || linkedOrder?.payment_status || (isPaid ? 'PAID' : 'PENDING'));
 
           const mappedService = {
             id: s.display_id || s.order_number || s.id,
@@ -99,18 +120,18 @@ export function OrderDetailsPage() {
             shipTo: parsedAddress.split(',')[0] || s.Order?.customer_name || userName || "Customer",
             address: parsedAddress || "Service address",
             paymentMethod: isPaid
-              ? (getPaymentMethodLabel(s.Order?.payment_method, s.Order?.payment_details, isPaid) || (s.prebooking_paid ? "Prebooking Paid" : "Online Payment (Paid)"))
+              ? (getPaymentMethodLabel(s.Order?.payment_method || linkedOrder?.payment_method, s.Order?.payment_details || linkedOrder?.payment_details, isPaid) || (s.prebooking_paid ? "Online Payment (Paid)" : "Online Payment (Paid)"))
               : (s.prebooking_paid ? "Prebooking Paid" : "Pending Payment"),
             status: getServiceBookingStatus(s.status),
             cancelledBy: s.cancelled_by,
             cancellationReason: s.cancellation_reason,
-            refundStatus: s.Order?.refund_status,
-            refundAmount: s.Order?.refund_amount,
-            refundReason: s.Order?.refund_reason,
-            refundRejectionReason: s.Order?.refund_rejection_reason,
-            refundId: s.Order?.refund_id,
-            refundMode: s.Order?.refund_mode,
-            refundedAt: s.Order?.refunded_at,
+            refundStatus: refundStatusVal,
+            refundAmount: refundAmountVal,
+            refundReason: s.Order?.refund_reason || linkedOrder?.refund_reason || s.cancellation_reason,
+            refundRejectionReason: s.Order?.refund_rejection_reason || linkedOrder?.refund_rejection_reason,
+            refundId: s.Order?.refund_id || linkedOrder?.refund_id,
+            refundMode: s.Order?.refund_mode || linkedOrder?.refund_mode,
+            refundedAt: s.Order?.refunded_at || linkedOrder?.refunded_at,
             isDroneService: (s.Service || s.service)?.service_owner_type === 'PARTNER',
             technician: s.assigned_technician ? {
               name: s.assigned_technician.full_name || s.assigned_technician.name || 'Assigned Technician',
@@ -120,15 +141,15 @@ export function OrderDetailsPage() {
               itemsSubtotal: serviceTotalFormatted,
               grandTotal: serviceTotalFormatted,
               amountPaid: isPaid ? serviceTotalFormatted : '₹0',
-              prebookingPaid: s.prebooking_paid ? (s.Service?.prebooking_charge ? '₹' + parseFloat(s.Service.prebooking_charge).toLocaleString("en-IN") : serviceTotalFormatted) : null
+              prebookingPaid: isPaid ? serviceTotalFormatted : null
             },
-            prebookingPaid: s.prebooking_paid ? (s.Service?.prebooking_charge ? '₹' + parseFloat(s.Service.prebooking_charge).toLocaleString("en-IN") : serviceTotalFormatted) : null,
+            prebookingPaid: isPaid ? serviceTotalFormatted : null,
             scheduledDate: s.scheduled_date ? new Date(s.scheduled_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : '',
             scheduledTime: s.scheduled_time_slot || (s.scheduled_date ? new Date(s.scheduled_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:00 AM - 12:00 PM'),
-            paymentStatus: isPaid ? 'PAID' : 'PENDING',
-            razorpayPaymentId: s.Order?.razorpay_payment_id || null,
-            paymentDetails: s.Order?.payment_details || null,
-            paidAt: s.Order?.paid_at ? new Date(s.Order.paid_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : (isPaid ? new Date(s.updatedAt || s.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : null),
+            paymentStatus: paymentStatusVal,
+            razorpayPaymentId: s.Order?.razorpay_payment_id || linkedOrder?.razorpay_payment_id || null,
+            paymentDetails: s.Order?.payment_details || linkedOrder?.payment_details || null,
+            paidAt: (s.Order?.paid_at || linkedOrder?.paid_at) ? new Date(s.Order?.paid_at || linkedOrder?.paid_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : (isPaid ? new Date(s.updatedAt || s.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : null),
             items: [{
               name: (s.Service || s.service)?.name || "Service Booking",
               qty: s.quantity != null ? Number(s.quantity) : 1,
@@ -156,9 +177,9 @@ export function OrderDetailsPage() {
             }],
             progress: (startProgress || dailyUpdates.length > 0 || completedProgress) ? {
               startDescription: startProgress?.description,
-              startPhotos: startProgress?.photos || [],
+              startPhotos: parsePhotos(startProgress?.photos),
               dailyUpdates: dailyUpdates,
-              completedPhotos: completedProgress?.photos || []
+              completedPhotos: parsePhotos(completedProgress?.photos)
             } : null,
             remainingBalance: s.Order?.remaining_balance ? parseFloat(s.Order.remaining_balance) : 0,
             remainingBalancePaid: s.Order?.remaining_balance_paid !== undefined ? s.Order.remaining_balance_paid : true,
@@ -376,24 +397,26 @@ export function OrderDetailsPage() {
       {orderDetails.status === 'Cancelled' && (
         <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderLeft: '5px solid #ef4444', padding: '16px 20px', borderRadius: '8px', marginBottom: '24px' }}>
           <h3 style={{ color: '#991b1b', margin: '0 0 6px 0', fontSize: '16px', fontWeight: '600' }}>
-            {orderDetails.cancelledBy === 'ADMIN' ? 'Service Cancelled by Assure Team' : 'Service Cancelled by You'}
+            {orderDetails.cancelledBy === 'ADMIN'
+              ? (isService ? 'Service Cancelled by Assure Team' : 'Order Cancelled by Assure Team')
+              : (isService ? 'Service Cancelled by You' : 'Order Cancelled by You')}
           </h3>
           <p style={{ margin: 0, color: '#7f1d1d', fontSize: '14px', lineHeight: '1.5' }}>
             {orderDetails.cancelledBy === 'ADMIN'
               ? (orderDetails.cancellationReason && !['cancelled by admin', 'cancelled by administrator', 'rejected by admin', 'unable to fulfill booking at scheduled time'].includes(orderDetails.cancellationReason.toLowerCase().trim())
                 ? `Reason: ${orderDetails.cancellationReason}`
-                : 'We were unable to fulfill this service booking at your requested scheduled time.')
+                : (isService ? 'We were unable to fulfill this service booking at your requested scheduled time.' : 'We were unable to fulfill this order at scheduled time.'))
               : (orderDetails.cancellationReason && orderDetails.cancellationReason.toLowerCase().trim() !== 'no reason provided'
                 ? `Reason: ${orderDetails.cancellationReason}`
-                : 'This service booking was cancelled as requested.')}
+                : (isService ? 'This service booking was cancelled as requested.' : 'This order was cancelled as requested.'))}
           </p>
 
-          {((orderDetails).summary?.prebookingPaid || orderDetails.prebookingPaid) && (
+          {(orderDetails.refundStatus === 'REQUESTED' || orderDetails.paymentStatus === 'REFUND_PENDING' || orderDetails.paymentStatus === 'REFUNDED' || orderDetails.refundAmount || orderDetails.summary?.amountPaid !== '₹0') && (
             <div style={{ background: '#ffffff', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px 14px', marginTop: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div>
-                <strong style={{ color: '#166534', fontSize: '14px' }}>100% Pre-Booking Refund Initiated</strong>
+                <strong style={{ color: '#166534', fontSize: '14px' }}>100% Refund Initiated</strong>
                 <div style={{ color: '#15803d', fontSize: '13px', marginTop: '2px' }}>
-                  The advance fee of {(orderDetails).summary?.prebookingPaid || ('₹' + orderDetails.prebookingPaid)} will be credited back to your original payment source within 3–5 working days.
+                  The amount of {orderDetails.refundAmount ? ('₹' + parseFloat(orderDetails.refundAmount).toLocaleString('en-IN')) : orderDetails.total} will be credited back to your original payment source within 3–5 working days.
                 </div>
               </div>
             </div>
@@ -562,6 +585,14 @@ export function OrderDetailsPage() {
                   <span style={{ color: '#166534', fontWeight: 'bold', background: '#dcfce7', padding: '3px 8px', borderRadius: '4px', fontSize: '13px' }}>
                     Paid
                   </span>
+                ) : (orderDetails.paymentStatus === 'REFUND_PENDING' || orderDetails.refundStatus === 'REQUESTED') ? (
+                  <span style={{ color: '#b45309', fontWeight: 'bold', background: '#fef3c7', padding: '3px 8px', borderRadius: '4px', fontSize: '13px' }}>
+                    Refund Pending
+                  </span>
+                ) : orderDetails.paymentStatus === 'REFUNDED' ? (
+                  <span style={{ color: '#15803d', fontWeight: 'bold', background: '#dcfce7', padding: '3px 8px', borderRadius: '4px', fontSize: '13px' }}>
+                    Refunded
+                  </span>
                 ) : (
                   <span style={{ color: '#b45309', fontWeight: 'bold', background: '#fef3c7', padding: '3px 8px', borderRadius: '4px', fontSize: '13px' }}>
                     ● Pending
@@ -635,7 +666,7 @@ export function OrderDetailsPage() {
               </div>
               <div className="summary-row" style={{ color: '#166534', fontWeight: '500', marginTop: '6px' }}>
                 <span>Base Amount Paid:</span>
-                <span>{(orderDetails.paymentStatus === 'PAID' || orderDetails.paymentStatus === 'Completed') ? (orderDetails.summary?.amountPaid || orderDetails.total) : '₹0'}</span>
+                <span>{(orderDetails.paymentStatus === 'PAID' || orderDetails.paymentStatus === 'Completed' || orderDetails.paymentStatus === 'REFUND_PENDING' || orderDetails.paymentStatus === 'REFUNDED') ? (orderDetails.summary?.amountPaid || orderDetails.total) : '₹0'}</span>
               </div>
 
               {orderDetails.remainingBalance > 0 && (
@@ -648,15 +679,15 @@ export function OrderDetailsPage() {
                     <span>GST on Extra Items (18%):</span>
                     <span>₹{Math.round(orderDetails.remainingBalance - (orderDetails.remainingBalance / 1.18)).toLocaleString('en-IN')}</span>
                   </div>
-                  <div className="summary-row" style={{ color: '#b45309', fontWeight: '600', marginTop: '6px', fontSize: '15px' }}>
-                    <span>Total Remaining Balance:</span>
-                    <span>₹{orderDetails.remainingBalance.toLocaleString('en-IN')}</span>
+                  <div className="summary-row" style={{ color: orderDetails.remainingBalancePaid ? '#166534' : '#b45309', fontWeight: '600', marginTop: '6px', fontSize: '15px' }}>
+                    <span>{orderDetails.remainingBalancePaid ? 'Remaining Balance:' : 'Total Remaining Balance:'}</span>
+                    <span>{orderDetails.remainingBalancePaid ? '₹0 (Fully Paid)' : `₹${orderDetails.remainingBalance.toLocaleString('en-IN')}`}</span>
                   </div>
 
                   {orderDetails.remainingBalancePaid && (
-                    <div className="summary-row" style={{ color: '#166534', fontWeight: '600', marginTop: '6px' }}>
-                      <span>Remaining Balance Paid:</span>
-                      <span>₹{orderDetails.remainingBalance.toLocaleString('en-IN')}</span>
+                    <div className="summary-row" style={{ color: '#166534', fontWeight: '500', fontSize: '13px', marginTop: '4px' }}>
+                      <span>Extra Items Paid:</span>
+                      <span>₹{orderDetails.remainingBalance.toLocaleString('en-IN')} ✓</span>
                     </div>
                   )}
                 </div>
@@ -704,9 +735,9 @@ export function OrderDetailsPage() {
                     <div style={{ fontSize: '14px', color: '#334155' }}>{(orderDetails as any).progress.startDescription}</div>
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
                   {(orderDetails as any).progress.startPhotos.map((img: string, i: number) => (
-                    <img key={i} src={img} alt={'Start work ' + i} style={{ width: '120px', height: '90px', objectFit: 'cover', borderRadius: '4px' }} />
+                    <img key={i} src={img} alt={'Start work ' + i} style={{ width: '120px', height: '90px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid #e2e8f0' }} onClick={() => window.open(img, '_blank')} />
                   ))}
                 </div>
               </div>
@@ -720,6 +751,19 @@ export function OrderDetailsPage() {
                     <div key={i} style={{ padding: '12px', background: '#f8fafc', borderRadius: '4px', borderLeft: '4px solid #10b981' }}>
                       <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>{update.date}</div>
                       <div style={{ fontSize: '14px', color: '#334155' }}>{update.text}</div>
+                      {update.photos && update.photos.length > 0 && (
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
+                          {update.photos.map((img: string, photoIdx: number) => (
+                            <img
+                              key={photoIdx}
+                              src={img}
+                              alt={`Progress photo ${photoIdx + 1}`}
+                              style={{ width: '120px', height: '90px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid #e2e8f0' }}
+                              onClick={() => window.open(img, '_blank')}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -729,9 +773,9 @@ export function OrderDetailsPage() {
             {(orderDetails as any).progress.completedPhotos?.length > 0 && (
               <div className="info-col" style={{ gridColumn: '1 / -1', marginTop: '10px' }}>
                 <h3>Completed Photos</h3>
-                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
                   {(orderDetails as any).progress.completedPhotos.map((img: string, i: number) => (
-                    <img key={i} src={img} alt={'Completed work ' + i} style={{ width: '120px', height: '90px', objectFit: 'cover', borderRadius: '4px' }} />
+                    <img key={i} src={img} alt={'Completed work ' + i} style={{ width: '120px', height: '90px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid #e2e8f0' }} onClick={() => window.open(img, '_blank')} />
                   ))}
                 </div>
               </div>

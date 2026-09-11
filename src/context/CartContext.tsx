@@ -31,7 +31,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const fetchCart = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
+      // const token = localStorage.getItem('authToken');
       // if (!token) throw new Error('No token');
       const res = await productsApi.getCart();
       const cartItems = res.data.cartItems || [];

@@ -31,6 +31,40 @@ const TIME_SLOTS = [
   '2 PM - 4 PM',
   '4 PM - 6 PM',
 ];
+const isTimeSlotPast = (slot: string, selectedDate: string) => {
+  if (!selectedDate || !slot) return false;
+  const now = new Date();
+  const todayStr = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0')
+  ].join('-');
+  
+  const targetDate = String(selectedDate).split('T')[0];
+  if (targetDate > todayStr) return false;
+  if (targetDate < todayStr) return true;
+
+  const match = slot.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?/i);
+  if (!match) return false;
+  let hour = parseInt(match[1], 10);
+  const minute = match[2] ? parseInt(match[2], 10) : 0;
+  let period = match[3] ? match[3].toUpperCase() : null;
+
+  if (!period) {
+    if (/PM/i.test(slot) && !/AM/i.test(slot)) period = 'PM';
+    else if (hour >= 1 && hour <= 7) period = 'PM';
+    else if (hour >= 8 && hour <= 11) period = 'AM';
+  }
+
+  if (period === 'PM' && hour < 12) hour += 12;
+  if (period === 'AM' && hour === 12) hour = 0;
+
+  const currentHour = now.getHours() + now.getMinutes() / 60;
+  const slotHour = hour + minute / 60;
+
+  return slotHour <= currentHour;
+};
+
 
 const INITIAL_FORM = {
   date: '',
@@ -74,6 +108,15 @@ function MapUpdater({ center, zoom }: { center: L.LatLngTuple; zoom: number }) {
   return null;
 }
 
+
+function MapClickHandler({ onLocationSelect }: { onLocationSelect: (p: L.LatLngTuple) => void }) {
+  useMapEvents({
+    click(e) {
+      onLocationSelect([e.latlng.lat, e.latlng.lng]);
+    },
+  });
+  return null;
+}
 // --- Main component ---
 
 export function BookServicePage() {
@@ -120,9 +163,18 @@ export function BookServicePage() {
   const [customResponses, setCustomResponses] = useState<Record<string, string>>({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [bookingQuantity, setBookingQuantity] = useState<number | ''>('');
+  const [isGeocodingPincode, setIsGeocodingPincode] = useState(false);
+  const isSyncingFromPinRef = useRef(false);
+  const isSyncingFromPincodeRef = useRef(false);
 
   const updateForm = (key: keyof typeof INITIAL_FORM, val: string) =>
-    setForm(prev => ({ ...prev, [key]: val }));
+    setForm(prev => {
+      const next = { ...prev, [key]: val };
+      if (key === 'date' && next.timeSlot && isTimeSlotPast(next.timeSlot, val)) {
+        next.timeSlot = '';
+      }
+      return next;
+    });
 
   const updateCustom = useCallback((id: string, val: string) =>
     setCustomResponses(prev => ({ ...prev, [id]: val })), []);
@@ -167,13 +219,112 @@ export function BookServicePage() {
     setBookingQuantity('');
   };
 
+  // 1. Auto-sync Map from Pincode
+  useEffect(() => {
+    const pincode = form.pincode?.trim();
+    if (pincode && pincode.length === 6 && /^\d{6}$/.test(pincode)) {
+      if (isSyncingFromPinRef.current) {
+        isSyncingFromPinRef.current = false;
+        return;
+      }
+
+      const timer = setTimeout(async () => {
+        try {
+          setIsGeocodingPincode(true);
+          isSyncingFromPincodeRef.current = true;
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(pincode)}&country=India&format=json&limit=1&addressdetails=1`, {
+            headers: { 'Accept-Language': 'en' }
+          });
+          const data = await res.json();
+          if (data && data[0]) {
+            const lat = parseFloat(data[0].lat);
+            const lon = parseFloat(data[0].lon);
+            const newPos: L.LatLngTuple = [lat, lon];
+            setMapPosition(newPos);
+            setMapZoom(15);
+            setGeolocation(`${lat.toFixed(6)}, ${lon.toFixed(6)}`);
+
+            const addr = data[0].address;
+            if (addr) {
+              const detectedCity = addr.city || addr.town || addr.village || addr.suburb || addr.county || addr.state_district || '';
+              const detectedState = addr.state || '';
+              setForm(prev => {
+                const updates: any = {};
+                if (detectedCity && !prev.city) {
+                  updates.city = detectedCity;
+                }
+                if (detectedState && !prev.stateName) {
+                  updates.stateName = detectedState;
+                }
+                return Object.keys(updates).length > 0 ? { ...prev, ...updates } : prev;
+              });
+            }
+          }
+        } catch (err) {
+          console.warn('Pincode geocoding error:', err);
+        } finally {
+          setIsGeocodingPincode(false);
+          setTimeout(() => { isSyncingFromPincodeRef.current = false; }, 600);
+        }
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [form.pincode]);
+
+  // 2. When user moves the pin on the map or clicks map
+  const handleMapPinChange = useCallback(async (newPos: L.LatLngTuple) => {
+    setMapPosition(newPos);
+    setGeolocation(`${newPos[0].toFixed(6)}, ${newPos[1].toFixed(6)}`);
+
+    if (isSyncingFromPincodeRef.current) return;
+
+    try {
+      isSyncingFromPinRef.current = true;
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${newPos[0]}&lon=${newPos[1]}&format=json`, {
+        headers: { 'Accept-Language': 'en' }
+      });
+      const data = await res.json();
+      if (data && data.address) {
+        const addr = data.address;
+        const newPincode = addr.postcode ? addr.postcode.replace(/\D/g, '').slice(0, 6) : '';
+        const detectedCity = addr.city || addr.town || addr.village || addr.suburb || addr.county || addr.state_district || '';
+        const detectedState = addr.state || '';
+
+        setForm(prev => {
+          const updates: any = {};
+          if (newPincode && newPincode.length === 6) {
+            updates.pincode = newPincode;
+          }
+          if (detectedCity && !prev.city) {
+            updates.city = detectedCity;
+          }
+          if (detectedState && !prev.stateName) {
+            updates.stateName = detectedState;
+          }
+          return Object.keys(updates).length > 0 ? { ...prev, ...updates } : prev;
+        });
+      }
+    } catch (err) {
+      console.warn('Reverse geocoding error:', err);
+    } finally {
+      setTimeout(() => { isSyncingFromPinRef.current = false; }, 600);
+    }
+  }, []);
+
   const handleGetLocation = () => {
     if (!navigator.geolocation) { Toast.fire({ icon: 'error', title: 'Geolocation is not supported by your browser.' }); return; }
     navigator.geolocation.getCurrentPosition(
-      pos => { setMapPosition([pos.coords.latitude, pos.coords.longitude]); setMapZoom(16); },
+      pos => { 
+        const newPos: L.LatLngTuple = [pos.coords.latitude, pos.coords.longitude];
+        setMapPosition(newPos); 
+        setMapZoom(16);
+        handleMapPinChange(newPos);
+        Toast.fire({ icon: 'success', title: 'Location detected and address updated!' });
+      },
       () => Toast.fire({ icon: 'error', title: 'Unable to retrieve your location. Please check browser permissions.' }),
     );
-  };
+  }
 
   const handleConfirm = async () => {
     if (!selectedServiceObj) {
@@ -184,6 +335,11 @@ export function BookServicePage() {
     if (!form.date || !form.timeSlot) { 
       Toast.fire({ icon: 'warning', title: 'Please select a date and time slot.' }); 
       return; 
+    }
+
+    if (isTimeSlotPast(form.timeSlot, form.date)) {
+      Toast.fire({ icon: 'warning', title: 'The selected time slot has already passed for today. Please select an upcoming slot or future date.' });
+      return;
     }
 
     const { pincode, city, addressLine1, addressLine2, stateName } = form;
@@ -378,10 +534,17 @@ export function BookServicePage() {
               </div>
 
               <div className="form-group">
-                <label>Preferred Time Slot</label>
-                <select value={form.timeSlot} onChange={e => updateForm('timeSlot', e.target.value)}>
+                <label>Preferred Time Slot <span style={{ color: '#ef4444' }}>*</span></label>
+                <select required value={form.timeSlot} onChange={e => updateForm('timeSlot', e.target.value)}>
                   <option value="" disabled>Select time slot</option>
-                  {TIME_SLOTS.map(ts => <option key={ts} value={ts}>{ts}</option>)}
+                  {TIME_SLOTS.map(ts => {
+                    const isPast = isTimeSlotPast(ts, form.date);
+                    return (
+                      <option key={ts} value={ts} disabled={isPast}>
+                        {ts} {isPast ? '(Unavailable / Passed)' : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -390,8 +553,17 @@ export function BookServicePage() {
                 <div className="booking-section-title">Installation Address</div>
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Pincode</label>
-                    <input required type="text" value={form.pincode} onChange={e => updateForm('pincode', e.target.value)} />
+                    <label>
+                      Pincode {isGeocodingPincode && <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: 'normal' }}>(Locating on map...)</span>}
+                    </label>
+                    <input 
+                      required 
+                      type="text" 
+                      maxLength={6}
+                      placeholder="6-digit pincode"
+                      value={form.pincode} 
+                      onChange={e => updateForm('pincode', e.target.value.replace(/\D/g, ''))} 
+                    />
                   </div>
                   <div className="form-group">
                     <label>Town/City</label>
@@ -454,15 +626,19 @@ export function BookServicePage() {
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
+                    <MapClickHandler onLocationSelect={handleMapPinChange} />
                     {mapPosition && (
                       <>
                         <MapUpdater center={mapPosition} zoom={mapZoom} />
-                        <DraggableMarker position={mapPosition} setPosition={setMapPosition} />
+                        <DraggableMarker position={mapPosition} setPosition={handleMapPinChange} />
                       </>
                     )}
                   </MapContainer>
                 </div>
-                <p className="bs-map-note">*Click "Get Location" to drop a pin, then drag it to your exact location.</p>
+                <p className="bs-map-note">
+                    *Entering your 6-digit Pincode automatically centers the map pin. You can drag the pin for exact doorstep precision.
+                    {isGeocodingPincode && <span style={{ color: '#2563eb', marginLeft: '6px' }}>Locating pincode...</span>}
+                  </p>
               </div>
 
               {serviceRate > 0 && (
