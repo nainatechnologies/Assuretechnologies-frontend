@@ -236,34 +236,34 @@ export function OrdersPage() {
 
   const handleInvoiceDownload = (e: React.MouseEvent, order: any) => {
     e.preventDefault();
-    if (order.type === 'service') {
-      Toast.fire({ icon: 'info', title: 'Downloading invoice...' });
-      const token = localStorage.getItem('authToken');
-      const orderId = order.rawId || order.id;
-      fetch(`http://localhost:5000/api/invoices/service/${orderId}/download`, {
-        headers: { Authorization: `Bearer ${token}` },
-        credentials: 'include'
-      })
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to download invoice');
-        return res.blob();
-      })
-      .then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Invoice-${order.id}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      })
-      .catch(err => {
-        console.error(err);
-        Toast.fire({ icon: 'error', title: 'Failed to download invoice' });
-      });
-    } else {
-      Toast.fire({ icon: 'info', title: 'Product invoice coming soon.' });
-    }
+    Toast.fire({ icon: 'info', title: 'Downloading invoice...' });
+    const token = localStorage.getItem('authToken');
+    const orderId = order.rawId || order.id;
+    const isService = order.type === 'service' || (order.id && (order.id.startsWith('SRV') || order.id.startsWith('DRN') || order.id.startsWith('SBK') || order.id.startsWith('BKG')));
+    const endpoint = isService ? `service/${orderId}` : `orders/${orderId}`;
+    fetch(`${BASE_URL.replace(/\/api$/, '')}/api/invoices/${endpoint}/download${token ? `?token=${encodeURIComponent(token)}` : ''}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'include'
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to download invoice');
+      return res.blob();
+    })
+    .then(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Invoice-${order.id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      Toast.fire({ icon: 'success', title: 'Invoice downloaded successfully' });
+    })
+    .catch(err => {
+      console.error(err);
+      Toast.fire({ icon: 'error', title: 'Failed to download invoice' });
+    });
   };
 
     const handleCancelOrder = async (order: any) => {

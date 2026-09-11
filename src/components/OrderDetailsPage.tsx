@@ -21,11 +21,13 @@ export function OrderDetailsPage() {
   const handleInvoiceDownload = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (!orderDetails) return;
+    const isServiceBooking = orderDetails.type === "service" || (orderDetails.id && (orderDetails.id.startsWith("SRV") || orderDetails.id.startsWith("DRN") || orderDetails.id.startsWith("SBK") || orderDetails.id.startsWith("BKG")));
     const orderId = orderDetails.rawId || orderDetails.id || id || '';
     const displayId = orderDetails.id || id || 'Invoice';
     Toast.fire({ icon: 'info', title: 'Downloading invoice...' });
     const token = localStorage.getItem('authToken');
-    const downloadUrl = `${BASE_URL.replace(/\/api$/, '')}/api/invoices/service/${orderId}/download${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+    const endpoint = isServiceBooking ? `service/${orderId}` : `orders/${orderId}`;
+    const downloadUrl = `${BASE_URL.replace(/\/api$/, '')}/api/invoices/${endpoint}/download${token ? `?token=${encodeURIComponent(token)}` : ''}`;
 
     try {
       const res = await fetch(downloadUrl, {

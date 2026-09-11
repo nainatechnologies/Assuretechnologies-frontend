@@ -41,14 +41,19 @@ export const createServiceBooking = async (payload: CreateServiceBookingPayload)
 };
 
 export const verifyServiceBookingPayment = async (
-  bookingId: string,
-  paymentData: Record<string, string>
+  bookingIdOrPayload: string | Record<string, any>,
+  paymentData?: Record<string, string>
 ) => {
-  const response = await axiosInstance.post('/customer/service-bookings/verify-payment', {
-    booking_id: bookingId,
-    ...paymentData,
-  });
-
+  let body: Record<string, any>;
+  if (typeof bookingIdOrPayload === 'string') {
+    body = {
+      booking_id: bookingIdOrPayload,
+      ...(paymentData || {}),
+    };
+  } else {
+    body = bookingIdOrPayload;
+  }
+  const response = await axiosInstance.post('/customer/service-bookings/verify-payment', body);
   return response.data;
 };
 

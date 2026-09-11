@@ -390,7 +390,7 @@ export function BookServicePage() {
 
       const bookingResult = await createServiceBooking(bookingPayload);
 
-      if (bookingResult.requires_payment && bookingResult.booking_id && bookingResult.razorpay_order_id) {
+      if (bookingResult.requires_payment && bookingResult.razorpay_order_id) {
         const sdkLoaded = await loadRazorpay();
         if (!sdkLoaded) {
           Toast.fire({ icon: 'error', title: 'Razorpay SDK failed to load. Please check your connection.' });
@@ -410,7 +410,9 @@ export function BookServicePage() {
           handler: async function (response: any) {
             try {
               setIsProcessing(true);
-              await verifyServiceBookingPayment(bookingResult.booking_id!, {
+              await verifyServiceBookingPayment({
+                booking_payload: bookingPayload,
+                booking_id: bookingResult.booking_id,
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
