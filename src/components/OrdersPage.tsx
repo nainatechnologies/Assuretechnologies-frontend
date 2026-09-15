@@ -145,7 +145,8 @@ export function OrdersPage() {
               price: i.price != null ? Number(i.price) : undefined,
               subtotal: i.subtotal != null ? Number(i.subtotal) : undefined,
               image: i.product?.banner ? (i.product.banner.startsWith('http') || i.product.banner.startsWith('blob:') ? i.product.banner : `${BASE_URL.replace(/\/api$/, '')}${i.product.banner.startsWith('/') ? '' : '/'}${i.product.banner}`) : 'https://placehold.co/300x200?text=Product',
-              returnStatus: getItemStatusText(o.status, o.payment_status),
+              returnStatus: getItemStatusText(i.status || o.status, o.payment_status),
+              status: i.status || o.status,
               transportName: i.transport_name,
               trackingId: i.tracking_id,
               trackingUrl: i.tracking_url
@@ -463,8 +464,15 @@ export function OrdersPage() {
                       <div style={{ fontSize: '13px', color: '#565959', marginTop: '4px' }}>{item.returnStatus}</div>
                     )}
                     {item.trackingId && (
-                      <span style={{ fontSize: '12px', color: '#007185', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                        <FaTruck style={{ fontSize: '10px' }} /> {item.transportName} - Tracking: {item.trackingId}
+                      <span style={{ fontSize: '12px', color: '#007185', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                        <FaTruck style={{ fontSize: '11px' }} />
+                        {item.trackingUrl ? (
+                          <a href={item.trackingUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#007185', textDecoration: 'underline', fontWeight: '500' }}>
+                            {item.transportName || 'Courier'} - Tracking: {item.trackingId}
+                          </a>
+                        ) : (
+                          <span>{item.transportName || 'Courier'} - Tracking: <strong>{item.trackingId}</strong></span>
+                        )}
                       </span>
                     )}
                   </div>
@@ -487,7 +495,7 @@ export function OrdersPage() {
                 )}
               </div>
             )}
-            {order.transportName && order.trackingId && (
+            {order.transportName && order.trackingId && (!order.items || !order.items.some((i: any) => i.trackingId)) && (
               <div style={{ fontSize: '13px', color: '#565959', display: 'flex', flexDirection: 'column', gap: '6px', background: '#f8fafc', padding: '10px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <FaTruck style={{ color: '#007185' }} />

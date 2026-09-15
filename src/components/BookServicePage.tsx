@@ -8,6 +8,7 @@ import { CustomFieldInput } from './CustomFieldInput';
 import { SEOHead } from './SEOHead';
 import { StructuredData } from './StructuredData';
 import { StateSelect } from './StateSelect';
+import { RAZORPAY_KEY_ID } from '../services/api';
 import './BookServicePage.css';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -398,7 +399,7 @@ export function BookServicePage() {
           return;
         }
 
-        const razorpayKey = bookingResult.razorpay_key_id || (import.meta as any).env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TUJt0fwUv206Vf';
+        const razorpayKey = bookingResult.razorpay_key_id || RAZORPAY_KEY_ID;
 
         const options = {
           key: razorpayKey,

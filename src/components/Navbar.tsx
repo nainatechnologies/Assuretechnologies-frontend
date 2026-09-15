@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FaUserCircle, FaShoppingCart, FaBars, FaTimes, FaDownload, FaSearch, FaHome, FaTools, FaBoxOpen, FaChartLine, FaHandshake, FaArrowRight, FaPlus, FaMinus } from 'react-icons/fa';
+import { FaUserCircle, FaShoppingCart, FaBars, FaTimes, FaSearch, FaHome, FaTools, FaBoxOpen, FaChartLine, FaHandshake, FaArrowRight, FaPlus, FaMinus } from 'react-icons/fa';
 import { Logo } from './Logo';
 import { useServices } from '../hooks/useServices';
 import { useClickOutside } from '../hooks/useClickOutside';
@@ -32,71 +32,45 @@ interface SearchSuggestion {
 
 function SearchBar({ isMobile }: { isMobile?: boolean }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [liveProducts, setLiveProducts] = useState<any[]>([]);
   const [productSuggestions, setProductSuggestions] = useState<SearchSuggestion[]>([]);
   const [serviceSuggestions, setServiceSuggestions] = useState<SearchSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const searchSeqRef = useRef<number>(0);
   const { services } = useServices();
   const { cart, addToCart, updateCartItem, removeFromCart } = useCart();
 
   useClickOutside(wrapperRef, useCallback(() => setShowSuggestions(false), []));
 
-  // Debounce search query (200ms) for snappy, non-blocking autocomplete
+  // Synchronize input query with route URL search param when on /search
+  useEffect(() => {
+    if (location.pathname === '/search') {
+      const params = new URLSearchParams(location.search);
+      setQuery(params.get('q') || '');
+    }
+  }, [location.pathname, location.search]);
+
+  // Debounce search query (250ms) for snappy, non-blocking autocomplete
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(query);
-    }, 200);
+    }, 250);
     return () => clearTimeout(timer);
   }, [query]);
-
-  // Fetch live products from backend database on mount
-  useEffect(() => {
-    let isMounted = true;
-    productsApi.fetchProducts({ limit: 100 })
-      .then(res => {
-        if (!isMounted) return;
-        const raw = res?.data?.data || [];
-        if (Array.isArray(raw) && raw.length > 0) {
-          const mapped = raw.map((p: any) => {
-            const base = parseFloat(p.base_price) || 0;
-            const disc = parseFloat(p.discount) || 0;
-            const img = p.banner
-              ? (p.banner.startsWith('http') || p.banner.startsWith('blob:')
-                ? p.banner
-                : `${BASE_URL}${p.banner.startsWith('/') ? '' : '/'}${p.banner}`)
-              : 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=100&h=100&fit=crop';
-            return {
-              id: p.id || p.product_id,
-              name: p.name,
-              category: p.category || 'General',
-              price: disc > 0 ? base - (base * (disc / 100)) : base,
-              image: img
-            };
-          });
-          setLiveProducts(mapped);
-        } else {
-          setLiveProducts([]);
-        }
-      })
-      .catch(() => {
-        if (!isMounted) return;
-        setLiveProducts([]);
-      });
-
-    return () => { isMounted = false; };
-  }, []);
 
   // Flattened list for keyboard navigation: products + services + "view all" row
   const allSuggestions = useMemo(() => {
     return [...productSuggestions, ...serviceSuggestions];
   }, [productSuggestions, serviceSuggestions]);
 
+  // Dynamic server autocomplete with race-condition guard
   useEffect(() => {
-    if (!debouncedQuery.trim()) {
+    const trimmed = debouncedQuery.trim();
+    if (!trimmed) {
       setProductSuggestions([]);
       setServiceSuggestions([]);
       setShowSuggestions(false);
@@ -104,29 +78,15 @@ function SearchBar({ isMobile }: { isMobile?: boolean }) {
       return;
     }
 
-    const q = debouncedQuery.toLowerCase().trim();
+    const currentSeq = ++searchSeqRef.current;
+    const tokens = trimmed.toLowerCase().split(/\s+/).filter(Boolean);
 
-    // 1. Filter Live Products from backend
-    const productPool = liveProducts;
-
-    const matchedProducts: SearchSuggestion[] = productPool.filter((p: any) =>
-      p.name.toLowerCase().includes(q) ||
-      (p.category && p.category.toLowerCase().includes(q))
-    ).slice(0, 5).map((p: any) => ({
-      type: 'product',
-      id: p.id,
-      name: p.name,
-      category: p.category,
-      price: p.price,
-      image: p.image,
-      url: `/order-products?q=${encodeURIComponent(p.name)}`
-    }));
-
-    // 2. Filter Services & Navigate to Category Landing View
-    const matchedServices: SearchSuggestion[] = (services || []).filter((s: BackendService) =>
-      s.name.toLowerCase().includes(q) ||
-      (s.category?.name && s.category.name.toLowerCase().includes(q))
-    ).slice(0, 4).map((s: BackendService) => {
+    // 1. Filter Services with multi-word token matching
+    const matchedServices: SearchSuggestion[] = (services || []).filter((s: BackendService) => {
+      const name = (s.name || '').toLowerCase();
+      const catName = (s.category?.name || '').toLowerCase();
+      return tokens.every(token => name.includes(token) || catName.includes(token));
+    }).slice(0, 4).map((s: BackendService) => {
       const catName = s.category?.name || s.name;
       return {
         type: 'service',
@@ -138,17 +98,50 @@ function SearchBar({ isMobile }: { isMobile?: boolean }) {
       };
     });
 
-    setProductSuggestions(matchedProducts);
     setServiceSuggestions(matchedServices);
-    setShowSuggestions(matchedProducts.length > 0 || matchedServices.length > 0);
-    setHighlightedIndex(-1);
-  }, [query, liveProducts, services]);
+
+    // 2. Fetch live matching products dynamically from backend (limit 5)
+    productsApi.fetchProducts({ search: trimmed, limit: 5 })
+      .then(res => {
+        if (currentSeq !== searchSeqRef.current) return;
+        const raw = res?.data?.data || [];
+        const mapped: SearchSuggestion[] = Array.isArray(raw) ? raw.map((p: any) => {
+          const base = parseFloat(p.base_price) || 0;
+          const disc = parseFloat(p.discount) || 0;
+          const img = p.banner
+            ? (p.banner.startsWith('http') || p.banner.startsWith('blob:')
+              ? p.banner
+              : `${BASE_URL}${p.banner.startsWith('/') ? '' : '/'}${p.banner}`)
+            : 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=100&h=100&fit=crop';
+          return {
+            type: 'product',
+            id: p.id || p.product_id,
+            name: p.name,
+            category: p.category || 'General',
+            price: disc > 0 ? base - (base * (disc / 100)) : base,
+            image: img,
+            url: `/order-products?q=${encodeURIComponent(p.name)}`
+          };
+        }) : [];
+
+        setProductSuggestions(mapped);
+        setShowSuggestions(mapped.length > 0 || matchedServices.length > 0);
+        setHighlightedIndex(-1);
+      })
+      .catch(() => {
+        if (currentSeq !== searchSeqRef.current) return;
+        setProductSuggestions([]);
+        setShowSuggestions(matchedServices.length > 0);
+        setHighlightedIndex(-1);
+      });
+  }, [debouncedQuery, services]);
 
   const handleSearch = (e?: React.FormEvent, submitQuery = query) => {
     if (e) e.preventDefault();
-    if (submitQuery.trim()) {
+    const targetQuery = (submitQuery || query).trim();
+    if (targetQuery) {
       setShowSuggestions(false);
-      navigate(`/search?q=${encodeURIComponent(submitQuery.trim())}`);
+      navigate(`/search?q=${encodeURIComponent(targetQuery)}`);
     }
   };
 
@@ -314,10 +307,10 @@ function SearchBar({ isMobile }: { isMobile?: boolean }) {
 
           <div
             className={`search-dropdown-footer ${highlightedIndex === allSuggestions.length ? 'highlighted' : ''}`}
-            onClick={() => handleSearch(undefined, query)}
+            onClick={() => handleSearch(undefined, query.trim())}
             onMouseEnter={() => setHighlightedIndex(allSuggestions.length)}
           >
-            <span>View all results for "<strong>{query}</strong>"</span>
+            <span>View all results for "<strong>{query.trim()}</strong>"</span>
             <FaArrowRight className="footer-arrow" />
           </div>
         </div>
@@ -424,10 +417,10 @@ export function Navbar() {
             <span className="action-text">Cart</span>
           </Link>
 
-          <a href="/app-download" className="nav-download-btn">
+          {/* <a href="/app-download" className="nav-download-btn">
             <FaDownload />
             <span>Download App</span>
-          </a>
+          </a> */}
         </div>
       </div>
 
