@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { FaPlus, FaMinus, FaShoppingCart } from 'react-icons/fa';
 import { productsApi } from '../api/productsApi';
@@ -20,18 +20,30 @@ export function OrderProductsPage() {
   const initialSearch = searchParams.get('q') || '';
   const initialCategory = searchParams.get('category') || '';
   const [search, setSearch] = useState(initialSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
   const [category, setCategory] = useState(initialCategory);
   const [sort, setSort] = useState('popular');
   const [viewMode] = useState<'grid' | 'list'>('grid');
+  const searchSeqRef = useRef(0);
 
   useEffect(() => {
     const q = searchParams.get('q') || '';
     const cat = searchParams.get('category') || '';
     setSearch(q);
+    setDebouncedSearch(q);
     setCategory(cat);
   }, [searchParams]);
 
+  // Debounce live typing in search input (350ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const loadProducts = async (isLoadMore = false) => {
+    const seq = ++searchSeqRef.current;
     try {
       if (isLoadMore) {
         setLoadingMore(true);
@@ -43,14 +55,15 @@ export function OrderProductsPage() {
       const response = await productsApi.fetchProducts({
         page: currentPage,
         limit: 12,
-        search,
+        search: debouncedSearch.trim(),
         category,
         sort
       });
 
-      let fetchedProducts = response.data.data || [];
-      
+      // Ignore stale response if a newer search request was initiated
+      if (seq !== searchSeqRef.current) return;
 
+      let fetchedProducts = response.data.data || [];
 
       if (isLoadMore) {
         setProducts(prev => [...prev, ...fetchedProducts]);
@@ -59,22 +72,21 @@ export function OrderProductsPage() {
       }
 
       setPage(currentPage);
-      setHasMore(currentPage < response.data.pagination.totalPages);
+      setHasMore(currentPage < (response.data.pagination?.totalPages || 1));
     } catch (error) {
+      if (seq !== searchSeqRef.current) return;
       console.error("Failed to load products", error);
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (seq === searchSeqRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   };
 
   useEffect(() => {
-    // Delay slightly to allow typing
-    const timeoutId = setTimeout(() => {
-      loadProducts(false);
-    }, 300);
-    return () => clearTimeout(timeoutId);
-  }, [search, category, sort]);
+    loadProducts(false);
+  }, [debouncedSearch, category, sort]);
 
   const updateQty = async (id: string, delta: number) => {
     const currentQty = cart[id] || 0;
@@ -132,6 +144,12 @@ export function OrderProductsPage() {
                 placeholder="Search products..." 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    setDebouncedSearch(search);
+                  }
+                }}
                 style={{ padding: '8px 12px', borderRadius: '4px', border: '1px solid #ddd' }}
               />
               <select 

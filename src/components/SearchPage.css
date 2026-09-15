@@ -359,6 +359,55 @@
   background: #16a34a;
 }
 
+/* ─── Load More Products ────────────────────────────────────────── */
+.search-load-more-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 32px;
+}
+
+.search-load-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #ffffff;
+  color: #0d47a1;
+  border: 1.5px solid #0d47a1;
+  border-radius: 8px;
+  padding: 12px 28px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(13, 71, 161, 0.08);
+}
+
+.search-load-more-btn:hover:not(:disabled) {
+  background: #0d47a1;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(13, 71, 161, 0.2);
+}
+
+.search-load-more-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.search-btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(13, 71, 161, 0.25);
+  border-top-color: #0d47a1;
+  border-radius: 50%;
+  animation: searchSpin 0.7s linear infinite;
+}
+
+.search-load-more-btn:hover:not(:disabled) .search-btn-spinner {
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+}
+
 /* ─── Service Cards Grid ────────────────────────────────────────── */
 .search-service-card {
   background: #ffffff;
@@ -563,31 +612,234 @@
 }
 
 @media (max-width: 768px) {
-  .search-header {
-    padding: 20px;
+  .search-page {
+    padding: 16px 0 84px 0;
   }
+
+  .search-container {
+    padding: 0 12px;
+  }
+
+  .search-header {
+    padding: 16px 14px;
+    margin-bottom: 16px;
+    border-radius: 10px;
+  }
+
   .search-header-top {
     flex-direction: column;
     align-items: stretch;
+    gap: 12px;
+    margin-bottom: 14px;
   }
+
+  .search-title {
+    font-size: 1.22rem;
+    line-height: 1.35;
+  }
+
+  .search-subtitle {
+    font-size: 0.82rem;
+  }
+
   .search-refine-form {
     max-width: 100%;
+    padding: 3px 4px 3px 12px;
   }
+
+  .search-refine-input {
+    font-size: 0.88rem;
+  }
+
+  .search-refine-btn {
+    padding: 7px 14px;
+    font-size: 0.82rem;
+  }
+
   .search-controls {
     flex-direction: column;
     align-items: stretch;
-  }
-  .search-tabs {
-    overflow-x: auto;
-  }
-  .search-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 12px;
+    padding-top: 14px;
   }
+
+  .search-tabs {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 6px;
+    padding: 3px;
+    margin: 0;
+  }
+
+  .search-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .search-tab-btn {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+
+  .search-tab-count {
+    font-size: 0.7rem;
+    padding: 1px 6px;
+  }
+
+  .search-sort-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    font-size: 0.82rem;
+  }
+
+  .search-sort-select {
+    padding: 5px 10px;
+    font-size: 0.82rem;
+    flex: 1;
+    max-width: 180px;
+  }
+
+  .search-section {
+    margin-bottom: 24px;
+  }
+
+  .search-section-header {
+    margin-bottom: 12px;
+  }
+
+  .search-section-title {
+    font-size: 1.08rem;
+  }
+
+  .search-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .search-product-card {
+    border-radius: 8px;
+  }
+
   .search-product-image-wrap {
-    height: 140px;
+    height: 125px;
   }
+
+  .search-discount-tag {
+    top: 6px;
+    left: 6px;
+    font-size: 0.68rem;
+    padding: 2px 6px;
+  }
+
   .search-product-body {
-    padding: 12px;
+    padding: 10px 8px;
+  }
+
+  .search-product-category {
+    font-size: 0.68rem;
+    margin-bottom: 4px;
+  }
+
+  .search-product-name {
+    font-size: 0.86rem;
+    margin-bottom: 4px;
+    line-height: 1.3;
+    min-height: 2.2em;
+  }
+
+  .search-product-desc {
+    display: none;
+  }
+
+  .search-product-footer {
+    padding-top: 8px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .search-price-block {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .search-current-price {
+    font-size: 0.98rem;
+  }
+
+  .search-original-price {
+    font-size: 0.72rem;
+  }
+
+  .search-add-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 7px 10px;
+    font-size: 0.78rem;
+    border-radius: 5px;
+  }
+
+  .search-service-card {
+    padding: 14px 12px;
+    border-radius: 8px;
+  }
+
+  .search-service-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 1.1rem;
+  }
+
+  .search-service-name {
+    font-size: 0.95rem;
+  }
+
+  .search-service-desc {
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+
+  .search-service-footer {
+    padding-top: 10px;
+  }
+
+  .search-service-rate {
+    font-size: 0.9rem;
+  }
+
+  .search-book-btn {
+    padding: 7px 12px;
+    font-size: 0.78rem;
+  }
+
+  .search-empty-state {
+    padding: 36px 16px;
+    margin: 20px auto;
+  }
+}
+
+@media (max-width: 330px) {
+  .search-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .search-product-image-wrap {
+    height: 150px;
+  }
+
+  .search-product-footer {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .search-add-btn {
+    width: auto;
   }
 }

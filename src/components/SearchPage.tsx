@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { FaSearch, FaShoppingCart, FaTools, FaCheck, FaBoxOpen, FaSlidersH, FaArrowRight } from 'react-icons/fa';
 import { productsApi } from '../api/productsApi';
@@ -9,6 +9,29 @@ import { useServices } from '../hooks/useServices';
 import { useCart } from '../context/CartContext';
 import { SEOHead } from './SEOHead';
 import './SearchPage.css';
+
+const mapRawProduct = (p: any): Product => {
+  const base = parseFloat(p.base_price) || 0;
+  const disc = parseFloat(p.discount) || 0;
+  const img = p.banner
+    ? (p.banner.startsWith('http') || p.banner.startsWith('blob:')
+      ? p.banner
+      : `${BASE_URL}${p.banner.startsWith('/') ? '' : '/'}${p.banner}`)
+    : 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&h=400&fit=crop';
+  return {
+    id: p.id || p.product_id,
+    name: p.name,
+    service: p.category || p.service || 'General',
+    price: disc > 0 ? base - (base * (disc / 100)) : base,
+    originalPrice: base,
+    discount: disc,
+    description: p.description || '',
+    image: img,
+    rating: Number(p.rating) || 4.5,
+    reviewCount: Number(p.reviewCount) || 20,
+    inStock: p.stock > 0
+  };
+};
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -22,6 +45,9 @@ export function SearchPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [services, setServices] = useState<BackendService[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [addedItemIds, setAddedItemIds] = useState<Record<string, boolean>>({});
 
   const { addToCart } = useCart();
@@ -42,43 +68,27 @@ export function SearchPage() {
     return () => clearTimeout(timer);
   }, [inputQuery, activeTab, query, setSearchParams]);
 
-  // Debounce API search execution (200ms) with request cancellation
+  // Debounce API search execution (200ms) with request cancellation & server pagination
   useEffect(() => {
     let isCancelled = false;
 
     const timer = setTimeout(async () => {
       setLoading(true);
+      setPage(1);
       const q = query.trim().toLowerCase();
 
       try {
-        // 1. Fetch live products from backend API
+        // 1. Fetch live products from backend API (page 1, limit 12, server-sorted)
         let fetchedProducts: Product[] = [];
         try {
-          const prodRes = await productsApi.fetchProducts({ search: q, limit: 50 });
+          const prodRes = await productsApi.fetchProducts({ search: q, sort: sortBy, page: 1, limit: 12 });
           const backendData = prodRes?.data?.data;
+          const totalPages = prodRes?.data?.pagination?.totalPages || 1;
+          if (!isCancelled) {
+            setHasMore(totalPages > 1);
+          }
           if (Array.isArray(backendData) && backendData.length > 0) {
-            fetchedProducts = backendData.map((p: any) => {
-              const base = parseFloat(p.base_price) || 0;
-              const disc = parseFloat(p.discount) || 0;
-              const img = p.banner
-                ? (p.banner.startsWith('http') || p.banner.startsWith('blob:')
-                  ? p.banner
-                  : `${BASE_URL}${p.banner.startsWith('/') ? '' : '/'}${p.banner}`)
-                : 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&h=400&fit=crop';
-              return {
-                id: p.id || p.product_id,
-                name: p.name,
-                service: p.category || p.service || 'General',
-                price: disc > 0 ? base - (base * (disc / 100)) : base,
-                originalPrice: base,
-                discount: disc,
-                description: p.description || '',
-                image: img,
-                rating: Number(p.rating) || 4.5,
-                reviewCount: Number(p.reviewCount) || 20,
-                inStock: p.stock > 0
-              };
-            });
+            fetchedProducts = backendData.map(mapRawProduct);
           }
         } catch (apiErr) {
           console.warn('Backend product search failed:', apiErr);
@@ -94,10 +104,12 @@ export function SearchPage() {
         }
 
         if (q && fetchedServices.length === 0 && fallbackServices.length > 0) {
-          fetchedServices = fallbackServices.filter(s =>
-            s.name.toLowerCase().includes(q) ||
-            s.category?.name?.toLowerCase().includes(q)
-          );
+          const tokens = q.split(/\s+/).filter(Boolean);
+          fetchedServices = fallbackServices.filter(s => {
+            const name = (s.name || '').toLowerCase();
+            const catName = (s.category?.name || '').toLowerCase();
+            return tokens.every(token => name.includes(token) || catName.includes(token));
+          });
         }
 
         if (!isCancelled) {
@@ -117,7 +129,36 @@ export function SearchPage() {
       isCancelled = true;
       clearTimeout(timer);
     };
-  }, [query, fallbackServices]);
+  }, [query, sortBy, fallbackServices]);
+
+  const handleLoadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    const q = query.trim().toLowerCase();
+
+    try {
+      const prodRes = await productsApi.fetchProducts({
+        search: q,
+        sort: sortBy,
+        page: nextPage,
+        limit: 12
+      });
+      const backendData = prodRes?.data?.data;
+      const totalPages = prodRes?.data?.pagination?.totalPages || nextPage;
+
+      if (Array.isArray(backendData) && backendData.length > 0) {
+        const newProducts = backendData.map(mapRawProduct);
+        setProducts(prev => [...prev, ...newProducts]);
+      }
+      setPage(nextPage);
+      setHasMore(nextPage < totalPages);
+    } catch (err) {
+      console.error('Failed to load more products:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const handleRefineSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -142,21 +183,6 @@ export function SearchPage() {
       console.error('Failed to add product to cart:', e);
     }
   };
-
-  // Sort products
-  const sortedProducts = useMemo(() => {
-    const list = [...products];
-    if (sortBy === 'price-asc') {
-      return list.sort((a, b) => a.price - b.price);
-    }
-    if (sortBy === 'price-desc') {
-      return list.sort((a, b) => b.price - a.price);
-    }
-    if (sortBy === 'name') {
-      return list.sort((a, b) => a.name.localeCompare(b.name));
-    }
-    return list;
-  }, [products, sortBy]);
 
   const totalResults = products.length + services.length;
 
@@ -277,25 +303,25 @@ export function SearchPage() {
         ) : (
           <>
             {/* ── Products Section ──────────────────────── */}
-            {(activeTab === 'all' || activeTab === 'products') && sortedProducts.length > 0 && (
+            {(activeTab === 'all' || activeTab === 'products') && products.length > 0 && (
               <div className="search-section">
                 <div className="search-section-header">
                   <h2 className="search-section-title">
                     <FaBoxOpen /> Products
-                    <span className="search-section-badge">{sortedProducts.length}</span>
+                    <span className="search-section-badge">{products.length}</span>
                   </h2>
-                  {activeTab === 'all' && sortedProducts.length > 6 && (
+                  {activeTab === 'all' && products.length > 6 && (
                     <button
                       className="search-chip"
                       onClick={() => handleTabChange('products')}
                     >
-                      View all {sortedProducts.length} products ➔
+                      View all {products.length} products ➔
                     </button>
                   )}
                 </div>
 
                 <div className="search-grid">
-                  {(activeTab === 'all' ? sortedProducts.slice(0, 8) : sortedProducts).map(product => (
+                  {(activeTab === 'all' ? products.slice(0, 8) : products).map(product => (
                     <div key={product.id} className="search-product-card">
                       <div className="search-product-image-wrap">
                         <img
@@ -345,6 +371,24 @@ export function SearchPage() {
                     </div>
                   ))}
                 </div>
+
+                {activeTab === 'products' && hasMore && (
+                  <div className="search-load-more-wrap">
+                    <button
+                      onClick={handleLoadMore}
+                      disabled={loadingMore}
+                      className="search-load-more-btn"
+                    >
+                      {loadingMore ? (
+                        <>
+                          <div className="search-btn-spinner" /> Loading more products...
+                        </>
+                      ) : (
+                        <>Load More Products</>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -413,7 +457,7 @@ export function SearchPage() {
               </div>
             )}
 
-            {activeTab === 'products' && sortedProducts.length === 0 && (
+            {activeTab === 'products' && products.length === 0 && (
               <div className="search-empty-state" style={{ padding: '3rem 1rem' }}>
                 <div className="search-empty-icon"><FaBoxOpen /></div>
                 <h3 className="search-empty-title">No products found matching "{query}"</h3>
