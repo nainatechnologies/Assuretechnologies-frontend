@@ -416,11 +416,6 @@ export function Navbar() {
             </div>
             <span className="action-text">Cart</span>
           </Link>
-
-          {/* <a href="/app-download" className="nav-download-btn">
-            <FaDownload />
-            <span>Download App</span>
-          </a> */}
         </div>
       </div>
 

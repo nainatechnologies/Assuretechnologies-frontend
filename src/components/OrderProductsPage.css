@@ -218,6 +218,7 @@
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -229,6 +230,7 @@
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -331,79 +333,215 @@
   color: #999;
 }
 
-/* ─── Responsive ─────────────────────────────────────────────── */
-@media (max-width: 991px) {
-
-  .op-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  }
-}
-
-@media (max-width: 480px) {
-  .op-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-
-  .op-card {
-    padding: 10px;
-  }
-
-  .op-card-img {
-    height: 120px;
-  }
-
-  .op-price {
-    font-size: 0.9rem;
-  }
-
-  .op-add-btn {
-    padding: 5px 12px;
-    font-size: 0.75rem;
-  }
-
-  .op-qty {
-    gap: 4px;
-    height: 26px;
-  }
-
-  .op-qty button {
-    width: 20px;
-    height: 20px;
-  }
-
-  .op-qty span {
-    min-width: 14px;
-    font-size: 0.8rem;
-  }
-}
 /* ─── Header Layout ───────────────────────────────────────────── */
 .op-header-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   gap: 16px;
   flex-wrap: wrap;
 }
 
 .op-header-actions {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
   flex-wrap: wrap;
-  flex: 1;
-  justify-content: flex-end;
 }
 
-@media (max-width: 600px) {
-  .op-header-actions {
-    justify-content: flex-start;
-    width: 100%;
+/* ─── Responsive (Tablet <= 991px) ───────────────────────────── */
+@media (max-width: 991px) {
+  .op-page {
+    padding: 16px 12px;
   }
+
+  .op-layout {
+    padding: 16px 14px;
+    gap: 16px;
+  }
+
+  .op-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+  }
+}
+
+/* ─── Responsive (Mobile Landscape / Small Tablet <= 768px) ───── */
+@media (max-width: 768px) {
+  .op-page {
+    padding: 12px 8px;
+  }
+
+  .op-layout {
+    padding: 14px 10px;
+    border-radius: 6px;
+  }
+
+  .op-services-list {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .op-service-item {
+    padding: 12px 14px;
+    gap: 12px;
+  }
+
+  .op-header-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .op-header-actions {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+  }
+
   .op-header-actions input {
     flex: 1;
-    min-width: 150px;
+    min-width: 0;
+  }
+
+  .op-header-actions select {
+    width: auto;
+    flex-shrink: 0;
+  }
+}
+
+/* ─── Responsive (Mobile Portrait <= 480px) ──────────────────── */
+@media (max-width: 480px) {
+  .op-page {
+    padding: 8px 4px;
+  }
+
+  .op-layout {
+    padding: 10px 8px;
+    border-radius: 4px;
+  }
+
+  .op-section-title {
+    font-size: 0.95rem;
+    margin: 0 0 12px;
+  }
+
+  .op-services-section {
+    margin-bottom: 18px;
+  }
+
+  .op-services-list {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .op-service-item {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .op-service-img,
+  .op-service-icon {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    font-size: 1.3rem;
+  }
+
+  .op-service-info {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .op-service-label {
+    font-size: 0.65rem;
+    margin-bottom: 2px;
+  }
+
+  .op-service-title {
+    font-size: 0.82rem;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .op-service-btn {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .op-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .op-card {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .op-card-img {
+    height: 110px;
+  }
+
+  .op-card-cat {
+    font-size: 0.65rem;
+  }
+
+  .op-card-name {
+    font-size: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .op-card-desc {
+    display: none;
+  }
+
+  .op-price {
+    font-size: 0.88rem;
+  }
+
+  .op-original-price {
+    font-size: 0.72rem;
+  }
+
+  .op-add-btn {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+  }
+
+  .op-qty {
+    gap: 2px;
+    height: 24px;
+  }
+
+  .op-qty button {
+    width: 18px;
+    height: 18px;
+  }
+
+  .op-qty span {
+    min-width: 14px;
+    font-size: 0.78rem;
+  }
+}
+
+/* ─── Responsive (Extra Small Mobile <= 330px) ───────────────── */
+@media (max-width: 330px) {
+  .op-service-btn {
+    padding: 5px 8px;
+    font-size: 0.7rem;
+  }
+
+  .op-service-img,
+  .op-service-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
   }
 }
 

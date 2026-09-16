@@ -121,7 +121,7 @@ function MapClickHandler({ onLocationSelect }: { onLocationSelect: (p: L.LatLngT
 // --- Main component ---
 
 export function BookServicePage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { userName } = useAuth();
   const serviceQuery = searchParams.get('service') || '';
@@ -180,9 +180,16 @@ export function BookServicePage() {
   const updateCustom = useCallback((id: string, val: string) =>
     setCustomResponses(prev => ({ ...prev, [id]: val })), []);
 
+  const hasAutoOpenedRef = useRef(false);
+
+  useEffect(() => {
+    hasAutoOpenedRef.current = false;
+  }, [serviceQuery]);
+
   // Auto-open modal from URL params
   useEffect(() => {
-    if (!loading && autoOpen && filteredServices.length > 0 && !isModalOpen && !selectedService) {
+    if (!loading && autoOpen && !hasAutoOpenedRef.current && filteredServices.length > 0 && !isModalOpen && !selectedService) {
+      hasAutoOpenedRef.current = true;
       setSelectedService(filteredServices[0].name);
       setIsModalOpen(true);
     }
@@ -218,6 +225,16 @@ export function BookServicePage() {
     setCustomResponses({});
     setIsProcessing(false);
     setBookingQuantity('');
+
+    if (autoOpen) {
+      if (window.history.length > 1) {
+        navigate(-1);
+      } else {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('autoOpen');
+        setSearchParams(newParams, { replace: true });
+      }
+    }
   };
 
   // 1. Auto-sync Map from Pincode

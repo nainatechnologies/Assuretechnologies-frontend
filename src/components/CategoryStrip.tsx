@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   FaNetworkWired, FaRobot, FaLeaf, FaVideo, FaPhone,
@@ -50,19 +50,35 @@ export function CategoryStrip() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const activeRef = useRef<HTMLAnchorElement | null>(null);
+
+  const currentCat = location.pathname === '/order-products'
+    ? new URLSearchParams(location.search).get('category')
+    : null;
+
+  useEffect(() => {
+    if (activeRef.current) {
+      activeRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [currentCat]);
+
   return (
     <div className={`cat-strip ${isScrolled ? 'cat-strip-scrolled' : ''}`}>
       <div className="cat-strip-inner">
-        {categories.map(cat => (
-          <Link
-            key={cat.slug}
-            to={`/book-service?service=${encodeURIComponent(cat.slug)}`}
-            className="cat-strip-item"
-          >
-            <div className="cat-strip-icon">{cat.icon}</div>
-            <span className="cat-strip-label">{cat.label}</span>
-          </Link>
-        ))}
+        {categories.map(cat => {
+          const isActive = currentCat === cat.slug;
+          return (
+            <Link
+              key={cat.slug}
+              ref={isActive ? activeRef : undefined}
+              to={`/order-products?category=${encodeURIComponent(cat.slug)}`}
+              className={`cat-strip-item ${isActive ? 'cat-strip-item-active' : ''}`}
+            >
+              <div className="cat-strip-icon">{cat.icon}</div>
+              <span className="cat-strip-label">{cat.label}</span>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
