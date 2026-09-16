@@ -360,7 +360,7 @@ export function OrdersPage() {
             <div className="order-header-col">
               <span className="order-header-label">Payment</span>
               <span className="order-header-value">
-                {(order.paymentStatus === 'PAID' || order.paymentStatus === 'Paid' || order.paymentStatus === 'Completed') ? (
+                {(order.paymentStatus === 'PAID' || order.paymentStatus === 'Paid' || order.paymentStatus === 'Completed' || order.paymentStatus === 'REFUND_PENDING' || order.paymentStatus === 'REFUNDED') ? (
                   <span style={{ color: '#166534', fontWeight: 'bold', fontSize: '12px' }}>
                     Paid {order.paymentMethod ? `(${order.paymentMethod})` : ''}
                   </span>

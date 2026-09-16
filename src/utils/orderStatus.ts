@@ -69,21 +69,22 @@ export function getSafeTrackingUrl(url?: string): string | undefined {
  * Returns descriptive status text for an order item.
  */
 export function getItemStatusText(orderStatus?: string, paymentStatus?: string): string {
-  if (paymentStatus === 'REFUNDED') {
-    return 'Cancelled • Refunded';
+  const isCancelled = orderStatus === 'CANCELLED' || orderStatus === 'Cancelled' || orderStatus === 'REJECTED' || orderStatus === 'Rejected';
+
+  if (isCancelled) {
+    if (paymentStatus === 'REFUNDED') {
+      return 'Cancelled • Refunded';
+    }
+    if (paymentStatus === 'REFUND_PENDING') {
+      return 'Cancelled • Refund in Progress';
+    }
+    return (orderStatus === 'REJECTED' || orderStatus === 'Rejected') ? 'Order Rejected' : 'Order Cancelled';
   }
-  if (paymentStatus === 'REFUND_PENDING') {
-    return (orderStatus === 'CANCELLED' || orderStatus === 'Cancelled') ? 'Cancelled • Refund in Progress' : 'Refund in Progress';
-  }
-  if (orderStatus === 'CANCELLED' || orderStatus === 'Cancelled') {
-    return 'Order Cancelled';
-  }
-  if (orderStatus === 'REJECTED' || orderStatus === 'Rejected') {
-    return 'Order Rejected';
-  }
-  if (paymentStatus && paymentStatus !== 'PAID') {
+
+  if (paymentStatus && paymentStatus === 'PENDING') {
     return 'Payment Pending • Awaiting payment completion';
   }
+
   switch (orderStatus) {
     case 'NEW':
     case 'Pending':
