@@ -113,6 +113,16 @@
   color: #6b7280;
 }
 
+.footer-contact-list a {
+  color: #9ca3af;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-contact-list a:hover {
+  color: #ffffff;
+}
+
 /* ─── Bottom Copyright ───────────────────────────────────────────── */
 .footer-bottom {
   max-width: 1200px;

@@ -95,11 +95,17 @@ export function Footer() {
             </li>
             <li>
               <FaEnvelope className="contact-icon" />
-              <span>support@assuretech.com<br />sales@assuretech.com</span>
+              <a href="mailto:info.assuretechnologies@gmail.com">
+                info.assuretechnologies@gmail.com
+              </a>
             </li>
             <li>
               <FaPhoneAlt className="contact-icon" />
-              <span>+91 8639060213, +91 9505261283<br />+91 8008759767, +91 9550173443</span>
+              <div>
+                <div>Contact: <a href="tel:8639060213">8639060213</a></div>
+                <div>Sales: <a href="tel:8008659767">8008659767</a></div>
+                <div>Tech support: <a href="tel:9505261283">95052 61283</a></div>
+              </div>
             </li>
           </ul>
         </div>
