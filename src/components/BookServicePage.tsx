@@ -9,6 +9,7 @@ import { SEOHead } from './SEOHead';
 import { StructuredData } from './StructuredData';
 import { StateSelect } from './StateSelect';
 import { FiAlertCircle } from 'react-icons/fi';
+import { RAZORPAY_KEY_ID } from '../services/api';
 import './BookServicePage.css';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -40,7 +41,7 @@ const isTimeSlotPast = (slot: string, selectedDate: string) => {
     String(now.getMonth() + 1).padStart(2, '0'),
     String(now.getDate()).padStart(2, '0')
   ].join('-');
-  
+
   const targetDate = String(selectedDate).split('T')[0];
   if (targetDate > todayStr) return false;
   if (targetDate < todayStr) return true;
@@ -121,7 +122,7 @@ function MapClickHandler({ onLocationSelect }: { onLocationSelect: (p: L.LatLngT
 // --- Main component ---
 
 export function BookServicePage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { userName } = useAuth();
   const serviceQuery = searchParams.get('service') || '';
@@ -145,14 +146,14 @@ export function BookServicePage() {
 
   const filteredServices = normalizedQuery
     ? allServices.filter(s => {
-        const categoryName = s.category?.name?.toLowerCase() || '';
-        const serviceName = s.name?.toLowerCase() || '';
+      const categoryName = s.category?.name?.toLowerCase() || '';
+      const serviceName = s.name?.toLowerCase() || '';
 
-        return (
-          categoryName.includes(normalizedQuery) ||
-          serviceName.includes(normalizedQuery)
-        );
-      })
+      return (
+        categoryName.includes(normalizedQuery) ||
+        serviceName.includes(normalizedQuery)
+      );
+    })
     : allServices;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -197,9 +198,16 @@ export function BookServicePage() {
     }, 50);
   };
 
+  const hasAutoOpenedRef = useRef(false);
+
+  useEffect(() => {
+    hasAutoOpenedRef.current = false;
+  }, [serviceQuery]);
+
   // Auto-open modal from URL params
   useEffect(() => {
-    if (!loading && autoOpen && filteredServices.length > 0 && !isModalOpen && !selectedService) {
+    if (!loading && autoOpen && !hasAutoOpenedRef.current && filteredServices.length > 0 && !isModalOpen && !selectedService) {
+      hasAutoOpenedRef.current = true;
       setSelectedService(filteredServices[0].name);
       setModalError(null);
       setErrorFields({});
@@ -217,7 +225,7 @@ export function BookServicePage() {
   // Dynamically check for a tax rate from the backend service object, fallback to 18%
   const dynamicTaxRate = (selectedServiceObj as any)?.tax_rate || (selectedServiceObj as any)?.gst_rate || 18;
   const taxMultiplier = dynamicTaxRate / 100;
-  
+
   const baseTotal = serviceRate && bookingQuantity ? serviceRate * Number(bookingQuantity) : 0;
   const gstAmount = baseTotal * taxMultiplier;
   const bookingTotal = baseTotal + gstAmount;
@@ -226,11 +234,11 @@ export function BookServicePage() {
     if (mapPosition) setGeolocation(`${mapPosition[0].toFixed(6)}, ${mapPosition[1].toFixed(6)}`);
   }, [mapPosition]);
 
-  const handleBookNow = (name: string) => { 
-    setSelectedService(name); 
+  const handleBookNow = (name: string) => {
+    setSelectedService(name);
     setModalError(null);
     setErrorFields({});
-    setIsModalOpen(true); 
+    setIsModalOpen(true);
   };
 
   const handleClose = () => {
@@ -244,6 +252,16 @@ export function BookServicePage() {
     setBookingQuantity('');
     setModalError(null);
     setErrorFields({});
+
+    if (autoOpen) {
+      if (window.history.length > 1) {
+        navigate(-1);
+      } else {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('autoOpen');
+        setSearchParams(newParams, { replace: true });
+      }
+    }
   };
 
   // 1. Auto-sync Map from Pincode
@@ -342,9 +360,9 @@ export function BookServicePage() {
   const handleGetLocation = () => {
     if (!navigator.geolocation) { Toast.fire({ icon: 'error', title: 'Geolocation is not supported by your browser.' }); return; }
     navigator.geolocation.getCurrentPosition(
-      pos => { 
+      pos => {
         const newPos: L.LatLngTuple = [pos.coords.latitude, pos.coords.longitude];
-        setMapPosition(newPos); 
+        setMapPosition(newPos);
         setMapZoom(16);
         handleMapPinChange(newPos);
         Toast.fire({ icon: 'success', title: 'Location detected and address updated!' });
@@ -359,12 +377,12 @@ export function BookServicePage() {
       return;
     }
 
-    if (!form.date || !form.timeSlot) { 
+    if (!form.date || !form.timeSlot) {
       triggerError('Please select a date and time slot.', {
         date: !form.date,
         timeSlot: !form.timeSlot,
-      }); 
-      return; 
+      });
+      return;
     }
 
     if (isTimeSlotPast(form.timeSlot, form.date)) {
@@ -383,21 +401,21 @@ export function BookServicePage() {
       stateName: !stateName.trim(),
     };
     if (Object.values(addressErrors).some(Boolean)) {
-      triggerError('Please enter complete address details.', addressErrors); 
-      return; 
+      triggerError('Please enter complete address details.', addressErrors);
+      return;
     }
 
     if (selectedServiceObj.custom_fields) {
       for (const f of selectedServiceObj.custom_fields) {
         if (f.required && !customResponses[f.id]?.trim()) {
-          triggerError(`Please fill required field: ${f.label}`, { [`custom_${f.id}`]: true }); 
+          triggerError(`Please fill required field: ${f.label}`, { [`custom_${f.id}`]: true });
           return;
         }
       }
     }
 
     if (serviceRate && (!bookingQuantity || Number(bookingQuantity) <= 0)) {
-      triggerError(`Please enter number of ${pricingUnit.toLowerCase()}.`, { quantity: true }); 
+      triggerError(`Please enter number of ${pricingUnit.toLowerCase()}.`, { quantity: true });
       return;
     }
 
@@ -437,7 +455,7 @@ export function BookServicePage() {
           return;
         }
 
-        const razorpayKey = bookingResult.razorpay_key_id || (import.meta as any).env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TUJt0fwUv206Vf';
+        const razorpayKey = bookingResult.razorpay_key_id || RAZORPAY_KEY_ID;
 
         const options = {
           key: razorpayKey,
@@ -513,16 +531,16 @@ export function BookServicePage() {
 
   return (
     <>
-      <SEOHead 
+      <SEOHead
         title="Book Professional Services & On-Demand Technicians"
         description="Book certified field engineers for AgriTech drone spraying, optical networking, solar power rooftop systems, and CCTV security installations across India."
         canonicalUrl="https://assuretechnologies.com/book-service"
       />
-      <StructuredData 
-        type="service" 
+      <StructuredData
+        type="service"
         data={{ category: 'Field Technical & Drone Operations' }}
       />
-      <StructuredData 
+      <StructuredData
         type="breadcrumb"
         data={{
           items: [
@@ -538,235 +556,235 @@ export function BookServicePage() {
           <p>Comprehensive technology and infrastructure solutions for every need</p>
         </div>
 
-      <div className="bs-grid">
-        {filteredServices.length > 0 ? (
-          filteredServices.map(svc => (
-            <div key={svc.id} className="bs-card">
-              {svc.image
-                ? <img src={svc.image} alt={svc.name} className="bs-card-img" />
-                : <div className="bs-card-icon" />}
-              <div className="bs-card-body">
-                <span className="bs-card-label">{svc.category?.name || 'Service'}</span>
-                <h3 className="bs-card-title">{svc.name}</h3>
-                <button className="bs-book-btn" onClick={() => handleBookNow(svc.name)}>Book Now</button>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="bs-no-results"><p>No services found for "{serviceQuery}".</p></div>
-        )}
-      </div>
-
-      {isModalOpen && (
-        <div className="booking-modal-overlay" onClick={handleClose}>
-          <div className="booking-modal" onClick={e => e.stopPropagation()}>
-            <div className="booking-modal-header">
-              <h3>Book Service: {selectedService}</h3>
-            </div>
-
-            <div className="booking-modal-body" ref={modalBodyRef}>
-              {modalError && (
-                <div className="booking-modal-error">
-                  <FiAlertCircle className="booking-modal-error-icon" size={20} />
-                  <span>{modalError}</span>
+        <div className="bs-grid">
+          {filteredServices.length > 0 ? (
+            filteredServices.map(svc => (
+              <div key={svc.id} className="bs-card">
+                {svc.image
+                  ? <img src={svc.image} alt={svc.name} className="bs-card-img" />
+                  : <div className="bs-card-icon" />}
+                <div className="bs-card-body">
+                  <span className="bs-card-label">{svc.category?.name || 'Service'}</span>
+                  <h3 className="bs-card-title">{svc.name}</h3>
+                  <button className="bs-book-btn" onClick={() => handleBookNow(svc.name)}>Book Now</button>
                 </div>
-              )}
+              </div>
+            ))
+          ) : (
+            <div className="bs-no-results"><p>No services found for "{serviceQuery}".</p></div>
+          )}
+        </div>
 
-              <div className="form-group">
-                <label>Preferred Installation Date</label>
-                <input 
-                  type="date" 
-                  value={form.date} 
-                  min={new Date().toISOString().split('T')[0]}
-                  onChange={e => updateForm('date', e.target.value)} 
-                  className={errorFields.date ? 'input-error' : ''}
-                />
+        {isModalOpen && (
+          <div className="booking-modal-overlay" onClick={handleClose}>
+            <div className="booking-modal" onClick={e => e.stopPropagation()}>
+              <div className="booking-modal-header">
+                <h3>Book Service: {selectedService}</h3>
               </div>
 
-              <div className="form-group">
-                <label>Preferred Time Slot <span style={{ color: '#ef4444' }}>*</span></label>
-                <select 
-                  required 
-                  value={form.timeSlot} 
-                  onChange={e => updateForm('timeSlot', e.target.value)}
-                  className={errorFields.timeSlot ? 'input-error' : ''}
-                >
-                  <option value="" disabled>Select time slot</option>
-                  {TIME_SLOTS.map(ts => {
-                    const isPast = isTimeSlotPast(ts, form.date);
-                    return (
-                      <option key={ts} value={ts} disabled={isPast}>
-                        {ts} {isPast ? '(Unavailable / Passed)' : ''}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
+              <div className="booking-modal-body" ref={modalBodyRef}>
+                {modalError && (
+                  <div className="booking-modal-error">
+                    <FiAlertCircle className="booking-modal-error-icon" size={20} />
+                    <span>{modalError}</span>
+                  </div>
+                )}
 
-              {/* Installation Address */}
-              <div className="booking-address-section">
-                <div className="booking-section-title">Installation Address</div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>
-                      Pincode {isGeocodingPincode && <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: 'normal' }}>(Locating on map...)</span>}
-                    </label>
-                    <input 
-                      required 
-                      type="text" 
-                      maxLength={6}
-                      placeholder="6-digit pincode"
-                      value={form.pincode} 
-                      onChange={e => updateForm('pincode', e.target.value.replace(/\D/g, ''))} 
-                      className={errorFields.pincode ? 'input-error' : ''}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Town/City</label>
-                    <input 
-                      required 
-                      type="text" 
-                      value={form.city} 
-                      onChange={e => updateForm('city', e.target.value)} 
-                      className={errorFields.city ? 'input-error' : ''}
-                    />
-                  </div>
-                </div>
                 <div className="form-group">
-                  <label>Flat, House no., Building, Company, Apartment</label>
-                  <input 
-                    required 
-                    type="text" 
-                    value={form.addressLine1} 
-                    onChange={e => updateForm('addressLine1', e.target.value)} 
-                    className={errorFields.addressLine1 ? 'input-error' : ''}
+                  <label>Preferred Installation Date</label>
+                  <input
+                    type="date"
+                    value={form.date}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={e => updateForm('date', e.target.value)}
+                    className={errorFields.date ? 'input-error' : ''}
                   />
                 </div>
-                <div className="form-group">
-                  <label>Area, Street, Sector, Village</label>
-                  <input 
-                    required 
-                    type="text" 
-                    value={form.addressLine2} 
-                    onChange={e => updateForm('addressLine2', e.target.value)} 
-                    className={errorFields.addressLine2 ? 'input-error' : ''}
-                  />
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Landmark</label>
-                    <input type="text" value={form.landmark} onChange={e => updateForm('landmark', e.target.value)} placeholder="E.g. near apollo hospital" />
-                  </div>
-                  <div className="form-group">
-                    <label>State</label>
-                    <StateSelect
-                      value={form.stateName}
-                      onChange={(val) => updateForm('stateName', val)}
-                      placeholder="Select State"
-                      error={!!errorFields.stateName}
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
 
-              {/* Dynamic service-specific fields from API */}
-              {selectedServiceObj?.custom_fields && selectedServiceObj.custom_fields.length > 0 && (
+                <div className="form-group">
+                  <label>Preferred Time Slot <span style={{ color: '#ef4444' }}>*</span></label>
+                  <select
+                    required
+                    value={form.timeSlot}
+                    onChange={e => updateForm('timeSlot', e.target.value)}
+                    className={errorFields.timeSlot ? 'input-error' : ''}
+                  >
+                    <option value="" disabled>Select time slot</option>
+                    {TIME_SLOTS.map(ts => {
+                      const isPast = isTimeSlotPast(ts, form.date);
+                      return (
+                        <option key={ts} value={ts} disabled={isPast}>
+                          {ts} {isPast ? '(Unavailable / Passed)' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {/* Installation Address */}
                 <div className="booking-address-section">
-                  <div className="booking-section-title">Service Details</div>
-                  <div className="form-row bs-custom-row">
-                    {selectedServiceObj.custom_fields.map(field => (
-                      <div className="form-group bs-custom-field" key={field.id}>
-                        <label>{field.label} {field.required && '*'}</label>
-                        <CustomFieldInput
-                          field={field}
-                          value={customResponses[field.id] || ''}
-                          onChange={updateCustom}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="form-group">
-                <label>Geolocation</label>
-                <div className="bs-geolocation-container">
-                  <input type="text" placeholder="Latitude, Longitude" value={geolocation} readOnly className="bs-geolocation-input" />
-                  <button type="button" onClick={handleGetLocation} className="bs-geolocation-btn">Get Location</button>
-                </div>
-                <div className="bs-map-container">
-                  <MapContainer center={mapPosition || DEFAULT_POSITION} zoom={mapPosition ? mapZoom : 4} className="bs-map">
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    <MapClickHandler onLocationSelect={handleMapPinChange} />
-                    {mapPosition && (
-                      <>
-                        <MapUpdater center={mapPosition} zoom={mapZoom} />
-                        <DraggableMarker position={mapPosition} setPosition={handleMapPinChange} />
-                      </>
-                    )}
-                  </MapContainer>
-                </div>
-                <p className="bs-map-note">
-                    *Entering your 6-digit Pincode automatically centers the map pin. You can drag the pin for exact doorstep precision.
-                    {isGeocodingPincode && <span style={{ color: '#2563eb', marginLeft: '6px' }}>Locating pincode...</span>}
-                  </p>
-              </div>
-
-              {serviceRate > 0 && (
-                <div className="bs-pricing-section">
-                  <h4 className="bs-pricing-title">Service Pricing</h4>
-                  <div className="bs-pricing-row">
-                    <div className="bs-pricing-col">
-                      <label className="bs-pricing-label">
-                        Number of {pricingUnit} (₹{serviceRate}/{pricingUnit.toLowerCase()})
+                  <div className="booking-section-title">Installation Address</div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>
+                        Pincode {isGeocodingPincode && <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: 'normal' }}>(Locating on map...)</span>}
                       </label>
                       <input
-                        type="number" min="1" step="0.5"
-                        value={bookingQuantity}
-                        onChange={e => {
-                          setBookingQuantity(e.target.value ? Number(e.target.value) : '');
-                          setModalError(null);
-                          setErrorFields(prev => (prev.quantity ? { ...prev, quantity: false } : prev));
-                        }}
-                        placeholder="e.g. 8"
-                        className={errorFields.quantity ? 'input-error' : ''}
+                        required
+                        type="text"
+                        maxLength={6}
+                        placeholder="6-digit pincode"
+                        value={form.pincode}
+                        onChange={e => updateForm('pincode', e.target.value.replace(/\D/g, ''))}
+                        className={errorFields.pincode ? 'input-error' : ''}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Town/City</label>
+                      <input
+                        required
+                        type="text"
+                        value={form.city}
+                        onChange={e => updateForm('city', e.target.value)}
+                        className={errorFields.city ? 'input-error' : ''}
                       />
                     </div>
                   </div>
-                  {baseTotal > 0 && (
-                    <div className="bs-pricing-breakdown" style={{ marginTop: '12px', padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#64748b' }}>
-                        <span>Base Amount:</span>
-                        <span>₹{baseTotal.toLocaleString('en-IN')}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#64748b' }}>
-                        <span>GST ({dynamicTaxRate}%):</span>
-                        <span>₹{gstAmount.toLocaleString('en-IN')}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', color: '#0f172a', borderTop: '1px solid #cbd5e1', paddingTop: '8px' }}>
-                        <span>Estimated Total:</span>
-                        <span>₹{bookingTotal.toLocaleString('en-IN')}</span>
+                  <div className="form-group">
+                    <label>Flat, House no., Building, Company, Apartment</label>
+                    <input
+                      required
+                      type="text"
+                      value={form.addressLine1}
+                      onChange={e => updateForm('addressLine1', e.target.value)}
+                      className={errorFields.addressLine1 ? 'input-error' : ''}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Area, Street, Sector, Village</label>
+                    <input
+                      required
+                      type="text"
+                      value={form.addressLine2}
+                      onChange={e => updateForm('addressLine2', e.target.value)}
+                      className={errorFields.addressLine2 ? 'input-error' : ''}
+                    />
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Landmark</label>
+                      <input type="text" value={form.landmark} onChange={e => updateForm('landmark', e.target.value)} placeholder="E.g. near apollo hospital" />
+                    </div>
+                    <div className="form-group">
+                      <label>State</label>
+                      <StateSelect
+                        value={form.stateName}
+                        onChange={(val) => updateForm('stateName', val)}
+                        placeholder="Select State"
+                        error={!!errorFields.stateName}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dynamic service-specific fields from API */}
+                {selectedServiceObj?.custom_fields && selectedServiceObj.custom_fields.length > 0 && (
+                  <div className="booking-address-section">
+                    <div className="booking-section-title">Service Details</div>
+                    <div className="form-row bs-custom-row">
+                      {selectedServiceObj.custom_fields.map(field => (
+                        <div className="form-group bs-custom-field" key={field.id}>
+                          <label>{field.label} {field.required && '*'}</label>
+                          <CustomFieldInput
+                            field={field}
+                            value={customResponses[field.id] || ''}
+                            onChange={updateCustom}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="form-group">
+                  <label>Geolocation</label>
+                  <div className="bs-geolocation-container">
+                    <input type="text" placeholder="Latitude, Longitude" value={geolocation} readOnly className="bs-geolocation-input" />
+                    <button type="button" onClick={handleGetLocation} className="bs-geolocation-btn">Get Location</button>
+                  </div>
+                  <div className="bs-map-container">
+                    <MapContainer center={mapPosition || DEFAULT_POSITION} zoom={mapPosition ? mapZoom : 4} className="bs-map">
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <MapClickHandler onLocationSelect={handleMapPinChange} />
+                      {mapPosition && (
+                        <>
+                          <MapUpdater center={mapPosition} zoom={mapZoom} />
+                          <DraggableMarker position={mapPosition} setPosition={handleMapPinChange} />
+                        </>
+                      )}
+                    </MapContainer>
+                  </div>
+                  <p className="bs-map-note">
+                    *Entering your 6-digit Pincode automatically centers the map pin. You can drag the pin for exact doorstep precision.
+                    {isGeocodingPincode && <span style={{ color: '#2563eb', marginLeft: '6px' }}>Locating pincode...</span>}
+                  </p>
+                </div>
+
+                {serviceRate > 0 && (
+                  <div className="bs-pricing-section">
+                    <h4 className="bs-pricing-title">Service Pricing</h4>
+                    <div className="bs-pricing-row">
+                      <div className="bs-pricing-col">
+                        <label className="bs-pricing-label">
+                          Number of {pricingUnit} (₹{serviceRate}/{pricingUnit.toLowerCase()})
+                        </label>
+                        <input
+                          type="number" min="1" step="0.5"
+                          value={bookingQuantity}
+                          onChange={e => {
+                            setBookingQuantity(e.target.value ? Number(e.target.value) : '');
+                            setModalError(null);
+                            setErrorFields(prev => (prev.quantity ? { ...prev, quantity: false } : prev));
+                          }}
+                          placeholder="e.g. 8"
+                          className={errorFields.quantity ? 'input-error' : ''}
+                        />
                       </div>
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
+                    {baseTotal > 0 && (
+                      <div className="bs-pricing-breakdown" style={{ marginTop: '12px', padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#64748b' }}>
+                          <span>Base Amount:</span>
+                          <span>₹{baseTotal.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#64748b' }}>
+                          <span>GST ({dynamicTaxRate}%):</span>
+                          <span>₹{gstAmount.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', color: '#0f172a', borderTop: '1px solid #cbd5e1', paddingTop: '8px' }}>
+                          <span>Estimated Total:</span>
+                          <span>₹{bookingTotal.toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
-            <div className="booking-modal-actions">
-              <button className="btn-modal-cancel" onClick={handleClose} disabled={isProcessing}>Cancel</button>
-              <button className="btn-modal-confirm" onClick={handleConfirm} disabled={isProcessing}>
-                {isProcessing ? 'Processing...' : (bookingTotal > 0 ? `Pay ₹${bookingTotal.toLocaleString('en-IN')} & Book` : 'Confirm Booking')}
-              </button>
+              <div className="booking-modal-actions">
+                <button className="btn-modal-cancel" onClick={handleClose} disabled={isProcessing}>Cancel</button>
+                <button className="btn-modal-confirm" onClick={handleConfirm} disabled={isProcessing}>
+                  {isProcessing ? 'Processing...' : (bookingTotal > 0 ? `Pay ₹${bookingTotal.toLocaleString('en-IN')} & Book` : 'Confirm Booking')}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </section>
+        )}
+      </section>
     </>
   );
 }

@@ -609,6 +609,12 @@
     cursor: pointer;
   }
 
+  .search-autocomplete-dropdown {
+    max-height: 48vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .nav-mobile-cart {
     display: flex;
     align-items: center;

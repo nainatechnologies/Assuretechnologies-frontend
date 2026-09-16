@@ -3,6 +3,18 @@ import { logoutUser } from "./auth";
 
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+const isProduction = import.meta.env.PROD;
+
+// Razorpay Key automatically switched based on environment (GowMithra style)
+export const RAZORPAY_KEY_ID = isProduction
+  ? (import.meta.env.VITE_RAZORPAY_KEY_ID_PROD || '')
+  : (import.meta.env.VITE_RAZORPAY_KEY_ID_TEST || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TUJt0fwUv206Vf');
+
+if (isProduction && !RAZORPAY_KEY_ID) {
+  console.error('[Razorpay Config] Missing VITE_RAZORPAY_KEY_ID_PROD in production environment!');
+}
+
+
 const API = axios.create({
   baseURL: `${BASE_URL}/api`,
   withCredentials: true,

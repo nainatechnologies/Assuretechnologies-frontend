@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { FaPlus, FaMinus, FaShoppingCart } from 'react-icons/fa';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { FaPlus, FaMinus, FaShoppingCart, FaTools } from 'react-icons/fa';
 import { productsApi } from '../api/productsApi';
+import { useServices } from '../hooks/useServices';
 import { useCart } from '../context/CartContext';
 import { SEOHead } from './SEOHead';
 import { StructuredData } from './StructuredData';
@@ -9,6 +10,7 @@ import './OrderProductsPage.css';
 
 export function OrderProductsPage() {
   const { cart, setCart } = useCart();
+  const { services: allServices } = useServices();
 
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,18 +22,56 @@ export function OrderProductsPage() {
   const initialSearch = searchParams.get('q') || '';
   const initialCategory = searchParams.get('category') || '';
   const [search, setSearch] = useState(initialSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
   const [category, setCategory] = useState(initialCategory);
   const [sort, setSort] = useState('popular');
   const [viewMode] = useState<'grid' | 'list'>('grid');
+  const searchSeqRef = useRef(0);
+
+  const [serviceLimit, setServiceLimit] = useState(8);
+
+  const categoryQuery = (category || '').trim().toLowerCase();
+  const searchQuery = (debouncedSearch || '').trim().toLowerCase();
+
+  const matchingServices = useMemo(() => {
+    if (categoryQuery || searchQuery) {
+      return allServices.filter(svc => {
+        const catName = svc.category?.name?.toLowerCase() || '';
+        const svcName = svc.name?.toLowerCase() || '';
+        const matchesCat = !categoryQuery || catName.includes(categoryQuery) || svcName.includes(categoryQuery);
+        const matchesSearch = !searchQuery || svcName.includes(searchQuery) || catName.includes(searchQuery);
+        return matchesCat && matchesSearch;
+      });
+    }
+    return allServices;
+  }, [allServices, categoryQuery, searchQuery]);
+
+  const visibleServices = useMemo(() => {
+    return matchingServices.slice(0, serviceLimit);
+  }, [matchingServices, serviceLimit]);
+
+  useEffect(() => {
+    setServiceLimit(8);
+  }, [category, debouncedSearch]);
 
   useEffect(() => {
     const q = searchParams.get('q') || '';
     const cat = searchParams.get('category') || '';
     setSearch(q);
+    setDebouncedSearch(q);
     setCategory(cat);
   }, [searchParams]);
 
+  // Debounce live typing in search input (350ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const loadProducts = async (isLoadMore = false) => {
+    const seq = ++searchSeqRef.current;
     try {
       if (isLoadMore) {
         setLoadingMore(true);
@@ -43,14 +83,15 @@ export function OrderProductsPage() {
       const response = await productsApi.fetchProducts({
         page: currentPage,
         limit: 12,
-        search,
+        search: debouncedSearch.trim(),
         category,
         sort
       });
 
-      let fetchedProducts = response.data.data || [];
-      
+      // Ignore stale response if a newer search request was initiated
+      if (seq !== searchSeqRef.current) return;
 
+      let fetchedProducts = response.data.data || [];
 
       if (isLoadMore) {
         setProducts(prev => [...prev, ...fetchedProducts]);
@@ -59,22 +100,21 @@ export function OrderProductsPage() {
       }
 
       setPage(currentPage);
-      setHasMore(currentPage < response.data.pagination.totalPages);
+      setHasMore(currentPage < (response.data.pagination?.totalPages || 1));
     } catch (error) {
+      if (seq !== searchSeqRef.current) return;
       console.error("Failed to load products", error);
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (seq === searchSeqRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   };
 
   useEffect(() => {
-    // Delay slightly to allow typing
-    const timeoutId = setTimeout(() => {
-      loadProducts(false);
-    }, 300);
-    return () => clearTimeout(timeoutId);
-  }, [search, category, sort]);
+    loadProducts(false);
+  }, [debouncedSearch, category, sort]);
 
   const updateQty = async (id: string, delta: number) => {
     const currentQty = cart[id] || 0;
@@ -122,9 +162,69 @@ export function OrderProductsPage() {
       <div className="op-page">
       <div className="op-layout">
         <main className="op-main">
-          
+          {/* Services Section */}
+          {matchingServices.length > 0 && (
+            <div className="op-services-section">
+              <h3 className="op-section-title">
+                {category ? `Matching Services in ${category}` : debouncedSearch ? `Matching Services for "${debouncedSearch}"` : 'Featured Services'}
+              </h3>
+              <div className="op-services-list">
+                {visibleServices.map(service => (
+                  <div key={service.id} className="op-service-item">
+                    {service.image ? (
+                      <img src={service.image} alt={service.name} className="op-service-img" />
+                    ) : (
+                      <div className="op-service-icon">
+                        <FaTools size={24} />
+                      </div>
+                    )}
+                    <div className="op-service-info">
+                      <span className="op-service-label">{service.category?.name || category || 'Service'}</span>
+                      <h4 className="op-service-title">{service.name}</h4>
+                      {(service.price || service.prebooking_charge || service.rate) && (
+                        <span style={{ fontSize: '0.82rem', color: '#666', marginTop: '3px', display: 'block', fontWeight: 500 }}>
+                          From ₹{Number(service.price || service.prebooking_charge || service.rate).toLocaleString('en-IN')}
+                        </span>
+                      )}
+                    </div>
+                    <Link
+                      to={`/book-service?service=${encodeURIComponent(service.name)}&autoOpen=true`}
+                      className="op-service-btn"
+                    >
+                      Book Now
+                    </Link>
+                  </div>
+                ))}
+              </div>
+              {matchingServices.length > visibleServices.length && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
+                  <button
+                    onClick={() => setServiceLimit(prev => prev + 8)}
+                    style={{
+                      padding: '8px 20px',
+                      backgroundColor: '#0d47a1',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      fontSize: '0.85rem',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseOver={e => (e.currentTarget.style.backgroundColor = '#fb8c00')}
+                    onMouseOut={e => (e.currentTarget.style.backgroundColor = '#0d47a1')}
+                  >
+                    Load More Services ({matchingServices.length - visibleServices.length} remaining)
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="op-header-container">
-            <h3 className="op-section-title" style={{ margin: 0 }}>Products</h3>
+            <h3 className="op-section-title" style={{ margin: 0 }}>
+              {category ? `${category} Products` : 'Products'}
+            </h3>
             
             <div className="op-header-actions">
               <input 
@@ -132,6 +232,12 @@ export function OrderProductsPage() {
                 placeholder="Search products..." 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    setDebouncedSearch(search);
+                  }
+                }}
                 style={{ padding: '8px 12px', borderRadius: '4px', border: '1px solid #ddd' }}
               />
               <select 

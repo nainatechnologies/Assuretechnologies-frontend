@@ -38,9 +38,15 @@
   border-bottom: 3px solid transparent;
 }
 
-.cat-strip-item:hover {
+.cat-strip-item:hover,
+.cat-strip-item.cat-strip-item-active {
   color: #0d47a1;
   border-bottom-color: #0d47a1;
+}
+
+.cat-strip-item.cat-strip-item-active .cat-strip-label {
+  color: #0d47a1;
+  font-weight: 700;
 }
 
 .cat-strip-icon {
@@ -77,21 +83,25 @@
 /* ─── Responsive ─────────────────────────────────────────────────── */
 @media (max-width: 991px) {
   .cat-strip {
-    top: 0;
-    /* Below collapsed navbar */
+    position: relative;
+    top: auto;
+    z-index: 900;
   }
 
   .cat-strip-inner {
     justify-content: flex-start;
-    gap: 0;
+    gap: 2px;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
   }
 
   .cat-strip-item {
-    padding: 10px 12px;
+    padding: 8px 10px;
   }
 
   .cat-strip-icon {
     font-size: 1.1rem;
+    margin-bottom: 3px;
   }
 
   .cat-strip-label {

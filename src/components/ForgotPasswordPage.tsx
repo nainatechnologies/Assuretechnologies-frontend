@@ -64,6 +64,21 @@ export function ForgotPasswordPage() {
       });
   };
 
+  const handleResendOtp = () => {
+    const isMobile = /^\d+$/.test(identifier);
+    const payload = isMobile ? { mobile: identifier } : { email: identifier };
+
+    API.post('/auth/customer/forgot-password', payload)
+      .then((res) => {
+        if (res.data.success) {
+          Toast.fire({ icon: 'success', title: res.data.message || 'OTP resent successfully!' });
+        }
+      })
+      .catch((err) => {
+        Toast.fire({ icon: 'error', title: err.response?.data?.message || 'Failed to resend OTP. Please try again.' });
+      });
+  };
+
   const handleResetPassword = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -223,7 +238,7 @@ export function ForgotPasswordPage() {
 
               <div className="auth-resend">
                 Didn't receive code?
-                <button type="button" onClick={() => Toast.fire({ icon: 'info', title: 'OTP Resent!' })}>
+                <button type="button" onClick={handleResendOtp}>
                   Resend OTP
                 </button>
               </div>

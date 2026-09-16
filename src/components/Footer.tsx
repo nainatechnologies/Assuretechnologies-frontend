@@ -3,6 +3,28 @@ import { Link } from 'react-router-dom';
 import { Logo } from './Logo';
 import './Footer.css';
 
+const servicesCol1 = [
+  'Networking',
+  'Automation',
+  'AgriTech',
+  'Surveillance',
+  'Telephony',
+  'Intercom',
+  'Biometrics',
+  'Communication',
+];
+
+const servicesCol2 = [
+  'Infrastructure',
+  'IT Support',
+  'Solar',
+  'IIoT',
+  'Security',
+  'Sensors',
+  'Agriculture',
+  'Fiber Optics',
+];
+
 export function Footer() {
   return (
     <footer className="footer-container">
@@ -39,16 +61,28 @@ export function Footer() {
         </div>
 
         {/* Column 3: Our Services */}
-        <div className="footer-col">
+        <div className="footer-col services-col">
           <h4 className="footer-heading">Our Services</h4>
-          <ul className="footer-links">
-            <li><a href="#">Networking</a></li>
-            <li><a href="#">Automation</a></li>
-            <li><a href="#">AgriTech</a></li>
-            <li><a href="#">Surveillance</a></li>
-            <li><a href="#">Solar Power</a></li>
-            <li><a href="#">IT Support</a></li>
-          </ul>
+          <div className="footer-services-grid">
+            <ul className="footer-links">
+              {servicesCol1.map(service => (
+                <li key={service}>
+                  <Link to={`/order-products?category=${encodeURIComponent(service)}`}>
+                    {service}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <ul className="footer-links">
+              {servicesCol2.map(service => (
+                <li key={service}>
+                  <Link to={`/order-products?category=${encodeURIComponent(service)}`}>
+                    {service}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
         {/* Column 4: Contact Us */}

@@ -1,4 +1,4 @@
-import { BASE_URL } from '../services/api';
+import { BASE_URL, RAZORPAY_KEY_ID } from '../services/api';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { productsApi } from '../api/productsApi';
@@ -185,7 +185,7 @@ export function CartPage() {
           return;
         }
 
-        const razorpayKey = res.data.razorpayKeyId || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TUJt0fwUv206Vf';
+        const razorpayKey = res.data.razorpayKeyId || RAZORPAY_KEY_ID;
 
         const options = {
           key: razorpayKey,
@@ -208,8 +208,8 @@ export function CartPage() {
                 setCart({});
                 navigate('/orders');
               }
-            } catch (err) {
-              Toast.fire({ icon: 'error', title: 'Payment verification failed.' });
+            } catch (err: any) {
+              Toast.fire({ icon: 'error', title: err?.response?.data?.message || 'Payment verification failed.' });
             } finally {
               setIsVerifyingPayment(false);
               setIsPlacingOrder(false);

@@ -1,11 +1,11 @@
-import { BASE_URL } from '../services/api';
+import { BASE_URL, RAZORPAY_KEY_ID } from '../services/api';
 import { useState, useEffect } from "react";
 import { ordersApi } from "../api/ordersApi";
 import { getCustomerServiceBookings, updateExtraItemStatus } from '../api/serviceBookingApi';
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from '../context/AuthContext';
 import { FaTruck } from "react-icons/fa";
-import { getProductOrderStatus, getServiceBookingStatus, getPaymentMethodLabel } from '../utils/orderStatus';
+import { getProductOrderStatus, getServiceBookingStatus, getPaymentMethodLabel, getItemStatusText, getSafeTrackingUrl } from '../utils/orderStatus';
 import { Toast } from '../utils/errorHandler';
 import "./OrderDetailsPage.css";
 
@@ -45,9 +45,9 @@ export function OrderDetailsPage() {
       a.remove();
       window.URL.revokeObjectURL(url);
       Toast.fire({ icon: 'success', title: 'Invoice downloaded successfully' });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      Toast.fire({ icon: 'error', title: 'Failed to download invoice' });
+      Toast.fire({ icon: 'error', title: err?.response?.data?.message || 'Failed to download invoice' });
     }
   };
 
@@ -243,9 +243,11 @@ export function OrderDetailsPage() {
               price: '₹' + parseFloat(i.price).toLocaleString("en-IN"),
               image: i.product?.banner ? (i.product.banner.startsWith('http') || i.product.banner.startsWith('blob:') ? i.product.banner : (BASE_URL.replace(/\/api$/, "") + (i.product.banner.startsWith('/') ? '' : '/') + i.product.banner)) : 'https://placehold.co/300x200?text=Product',
               type: "product",
-              trackingId: i.tracking_id || o.tracking_id,
-              transportName: i.transport_name || o.transport_name,
-              trackingUrl: i.tracking_url || o.tracking_url
+              status: i.status || o.status,
+              returnStatus: getItemStatusText(i.status || o.status, o.payment_status),
+              trackingId: i.tracking_id || o.tracking_id || undefined,
+              transportName: i.transport_name || o.transport_name || undefined,
+              trackingUrl: i.tracking_url || o.tracking_url || undefined
             })) : [],
             remainingBalance: o.remaining_balance ? parseFloat(o.remaining_balance) : 0,
             remainingBalancePaid: o.remaining_balance_paid !== undefined ? o.remaining_balance_paid : true,
@@ -321,7 +323,7 @@ export function OrderDetailsPage() {
       }
 
       const options = {
-        key: res.data.razorpayKeyId,
+        key: res.data.razorpayKeyId || RAZORPAY_KEY_ID,
         amount: res.data.amount * 100,
         currency: 'INR',
         name: 'Assure Technologies',
@@ -336,9 +338,9 @@ export function OrderDetailsPage() {
             });
             Toast.fire({ icon: 'success', title: 'Payment Successful!' });
             window.location.reload();
-          } catch (err) {
+          } catch (err: any) {
             console.error(err);
-            Toast.fire({ icon: 'error', title: 'Payment verification failed' });
+            Toast.fire({ icon: 'error', title: err?.response?.data?.message || 'Payment verification failed' });
           }
         },
         prefill: {
@@ -715,12 +717,12 @@ export function OrderDetailsPage() {
               <Link to="#" className="item-name">{item.name} {Number(item.qty) > 1 ? `x${Number(item.qty)}` : ''}</Link>
               {!isService && <div className="item-price">{item.price}</div>}
               {item.returnStatus && <div className="item-return-status" style={{ fontSize: '12px', color: '#565959', marginTop: '4px' }}>{item.returnStatus}</div>}
-              {(item.trackingId || orderDetails.trackingId) && (
+              {item.trackingId && (
                 <div style={{ fontSize: '13px', color: '#007185', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', background: '#f8fafc', padding: '6px 10px', borderRadius: '4px', border: '1px solid #e2e8f0', width: 'fit-content' }}>
                   <FaTruck style={{ fontSize: '12px', color: '#007185' }} />
-                  <span>{item.transportName || orderDetails.transportName || 'Courier'}: <strong>{item.trackingId || orderDetails.trackingId}</strong></span>
-                  {(item.trackingUrl || orderDetails.trackingUrl) && (
-                    <a href={item.trackingUrl || orderDetails.trackingUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', marginLeft: '6px', fontWeight: '500' }}>
+                  <span>{item.transportName || 'Courier'}: <strong>{item.trackingId}</strong></span>
+                  {getSafeTrackingUrl(item.trackingUrl) && (
+                    <a href={getSafeTrackingUrl(item.trackingUrl)} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', marginLeft: '6px', fontWeight: '500' }}>
                       Track ↗
                     </a>
                   )}

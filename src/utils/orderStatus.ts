@@ -52,3 +52,54 @@ export function getPaymentMethodLabel(
   if (paymentMethod) return paymentMethod;
   return isPaid ? 'Online' : undefined;
 }
+
+/**
+ * Validates and returns a safe HTTP/HTTPS URL, preventing javascript: or data: injection.
+ */
+export function getSafeTrackingUrl(url?: string): string | undefined {
+  if (!url) return undefined;
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  return undefined;
+}
+
+/**
+ * Returns descriptive status text for an order item.
+ */
+export function getItemStatusText(orderStatus?: string, paymentStatus?: string): string {
+  if (paymentStatus === 'REFUNDED') {
+    return 'Cancelled • Refunded';
+  }
+  if (paymentStatus === 'REFUND_PENDING') {
+    return (orderStatus === 'CANCELLED' || orderStatus === 'Cancelled') ? 'Cancelled • Refund in Progress' : 'Refund in Progress';
+  }
+  if (orderStatus === 'CANCELLED' || orderStatus === 'Cancelled') {
+    return 'Order Cancelled';
+  }
+  if (orderStatus === 'REJECTED' || orderStatus === 'Rejected') {
+    return 'Order Rejected';
+  }
+  if (paymentStatus && paymentStatus !== 'PAID') {
+    return 'Payment Pending • Awaiting payment completion';
+  }
+  switch (orderStatus) {
+    case 'NEW':
+    case 'Pending':
+      return 'Order Placed • Awaiting Confirmation';
+    case 'ACCEPTED':
+    case 'Accepted':
+      return 'Order Accepted • Packing Item';
+    case 'OUT_FOR_DELIVERY':
+    case 'Out for Delivery':
+      return 'Dispatched • Out for Delivery';
+    case 'COMPLETED':
+    case 'Delivered':
+      return 'Delivered Successfully';
+    default:
+      return orderStatus ? `Status: ${orderStatus}` : 'Order Placed';
+  }
+}
+
+
