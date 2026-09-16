@@ -177,6 +177,8 @@ export function OrdersPage() {
               rawId: s.id,
               type: 'service',
               hasInvoice: !!s.has_invoice,
+              remainingBalance: s.Order?.remaining_balance ? parseFloat(s.Order.remaining_balance) : 0,
+              remainingBalancePaid: s.Order?.remaining_balance_paid !== undefined ? Boolean(s.Order.remaining_balance_paid) : true,
               status: getServiceBookingStatus(s.status),
               refundStatus: s.Order?.refund_status,
               refundAmount: s.Order?.refund_amount,
@@ -415,7 +417,7 @@ export function OrdersPage() {
               </span>
               <div className="order-header-links">
                 <Link to={`/orders/${order.id}`} className="order-link">View order details</Link>
-                {order.hasInvoice && (
+                {order.hasInvoice && (order.type !== 'service' || ((order.remainingBalance === 0 || order.remainingBalancePaid) && (order.status === 'Completed' || order.status === 'COMPLETED'))) && (
                   <>
                     <span style={{ color: '#d5d9d9', margin: '0 8px' }}>|</span>
                     <button className="order-link" onClick={(e) => handleInvoiceDownload(e, order)}>Invoice</button>

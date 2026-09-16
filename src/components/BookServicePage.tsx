@@ -3,11 +3,12 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useServices } from '../hooks/useServices';
 import { useAuth } from '../context/AuthContext';
 import { createServiceBooking, verifyServiceBookingPayment } from '../api/serviceBookingApi';
-import { Toast, showApiError } from '../utils/errorHandler';
+import { Toast } from '../utils/errorHandler';
 import { CustomFieldInput } from './CustomFieldInput';
 import { SEOHead } from './SEOHead';
 import { StructuredData } from './StructuredData';
 import { StateSelect } from './StateSelect';
+import { FiAlertCircle } from 'react-icons/fi';
 import './BookServicePage.css';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -164,10 +165,13 @@ export function BookServicePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [bookingQuantity, setBookingQuantity] = useState<number | ''>('');
   const [isGeocodingPincode, setIsGeocodingPincode] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [errorFields, setErrorFields] = useState<Record<string, boolean>>({});
+  const modalBodyRef = useRef<HTMLDivElement>(null);
   const isSyncingFromPinRef = useRef(false);
   const isSyncingFromPincodeRef = useRef(false);
 
-  const updateForm = (key: keyof typeof INITIAL_FORM, val: string) =>
+  const updateForm = (key: keyof typeof INITIAL_FORM, val: string) => {
     setForm(prev => {
       const next = { ...prev, [key]: val };
       if (key === 'date' && next.timeSlot && isTimeSlotPast(next.timeSlot, val)) {
@@ -175,14 +179,30 @@ export function BookServicePage() {
       }
       return next;
     });
+    setModalError(null);
+    setErrorFields(prev => (prev[key] ? { ...prev, [key]: false } : prev));
+  };
 
-  const updateCustom = useCallback((id: string, val: string) =>
-    setCustomResponses(prev => ({ ...prev, [id]: val })), []);
+  const updateCustom = useCallback((id: string, val: string) => {
+    setCustomResponses(prev => ({ ...prev, [id]: val }));
+    setModalError(null);
+    setErrorFields(prev => (prev[`custom_${id}`] ? { ...prev, [`custom_${id}`]: false } : prev));
+  }, []);
+
+  const triggerError = (msg: string, fields: Record<string, boolean> = {}) => {
+    setModalError(msg);
+    setErrorFields(fields);
+    setTimeout(() => {
+      modalBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 50);
+  };
 
   // Auto-open modal from URL params
   useEffect(() => {
     if (!loading && autoOpen && filteredServices.length > 0 && !isModalOpen && !selectedService) {
       setSelectedService(filteredServices[0].name);
+      setModalError(null);
+      setErrorFields({});
       setIsModalOpen(true);
     }
   }, [loading, autoOpen, filteredServices, isModalOpen, selectedService]);
@@ -206,7 +226,12 @@ export function BookServicePage() {
     if (mapPosition) setGeolocation(`${mapPosition[0].toFixed(6)}, ${mapPosition[1].toFixed(6)}`);
   }, [mapPosition]);
 
-  const handleBookNow = (name: string) => { setSelectedService(name); setIsModalOpen(true); };
+  const handleBookNow = (name: string) => { 
+    setSelectedService(name); 
+    setModalError(null);
+    setErrorFields({});
+    setIsModalOpen(true); 
+  };
 
   const handleClose = () => {
     setIsModalOpen(false);
@@ -217,6 +242,8 @@ export function BookServicePage() {
     setCustomResponses({});
     setIsProcessing(false);
     setBookingQuantity('');
+    setModalError(null);
+    setErrorFields({});
   };
 
   // 1. Auto-sync Map from Pincode
@@ -328,37 +355,49 @@ export function BookServicePage() {
 
   const handleConfirm = async () => {
     if (!selectedServiceObj) {
-      Toast.fire({ icon: 'warning', title: 'Please select a valid service.' });
+      triggerError('Please select a valid service.');
       return;
     }
 
     if (!form.date || !form.timeSlot) { 
-      Toast.fire({ icon: 'warning', title: 'Please select a date and time slot.' }); 
+      triggerError('Please select a date and time slot.', {
+        date: !form.date,
+        timeSlot: !form.timeSlot,
+      }); 
       return; 
     }
 
     if (isTimeSlotPast(form.timeSlot, form.date)) {
-      Toast.fire({ icon: 'warning', title: 'The selected time slot has already passed for today. Please select an upcoming slot or future date.' });
+      triggerError('The selected time slot has already passed for today. Please select an upcoming slot or future date.', {
+        timeSlot: true,
+      });
       return;
     }
 
     const { pincode, city, addressLine1, addressLine2, stateName } = form;
-    if ([pincode, city, addressLine1, addressLine2, stateName].some(v => !v.trim())) {
-      Toast.fire({ icon: 'warning', title: 'Please enter complete address details.' }); 
-      return;
+    const addressErrors: Record<string, boolean> = {
+      pincode: !pincode.trim(),
+      city: !city.trim(),
+      addressLine1: !addressLine1.trim(),
+      addressLine2: !addressLine2.trim(),
+      stateName: !stateName.trim(),
+    };
+    if (Object.values(addressErrors).some(Boolean)) {
+      triggerError('Please enter complete address details.', addressErrors); 
+      return; 
     }
 
     if (selectedServiceObj.custom_fields) {
       for (const f of selectedServiceObj.custom_fields) {
         if (f.required && !customResponses[f.id]?.trim()) {
-          Toast.fire({ icon: 'warning', title: `Please fill required field: ${f.label}` }); 
+          triggerError(`Please fill required field: ${f.label}`, { [`custom_${f.id}`]: true }); 
           return;
         }
       }
     }
 
     if (serviceRate && (!bookingQuantity || Number(bookingQuantity) <= 0)) {
-      Toast.fire({ icon: 'warning', title: `Please enter number of ${pricingUnit.toLowerCase()}.` }); 
+      triggerError(`Please enter number of ${pricingUnit.toLowerCase()}.`, { quantity: true }); 
       return;
     }
 
@@ -454,7 +493,8 @@ export function BookServicePage() {
         navigate('/orders?tab=services&booking=success');
       }
     } catch (error: any) {
-      showApiError(error, 'Unable to create booking right now. Please try again.');
+      const errMsg = error.response?.data?.message || error.message || 'Unable to create booking right now. Please try again.';
+      triggerError(errMsg);
       setIsProcessing(false);
     }
   };
@@ -524,7 +564,14 @@ export function BookServicePage() {
               <h3>Book Service: {selectedService}</h3>
             </div>
 
-            <div className="booking-modal-body">
+            <div className="booking-modal-body" ref={modalBodyRef}>
+              {modalError && (
+                <div className="booking-modal-error">
+                  <FiAlertCircle className="booking-modal-error-icon" size={20} />
+                  <span>{modalError}</span>
+                </div>
+              )}
+
               <div className="form-group">
                 <label>Preferred Installation Date</label>
                 <input 
@@ -532,12 +579,18 @@ export function BookServicePage() {
                   value={form.date} 
                   min={new Date().toISOString().split('T')[0]}
                   onChange={e => updateForm('date', e.target.value)} 
+                  className={errorFields.date ? 'input-error' : ''}
                 />
               </div>
 
               <div className="form-group">
                 <label>Preferred Time Slot <span style={{ color: '#ef4444' }}>*</span></label>
-                <select required value={form.timeSlot} onChange={e => updateForm('timeSlot', e.target.value)}>
+                <select 
+                  required 
+                  value={form.timeSlot} 
+                  onChange={e => updateForm('timeSlot', e.target.value)}
+                  className={errorFields.timeSlot ? 'input-error' : ''}
+                >
                   <option value="" disabled>Select time slot</option>
                   {TIME_SLOTS.map(ts => {
                     const isPast = isTimeSlotPast(ts, form.date);
@@ -565,20 +618,39 @@ export function BookServicePage() {
                       placeholder="6-digit pincode"
                       value={form.pincode} 
                       onChange={e => updateForm('pincode', e.target.value.replace(/\D/g, ''))} 
+                      className={errorFields.pincode ? 'input-error' : ''}
                     />
                   </div>
                   <div className="form-group">
                     <label>Town/City</label>
-                    <input required type="text" value={form.city} onChange={e => updateForm('city', e.target.value)} />
+                    <input 
+                      required 
+                      type="text" 
+                      value={form.city} 
+                      onChange={e => updateForm('city', e.target.value)} 
+                      className={errorFields.city ? 'input-error' : ''}
+                    />
                   </div>
                 </div>
                 <div className="form-group">
                   <label>Flat, House no., Building, Company, Apartment</label>
-                  <input required type="text" value={form.addressLine1} onChange={e => updateForm('addressLine1', e.target.value)} />
+                  <input 
+                    required 
+                    type="text" 
+                    value={form.addressLine1} 
+                    onChange={e => updateForm('addressLine1', e.target.value)} 
+                    className={errorFields.addressLine1 ? 'input-error' : ''}
+                  />
                 </div>
                 <div className="form-group">
                   <label>Area, Street, Sector, Village</label>
-                  <input required type="text" value={form.addressLine2} onChange={e => updateForm('addressLine2', e.target.value)} />
+                  <input 
+                    required 
+                    type="text" 
+                    value={form.addressLine2} 
+                    onChange={e => updateForm('addressLine2', e.target.value)} 
+                    className={errorFields.addressLine2 ? 'input-error' : ''}
+                  />
                 </div>
                 <div className="form-row">
                   <div className="form-group">
@@ -591,6 +663,7 @@ export function BookServicePage() {
                       value={form.stateName}
                       onChange={(val) => updateForm('stateName', val)}
                       placeholder="Select State"
+                      error={!!errorFields.stateName}
                       required
                     />
                   </div>
@@ -654,8 +727,13 @@ export function BookServicePage() {
                       <input
                         type="number" min="1" step="0.5"
                         value={bookingQuantity}
-                        onChange={e => setBookingQuantity(e.target.value ? Number(e.target.value) : '')}
+                        onChange={e => {
+                          setBookingQuantity(e.target.value ? Number(e.target.value) : '');
+                          setModalError(null);
+                          setErrorFields(prev => (prev.quantity ? { ...prev, quantity: false } : prev));
+                        }}
                         placeholder="e.g. 8"
+                        className={errorFields.quantity ? 'input-error' : ''}
                       />
                     </div>
                   </div>

@@ -63,7 +63,7 @@ export function OrderDetailsPage() {
           sData = Array.isArray(payload) ? payload : (payload?.data || []);
         }
 
-        const s = sData.find((x: any) => x.display_id === id || x.order_number === id || x.id === id);
+        const s = sData.find((x: any) => x.display_id === id || x.order_number === id || x.id === id || (x.auto_id && `BKG-${Number(x.auto_id) + 1000}` === id));
 
         if (s) {
           const rawAddress = s.address;
@@ -117,6 +117,7 @@ export function OrderDetailsPage() {
             id: s.display_id || s.order_number || s.id,
             rawId: s.id,
             type: "service",
+            hasInvoice: !!s.has_invoice,
             date: new Date(s.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
             total: serviceTotalFormatted,
             shipTo: parsedAddress.split(',')[0] || s.Order?.customer_name || userName || "Customer",
@@ -184,7 +185,7 @@ export function OrderDetailsPage() {
               completedPhotos: parsePhotos(completedProgress?.photos)
             } : null,
             remainingBalance: s.Order?.remaining_balance ? parseFloat(s.Order.remaining_balance) : 0,
-            remainingBalancePaid: s.Order?.remaining_balance_paid !== undefined ? s.Order.remaining_balance_paid : true,
+            remainingBalancePaid: s.Order?.remaining_balance_paid !== undefined ? Boolean(s.Order.remaining_balance_paid) : true,
             rawOrderNumber: s.Order?.order_number
           };
 
@@ -202,6 +203,7 @@ export function OrderDetailsPage() {
           const o = orderRes.value.data;
           const mapped = {
             id: o.order_number || o.id,
+            hasInvoice: o.payment_status === 'PAID' || o.status === 'COMPLETED' || o.status === 'Delivered' || !!o.has_invoice,
             date: new Date(o.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
             total: '₹' + parseFloat(o.total_amount).toLocaleString("en-IN"),
             shipTo: o.customer_name || (o.customer ? o.customer.full_name : "Guest"),
@@ -263,7 +265,7 @@ export function OrderDetailsPage() {
   if (loading) return <div style={{ padding: "40px", textAlign: "center" }}>Loading...</div>;
   if (!orderDetails) return <div style={{ padding: "40px", textAlign: "center" }}>Order not found.</div>;
 
-  const isService = orderDetails.type === "service" || orderDetails.id.startsWith("SRV") || orderDetails.id.startsWith("DRN") || orderDetails.id.startsWith("SBK");
+  const isService = orderDetails.type === "service" || orderDetails.id.startsWith("SRV") || orderDetails.id.startsWith("DRN") || orderDetails.id.startsWith("SBK") || orderDetails.id.startsWith("BKG");
   const isDroneService = orderDetails.isDroneService || orderDetails.id.startsWith("DRN");
 
   const handleApproveExtra = async (item: any) => {
@@ -389,10 +391,15 @@ export function OrderDetailsPage() {
           </div>
         </div>
         <div>
-          {(isService ? (orderDetails.status === 'Completed' || orderDetails.status === 'COMPLETED') : (orderDetails.status === 'Delivered' || orderDetails.status === 'COMPLETED')) &&
-            (orderDetails.remainingBalance === 0 || orderDetails.remainingBalancePaid) && (
+          {isService ? (
+            orderDetails.hasInvoice && (orderDetails.status === 'Completed' || orderDetails.status === 'COMPLETED') && (orderDetails.remainingBalance === 0 || orderDetails.remainingBalancePaid) && (
               <button className="invoice-btn" onClick={handleInvoiceDownload}>Invoice</button>
-            )}
+            )
+          ) : (
+            (orderDetails.status === 'Delivered' || orderDetails.status === 'COMPLETED' || orderDetails.hasInvoice) && (
+              <button className="invoice-btn" onClick={handleInvoiceDownload}>Invoice</button>
+            )
+          )}
         </div>
       </div>
 
@@ -471,7 +478,7 @@ export function OrderDetailsPage() {
               Action Required: Final Payment Pending
             </h3>
             <p style={{ margin: '0', color: '#075985', fontSize: '14px' }}>
-              Your final invoice has been generated. Please pay the remaining balance of <strong>₹{orderDetails.remainingBalance.toLocaleString('en-IN')}</strong> for the extra items to complete this service.
+              Additional charges have been calculated for your approved extra items. Please pay the remaining balance of <strong>₹{orderDetails.remainingBalance.toLocaleString('en-IN')}</strong> to complete this service and download your final invoice.
             </p>
           </div>
           <button onClick={handlePayBalance} style={{ background: '#0284c7', border: 'none', color: 'white', padding: '10px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', whiteSpace: 'nowrap', marginLeft: '16px' }}>

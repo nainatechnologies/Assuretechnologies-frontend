@@ -468,3 +468,53 @@
   font-weight: 700;
   color: #4338ca;
 }
+
+/* ─── In-Modal Error Banner & Field Validation ──────────────────── */
+.booking-modal-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 4px solid #ef4444;
+  color: #991b1b;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  animation: modalErrorFadeIn 0.2s ease-in-out;
+}
+
+.booking-modal-error-icon {
+  font-size: 18px;
+  color: #ef4444;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+@keyframes modalErrorFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.booking-modal-body input.input-error,
+.booking-modal-body select.input-error,
+.booking-modal-body textarea.input-error {
+  border-color: #ef4444 !important;
+  background-color: #fffbfb !important;
+}
+
+.booking-modal-body input.input-error:focus,
+.booking-modal-body select.input-error:focus,
+.booking-modal-body textarea.input-error:focus {
+  outline-color: #ef4444 !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+}
