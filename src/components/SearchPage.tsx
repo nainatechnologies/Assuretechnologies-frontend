@@ -1,37 +1,14 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { FaSearch, FaShoppingCart, FaTools, FaCheck, FaBoxOpen, FaSlidersH, FaArrowRight } from 'react-icons/fa';
 import { productsApi } from '../api/productsApi';
-import { BASE_URL } from '../services/api';
 import type { Product } from '../data/products';
 import { fetchAllServices, type BackendService } from '../api/servicesApi';
 import { useServices } from '../hooks/useServices';
 import { useCart } from '../context/CartContext';
 import { SEOHead } from './SEOHead';
+import { mapRawProduct } from '../utils/productMapper';
 import './SearchPage.css';
-
-const mapRawProduct = (p: any): Product => {
-  const base = parseFloat(p.base_price) || 0;
-  const disc = parseFloat(p.discount) || 0;
-  const img = p.banner
-    ? (p.banner.startsWith('http') || p.banner.startsWith('blob:')
-      ? p.banner
-      : `${BASE_URL}${p.banner.startsWith('/') ? '' : '/'}${p.banner}`)
-    : 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&h=400&fit=crop';
-  return {
-    id: p.id || p.product_id,
-    name: p.name,
-    service: p.category || p.service || 'General',
-    price: disc > 0 ? base - (base * (disc / 100)) : base,
-    originalPrice: base,
-    discount: disc,
-    description: p.description || '',
-    image: img,
-    rating: Number(p.rating) || 4.5,
-    reviewCount: Number(p.reviewCount) || 20,
-    inStock: p.stock > 0
-  };
-};
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -52,6 +29,7 @@ export function SearchPage() {
 
   const { addToCart } = useCart();
   const { services: fallbackServices } = useServices();
+  const searchSeqRef = useRef(0);
 
   useEffect(() => {
     setInputQuery(query);
@@ -68,11 +46,12 @@ export function SearchPage() {
     return () => clearTimeout(timer);
   }, [inputQuery, activeTab, query, setSearchParams]);
 
-  // Debounce API search execution (200ms) with request cancellation & server pagination
+  // Execute API search immediately upon URL query/sort/services changes with sequence guard & cancellation
   useEffect(() => {
     let isCancelled = false;
+    const currentSeq = ++searchSeqRef.current;
 
-    const timer = setTimeout(async () => {
+    async function executeSearch() {
       setLoading(true);
       setPage(1);
       const q = query.trim().toLowerCase();
@@ -84,7 +63,7 @@ export function SearchPage() {
           const prodRes = await productsApi.fetchProducts({ search: q, sort: sortBy, page: 1, limit: 12 });
           const backendData = prodRes?.data?.data;
           const totalPages = prodRes?.data?.pagination?.totalPages || 1;
-          if (!isCancelled) {
+          if (!isCancelled && currentSeq === searchSeqRef.current) {
             setHasMore(totalPages > 1);
           }
           if (Array.isArray(backendData) && backendData.length > 0) {
@@ -112,22 +91,23 @@ export function SearchPage() {
           });
         }
 
-        if (!isCancelled) {
+        if (!isCancelled && currentSeq === searchSeqRef.current) {
           setProducts(fetchedProducts);
           setServices(fetchedServices);
         }
       } catch (err) {
         console.error('Error executing search:', err);
       } finally {
-        if (!isCancelled) {
+        if (!isCancelled && currentSeq === searchSeqRef.current) {
           setLoading(false);
         }
       }
-    }, 200);
+    }
+
+    executeSearch();
 
     return () => {
       isCancelled = true;
-      clearTimeout(timer);
     };
   }, [query, sortBy, fallbackServices]);
 
@@ -136,6 +116,7 @@ export function SearchPage() {
     setLoadingMore(true);
     const nextPage = page + 1;
     const q = query.trim().toLowerCase();
+    const currentSeq = searchSeqRef.current;
 
     try {
       const prodRes = await productsApi.fetchProducts({
@@ -144,6 +125,7 @@ export function SearchPage() {
         page: nextPage,
         limit: 12
       });
+      if (currentSeq !== searchSeqRef.current) return;
       const backendData = prodRes?.data?.data;
       const totalPages = prodRes?.data?.pagination?.totalPages || nextPage;
 
@@ -156,7 +138,9 @@ export function SearchPage() {
     } catch (err) {
       console.error('Failed to load more products:', err);
     } finally {
-      setLoadingMore(false);
+      if (currentSeq === searchSeqRef.current) {
+        setLoadingMore(false);
+      }
     }
   };
 

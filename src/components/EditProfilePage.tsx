@@ -82,12 +82,12 @@ export function EditProfilePage() {
       }).then(() => {
         navigate('/profile');
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update profile', error);
       Swal.fire({
         icon: 'error',
         title: 'Oops...',
-        text: 'Failed to update profile. Please try again.',
+        text: error?.response?.data?.message || 'Failed to update profile. Please try again.',
         confirmButtonColor: '#1d4ed8'
       });
     } finally {

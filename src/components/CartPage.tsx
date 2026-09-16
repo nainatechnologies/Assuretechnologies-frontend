@@ -208,8 +208,8 @@ export function CartPage() {
                 setCart({});
                 navigate('/orders');
               }
-            } catch (err) {
-              Toast.fire({ icon: 'error', title: 'Payment verification failed.' });
+            } catch (err: any) {
+              Toast.fire({ icon: 'error', title: err?.response?.data?.message || 'Payment verification failed.' });
             } finally {
               setIsVerifyingPayment(false);
               setIsPlacingOrder(false);

@@ -10,7 +10,7 @@ import './OrdersPage.css';
 import Pagination from './Pagination';
 import { Toast } from '../utils/errorHandler';
 
-import { getProductOrderStatus, getServiceBookingStatus, getPaymentMethodLabel } from '../utils/orderStatus';
+import { getProductOrderStatus, getServiceBookingStatus, getPaymentMethodLabel, getItemStatusText, getSafeTrackingUrl } from '../utils/orderStatus';
 
 const getStatusIcon = (status: string) => {
   switch (status) {
@@ -29,34 +29,6 @@ const getStatusIcon = (status: string) => {
     case 'Shipped': return <FaBoxOpen />;
     case 'Refunded': return <FaUndo />;
     default: return null;
-  }
-};
-
-const getItemStatusText = (orderStatus: string, paymentStatus: string) => {
-  if (paymentStatus && paymentStatus !== 'PAID') {
-    return 'Payment Pending • Awaiting payment completion';
-  }
-  switch (orderStatus) {
-    case 'NEW':
-    case 'Pending':
-      return 'Order Placed • Awaiting Confirmation';
-    case 'ACCEPTED':
-    case 'Accepted':
-      return 'Order Accepted • Packing Item';
-    case 'OUT_FOR_DELIVERY':
-    case 'Out for Delivery':
-      return 'Dispatched • Out for Delivery';
-    case 'COMPLETED':
-    case 'Delivered':
-      return 'Delivered Successfully';
-    case 'CANCELLED':
-    case 'Cancelled':
-      return 'Order Cancelled';
-    case 'REJECTED':
-    case 'Rejected':
-      return 'Order Rejected';
-    default:
-      return orderStatus ? `Status: ${orderStatus}` : 'Order Placed';
   }
 };
 
@@ -261,9 +233,9 @@ export function OrdersPage() {
       window.URL.revokeObjectURL(url);
       Toast.fire({ icon: 'success', title: 'Invoice downloaded successfully' });
     })
-    .catch(err => {
+    .catch((err: any) => {
       console.error(err);
-      Toast.fire({ icon: 'error', title: 'Failed to download invoice' });
+      Toast.fire({ icon: 'error', title: err?.response?.data?.message || 'Failed to download invoice' });
     });
   };
 
@@ -466,8 +438,8 @@ export function OrdersPage() {
                     {item.trackingId && (
                       <span style={{ fontSize: '12px', color: '#007185', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
                         <FaTruck style={{ fontSize: '11px' }} />
-                        {item.trackingUrl ? (
-                          <a href={item.trackingUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#007185', textDecoration: 'underline', fontWeight: '500' }}>
+                        {getSafeTrackingUrl(item.trackingUrl) ? (
+                          <a href={getSafeTrackingUrl(item.trackingUrl)} target="_blank" rel="noopener noreferrer" style={{ color: '#007185', textDecoration: 'underline', fontWeight: '500' }}>
                             {item.transportName || 'Courier'} - Tracking: {item.trackingId}
                           </a>
                         ) : (
@@ -499,8 +471,8 @@ export function OrdersPage() {
               <div style={{ fontSize: '13px', color: '#565959', display: 'flex', flexDirection: 'column', gap: '6px', background: '#f8fafc', padding: '10px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <FaTruck style={{ color: '#007185' }} />
-                  {order.trackingUrl ? (
-                    <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" style={{ fontWeight: '500', color: '#007185', textDecoration: 'underline' }}>
+                  {getSafeTrackingUrl(order.trackingUrl) ? (
+                    <a href={getSafeTrackingUrl(order.trackingUrl)} target="_blank" rel="noopener noreferrer" style={{ fontWeight: '500', color: '#007185', textDecoration: 'underline' }}>
                       {order.transportName}
                     </a>
                   ) : (

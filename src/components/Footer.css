@@ -11,9 +11,15 @@
   max-width: 1200px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1.5fr;
-  gap: 40px;
+  grid-template-columns: 1.8fr 1fr 1.8fr 1.4fr;
+  gap: 36px;
   margin-bottom: 60px;
+}
+
+.footer-services-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
 }
 
 /* ─── Columns ────────────────────────────────────────────────────── */
@@ -125,7 +131,8 @@
 /* ─── Responsive (Mobile & Tablet) ───────────────────────────────── */
 @media (max-width: 991px) {
   .footer-content {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1.3fr;
+    gap: 32px;
   }
   
   .brand-col, 
@@ -142,5 +149,19 @@
   
   .footer-desc {
     max-width: 100%;
+  }
+
+  .footer-services-grid {
+    gap: 16px;
+  }
+}
+
+@media (max-width: 380px) {
+  .footer-services-grid {
+    gap: 12px;
+  }
+
+  .footer-services-grid .footer-links a {
+    font-size: 0.82rem;
   }
 }

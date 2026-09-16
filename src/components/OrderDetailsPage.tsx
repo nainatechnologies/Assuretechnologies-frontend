@@ -5,7 +5,7 @@ import { getCustomerServiceBookings, updateExtraItemStatus } from '../api/servic
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from '../context/AuthContext';
 import { FaTruck } from "react-icons/fa";
-import { getProductOrderStatus, getServiceBookingStatus, getPaymentMethodLabel, getItemStatusText } from '../utils/orderStatus';
+import { getProductOrderStatus, getServiceBookingStatus, getPaymentMethodLabel, getItemStatusText, getSafeTrackingUrl } from '../utils/orderStatus';
 import { Toast } from '../utils/errorHandler';
 import "./OrderDetailsPage.css";
 
@@ -45,9 +45,9 @@ export function OrderDetailsPage() {
       a.remove();
       window.URL.revokeObjectURL(url);
       Toast.fire({ icon: 'success', title: 'Invoice downloaded successfully' });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      Toast.fire({ icon: 'error', title: 'Failed to download invoice' });
+      Toast.fire({ icon: 'error', title: err?.response?.data?.message || 'Failed to download invoice' });
     }
   };
 
@@ -243,9 +243,9 @@ export function OrderDetailsPage() {
               type: "product",
               status: i.status || o.status,
               returnStatus: getItemStatusText(i.status || o.status, o.payment_status),
-              trackingId: i.tracking_id || undefined,
-              transportName: i.transport_name || undefined,
-              trackingUrl: i.tracking_url || undefined
+              trackingId: i.tracking_id || o.tracking_id || undefined,
+              transportName: i.transport_name || o.transport_name || undefined,
+              trackingUrl: i.tracking_url || o.tracking_url || undefined
             })) : [],
             remainingBalance: o.remaining_balance ? parseFloat(o.remaining_balance) : 0,
             remainingBalancePaid: o.remaining_balance_paid !== undefined ? o.remaining_balance_paid : true,
@@ -336,9 +336,9 @@ export function OrderDetailsPage() {
             });
             Toast.fire({ icon: 'success', title: 'Payment Successful!' });
             window.location.reload();
-          } catch (err) {
+          } catch (err: any) {
             console.error(err);
-            Toast.fire({ icon: 'error', title: 'Payment verification failed' });
+            Toast.fire({ icon: 'error', title: err?.response?.data?.message || 'Payment verification failed' });
           }
         },
         prefill: {
@@ -714,8 +714,8 @@ export function OrderDetailsPage() {
                 <div style={{ fontSize: '13px', color: '#007185', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', background: '#f8fafc', padding: '6px 10px', borderRadius: '4px', border: '1px solid #e2e8f0', width: 'fit-content' }}>
                   <FaTruck style={{ fontSize: '12px', color: '#007185' }} />
                   <span>{item.transportName || 'Courier'}: <strong>{item.trackingId}</strong></span>
-                  {item.trackingUrl && (
-                    <a href={item.trackingUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', marginLeft: '6px', fontWeight: '500' }}>
+                  {getSafeTrackingUrl(item.trackingUrl) && (
+                    <a href={getSafeTrackingUrl(item.trackingUrl)} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', marginLeft: '6px', fontWeight: '500' }}>
                       Track ↗
                     </a>
                   )}
