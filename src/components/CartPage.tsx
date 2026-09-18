@@ -163,7 +163,14 @@ export function CartPage() {
     try {
       setIsPlacingOrder(true);
       const selectedAddr = addresses.find(a => a.id === selectedAddressId);
-      const addressString = selectedAddr ? `${selectedAddr.addressLine1}, ${selectedAddr.addressLine2}, ${selectedAddr.city}, ${selectedAddr.state} - ${selectedAddr.pincode}` : '';
+      const addressParts = selectedAddr
+        ? [selectedAddr.addressLine1, selectedAddr.addressLine2, selectedAddr.landmark, selectedAddr.city, selectedAddr.state]
+            .map(s => s?.trim())
+            .filter(Boolean)
+        : [];
+      const addressString = addressParts.length > 0
+        ? `${addressParts.join(', ')}${selectedAddr?.pincode ? ` - ${selectedAddr.pincode.trim()}` : ''}`
+        : '';
       const orderPayload = {
         customer_name: selectedAddr ? selectedAddr.fullName : 'Guest',
         customer_contact: selectedAddr ? selectedAddr.mobileNumber : '',

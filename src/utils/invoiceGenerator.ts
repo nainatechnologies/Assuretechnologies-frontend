@@ -26,6 +26,61 @@ export interface InvoiceData {
   isService?: boolean;
 }
 
+export function formatInvoiceAddressLines(rawAddress?: string): string[] {
+  if (!rawAddress || rawAddress === 'Address not provided' || rawAddress === 'N/A') {
+    return ['Address not provided'];
+  }
+
+  if (typeof rawAddress === 'string' && rawAddress.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(rawAddress);
+      const line1 = [parsed.line1 || parsed.addressLine1, parsed.line2 || parsed.addressLine2, parsed.landmark].map(s => s && String(s).trim()).filter(Boolean).join(', ');
+      const line2Parts = [parsed.city, parsed.state].map(s => s && String(s).trim()).filter(Boolean);
+      const pin = parsed.pincode || parsed.postalCode || parsed.pin;
+      const line2 = line2Parts.join(', ') + (pin ? ` - ${pin}` : '');
+      return [line1, line2].filter(Boolean);
+    } catch (e) {}
+  }
+
+  const rawParts = String(rawAddress)
+    .replace(/\r\n/g, '\n')
+    .split(/[\n,]+/)
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  if (rawParts.length === 0) {
+    return ['Address not provided'];
+  }
+
+  const fullText = rawParts.join(', ');
+  const pinMatches = fullText.match(/\b(\d{6})\b/g);
+  const pincode = pinMatches ? pinMatches[pinMatches.length - 1] : null;
+
+  const cleanParts = rawParts
+    .map(p => p.replace(/[-–—]?\s*\b\d{6}\b/g, '').trim())
+    .filter(Boolean);
+
+  if (cleanParts.length === 0) {
+    return [pincode ? `PIN: ${pincode}` : fullText];
+  }
+
+  if (cleanParts.length === 1) {
+    return [cleanParts[0] + (pincode ? ` - ${pincode}` : '')];
+  }
+
+  if (cleanParts.length === 2) {
+    return [
+      cleanParts[0],
+      cleanParts[1] + (pincode ? ` - ${pincode}` : '')
+    ];
+  }
+
+  const street = cleanParts.slice(0, -2).join(', ');
+  const cityState = cleanParts.slice(-2).join(', ') + (pincode ? ` - ${pincode}` : '');
+
+  return [street, cityState].filter(Boolean);
+}
+
 export function generateInvoiceHtml(data: InvoiceData): string {
   const numericTotal = typeof data.totalAmount === 'string' 
     ? parseFloat(data.totalAmount.replace(/[^0-9.-]+/g, '')) || 0 
@@ -69,6 +124,8 @@ export function generateInvoiceHtml(data: InvoiceData): string {
     else paymentInstrument = data.paymentMethod || ((data.paymentStatus === 'PAID' || data.paymentStatus === 'Completed' || data.paymentStatus === 'Prebooking Paid') ? 'Online Payment' : 'Payment Pending');
   }
 
+  const addressLines = formatInvoiceAddressLines(data.customerAddress);
+
   return `
     <div class="invoice-card" style="max-width: 800px; margin: 0 auto; background: #ffffff; padding: 36px 40px; border-radius: 8px; border: 1px solid #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #2563eb; padding-bottom: 18px; margin-bottom: 22px;">
@@ -90,7 +147,7 @@ export function generateInvoiceHtml(data: InvoiceData): string {
           <strong>${data.customerName || 'Customer'}</strong><br />
           ${data.companyName ? `Company: ${data.companyName}<br />` : ''}
           ${data.gstNumber ? `GSTIN: <strong>${data.gstNumber}</strong><br />` : ''}
-          Address: ${data.customerAddress || 'Customer Address'}<br />
+          ${addressLines.map(line => `<span>${line}</span>`).join('<br />')}<br />
           ${data.customerContact ? `Phone: ${data.customerContact}<br />` : ''}
           ${data.customerEmail ? `Email: ${data.customerEmail}` : ''}
         </div>
