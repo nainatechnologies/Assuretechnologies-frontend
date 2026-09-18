@@ -420,53 +420,194 @@
   margin-top: 4px;
 }
 
+/* ─── Service Pricing & Quantity Box ───────────────────────────── */
 .bs-pricing-section {
-  margin-top: 20px;
+  margin-top: 18px;
+  margin-bottom: 8px;
 }
 
-.bs-pricing-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 12px;
+.bs-pricing-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px 18px;
 }
 
-.bs-pricing-row {
+.bs-pricing-header {
   display: flex;
-  gap: 15px;
-  margin-bottom: 12px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-.bs-pricing-col {
-  flex: 1;
+.bs-pricing-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .bs-pricing-label {
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   color: #64748b;
-  margin-bottom: 4px;
-  display: block;
 }
 
-.bs-pricing-total {
-  padding: 15px;
-  background: #e0e7ff;
+.bs-pricing-rate {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.bs-pricing-unit {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.bs-qty-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.bs-qty-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.bs-qty-control {
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid #cbd5e1;
   border-radius: 8px;
-  border: 1px solid #c7d2fe;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.bs-qty-control:focus-within {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.bs-qty-control.input-error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+.bs-qty-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  border: none;
+  color: #334155;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  user-select: none;
+}
+
+.bs-qty-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.bs-qty-btn:active {
+  background: #cbd5e1;
+}
+
+.bs-qty-input {
+  width: 75px !important;
+  height: 40px !important;
+  padding: 0 8px !important;
+  border: none !important;
+  border-left: 1px solid #e2e8f0 !important;
+  border-right: 1px solid #e2e8f0 !important;
+  border-radius: 0 !important;
+  text-align: center;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  background: #ffffff !important;
+  outline: none !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+}
+
+/* Chrome, Safari, Edge, Opera: Remove default spin buttons */
+.bs-qty-input::-webkit-outer-spin-button,
+.bs-qty-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+.bs-qty-input[type=number] {
+  -moz-appearance: textfield;
+}
+
+.bs-pricing-breakdown {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bs-breakdown-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-size: 13px;
+  color: #64748b;
 }
 
-.bs-pricing-total-label {
-  color: #3730a3;
-  font-weight: 600;
-}
-
-.bs-pricing-total-amount {
-  font-size: 18px;
+.bs-breakdown-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 15px;
   font-weight: 700;
-  color: #4338ca;
+  color: #0f172a;
+  padding-top: 8px;
+  margin-top: 4px;
+  border-top: 1px solid #cbd5e1;
+}
+
+.bs-total-highlight {
+  color: #1d4ed8;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+@media (max-width: 480px) {
+  .bs-pricing-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .bs-qty-wrapper {
+    align-items: flex-start;
+    width: 100%;
+  }
+  .bs-qty-control {
+    width: 100%;
+  }
+  .bs-qty-btn {
+    flex: 1;
+  }
+  .bs-qty-input {
+    flex: 2;
+    width: auto !important;
+  }
 }
 
 /* ─── In-Modal Error Banner & Field Validation ──────────────────── */

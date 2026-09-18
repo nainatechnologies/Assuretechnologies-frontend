@@ -9,6 +9,7 @@ import { SEOHead } from './SEOHead';
 import { StructuredData } from './StructuredData';
 import { StateSelect } from './StateSelect';
 import { FiAlertCircle } from 'react-icons/fi';
+import { FaPlus, FaMinus } from 'react-icons/fa';
 import { RAZORPAY_KEY_ID } from '../services/api';
 import './BookServicePage.css';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
@@ -142,19 +143,24 @@ export function BookServicePage() {
     });
   };
 
-  const normalizedQuery = (serviceQuery || categoryQuery || '').trim().toLowerCase();
-
-  const filteredServices = normalizedQuery
-    ? allServices.filter(s => {
-      const categoryName = s.category?.name?.toLowerCase() || '';
-      const serviceName = s.name?.toLowerCase() || '';
-
-      return (
-        categoryName.includes(normalizedQuery) ||
-        serviceName.includes(normalizedQuery)
-      );
-    })
-    : allServices;
+  const filteredServices = useMemo(() => {
+    if (categoryQuery) {
+      const targetCat = categoryQuery.trim().toLowerCase();
+      return allServices.filter(s => {
+        const catName = (s.category?.name || '').toLowerCase();
+        return catName === targetCat || catName.includes(targetCat);
+      });
+    }
+    if (serviceQuery) {
+      const targetSvc = serviceQuery.trim().toLowerCase();
+      return allServices.filter(s => {
+        const svcName = (s.name || '').toLowerCase();
+        const catName = (s.category?.name || '').toLowerCase();
+        return svcName.includes(targetSvc) || catName.includes(targetSvc);
+      });
+    }
+    return allServices;
+  }, [allServices, categoryQuery, serviceQuery]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<string | null>(null);
@@ -551,9 +557,31 @@ export function BookServicePage() {
       />
       <section id="book-service">
         <div className="bs-header">
-          <h2>Our Services</h2>
+          <h2>{categoryQuery ? `${categoryQuery} Services` : 'Our Services'}</h2>
           <div className="bs-underline" />
-          <p>Comprehensive technology and infrastructure solutions for every need</p>
+          <p>
+            {categoryQuery
+              ? `Available professional services under ${categoryQuery}`
+              : 'Comprehensive technology and infrastructure solutions for every need'}
+          </p>
+          {categoryQuery && (
+            <button
+              onClick={() => setSearchParams({})}
+              style={{
+                marginTop: '10px',
+                padding: '6px 14px',
+                fontSize: '0.85rem',
+                borderRadius: '20px',
+                border: '1px solid #0d47a1',
+                background: '#f0f7ff',
+                color: '#0d47a1',
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              ← View All Categories
+            </button>
+          )}
         </div>
 
         <div className="bs-grid">
@@ -571,7 +599,18 @@ export function BookServicePage() {
               </div>
             ))
           ) : (
-            <div className="bs-no-results"><p>No services found for "{serviceQuery}".</p></div>
+            <div className="bs-no-results">
+              <p>No services found{categoryQuery ? ` under category "${categoryQuery}"` : serviceQuery ? ` for "${serviceQuery}"` : ''}.</p>
+              {(categoryQuery || serviceQuery) && (
+                <button
+                  className="bs-book-btn"
+                  style={{ marginTop: '12px' }}
+                  onClick={() => setSearchParams({})}
+                >
+                  View All Services
+                </button>
+              )}
+            </div>
           )}
         </div>
 
@@ -736,41 +775,80 @@ export function BookServicePage() {
 
                 {serviceRate > 0 && (
                   <div className="bs-pricing-section">
-                    <h4 className="bs-pricing-title">Service Pricing</h4>
-                    <div className="bs-pricing-row">
-                      <div className="bs-pricing-col">
-                        <label className="bs-pricing-label">
-                          Number of {pricingUnit} (₹{serviceRate}/{pricingUnit.toLowerCase()})
-                        </label>
-                        <input
-                          type="number" min="1" step="0.5"
-                          value={bookingQuantity}
-                          onChange={e => {
-                            setBookingQuantity(e.target.value ? Number(e.target.value) : '');
-                            setModalError(null);
-                            setErrorFields(prev => (prev.quantity ? { ...prev, quantity: false } : prev));
-                          }}
-                          placeholder="e.g. 8"
-                          className={errorFields.quantity ? 'input-error' : ''}
-                        />
+                    <div className="bs-pricing-card">
+                      <div className="bs-pricing-header">
+                        <div className="bs-pricing-info">
+                          <span className="bs-pricing-label">Rate per Unit</span>
+                          <div className="bs-pricing-rate">
+                            ₹{serviceRate.toLocaleString('en-IN')} <span className="bs-pricing-unit">/ {pricingUnit.toLowerCase()}</span>
+                          </div>
+                        </div>
+
+                        <div className="bs-qty-wrapper">
+                          <span className="bs-qty-label">Quantity ({pricingUnit})</span>
+                          <div className={`bs-qty-control ${errorFields.quantity ? 'input-error' : ''}`}>
+                            <button
+                              type="button"
+                              className="bs-qty-btn"
+                              aria-label="Decrease quantity"
+                              onClick={() => {
+                                const current = Number(bookingQuantity) || 1;
+                                const next = Math.max(1, current - 1);
+                                setBookingQuantity(next);
+                                setModalError(null);
+                                setErrorFields(prev => ({ ...prev, quantity: false }));
+                              }}
+                            >
+                              <FaMinus size={11} />
+                            </button>
+                            <input
+                              type="number"
+                              min="1"
+                              step="0.5"
+                              value={bookingQuantity}
+                              onChange={e => {
+                                setBookingQuantity(e.target.value ? Number(e.target.value) : '');
+                                setModalError(null);
+                                setErrorFields(prev => (prev.quantity ? { ...prev, quantity: false } : prev));
+                              }}
+                              placeholder="Qty"
+                              className="bs-qty-input"
+                            />
+                            <button
+                              type="button"
+                              className="bs-qty-btn"
+                              aria-label="Increase quantity"
+                              onClick={() => {
+                                const current = Number(bookingQuantity) || 0;
+                                const next = current + 1;
+                                setBookingQuantity(next);
+                                setModalError(null);
+                                setErrorFields(prev => ({ ...prev, quantity: false }));
+                              }}
+                            >
+                              <FaPlus size={11} />
+                            </button>
+                          </div>
+                        </div>
                       </div>
+
+                      {baseTotal > 0 && (
+                        <div className="bs-pricing-breakdown">
+                          <div className="bs-breakdown-row">
+                            <span>Base Amount ({bookingQuantity} {pricingUnit.toLowerCase()} × ₹{serviceRate.toLocaleString('en-IN')}):</span>
+                            <span>₹{baseTotal.toLocaleString('en-IN')}</span>
+                          </div>
+                          <div className="bs-breakdown-row">
+                            <span>GST ({dynamicTaxRate}%):</span>
+                            <span>₹{gstAmount.toLocaleString('en-IN')}</span>
+                          </div>
+                          <div className="bs-breakdown-total">
+                            <span>Estimated Total:</span>
+                            <span className="bs-total-highlight">₹{bookingTotal.toLocaleString('en-IN')}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    {baseTotal > 0 && (
-                      <div className="bs-pricing-breakdown" style={{ marginTop: '12px', padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#64748b' }}>
-                          <span>Base Amount:</span>
-                          <span>₹{baseTotal.toLocaleString('en-IN')}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#64748b' }}>
-                          <span>GST ({dynamicTaxRate}%):</span>
-                          <span>₹{gstAmount.toLocaleString('en-IN')}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', color: '#0f172a', borderTop: '1px solid #cbd5e1', paddingTop: '8px' }}>
-                          <span>Estimated Total:</span>
-                          <span>₹{bookingTotal.toLocaleString('en-IN')}</span>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
