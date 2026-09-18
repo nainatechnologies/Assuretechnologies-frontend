@@ -91,7 +91,7 @@ export function Footer() {
           <ul className="footer-contact-list">
             <li>
               <FaMapMarkerAlt className="contact-icon" />
-              <span>Amaravathi, India</span>
+              <span>Amaravathi, Guntur, Andhra Pradesh, 522001, India</span>
             </li>
             <li>
               <FaEnvelope className="contact-icon" />
