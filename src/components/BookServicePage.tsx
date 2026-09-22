@@ -11,6 +11,7 @@ import { StateSelect } from './StateSelect';
 import { FiAlertCircle } from 'react-icons/fi';
 import { FaPlus, FaMinus } from 'react-icons/fa';
 import { RAZORPAY_KEY_ID } from '../services/api';
+import { Capacitor } from '@capacitor/core';
 import './BookServicePage.css';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -363,7 +364,22 @@ export function BookServicePage() {
     }
   }, []);
 
-  const handleGetLocation = () => {
+  const handleGetLocation = async () => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const { Geolocation } = await import('@capacitor/geolocation');
+        const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
+        const newPos: L.LatLngTuple = [pos.coords.latitude, pos.coords.longitude];
+        setMapPosition(newPos);
+        setMapZoom(16);
+        handleMapPinChange(newPos);
+        Toast.fire({ icon: 'success', title: 'Location detected and address updated!' });
+        return;
+      } catch (nativeErr) {
+        console.warn('Native Geolocation failed, attempting browser fallback:', nativeErr);
+      }
+    }
+
     if (!navigator.geolocation) { Toast.fire({ icon: 'error', title: 'Geolocation is not supported by your browser.' }); return; }
     navigator.geolocation.getCurrentPosition(
       pos => {
@@ -375,7 +391,7 @@ export function BookServicePage() {
       },
       () => Toast.fire({ icon: 'error', title: 'Unable to retrieve your location. Please check browser permissions.' }),
     );
-  }
+  };
 
   const handleConfirm = async () => {
     if (!selectedServiceObj) {

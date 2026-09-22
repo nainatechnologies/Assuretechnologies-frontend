@@ -1,5 +1,6 @@
 import Swal from 'sweetalert2';
 import { BASE_URL } from '../services/api';
+import { Capacitor } from '@capacitor/core';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaSyncAlt, FaCheckCircle, FaTruck, FaClock, FaTimesCircle, FaBoxOpen, FaUndo, FaSpinner } from 'react-icons/fa';
@@ -102,6 +103,7 @@ export function OrdersPage() {
             shipTo: o.customer_name || (o.customer ? o.customer.full_name : 'Guest'),
             address: o.customer_address || 'No address provided',
             type: 'product',
+            hasInvoice: (o.status === 'COMPLETED' || o.status === 'Delivered'),
             status: getProductOrderStatus(o.status, o.payment_status),
             refundStatus: o.refund_status,
             refundAmount: o.refund_amount,
@@ -117,7 +119,7 @@ export function OrdersPage() {
               price: i.price != null ? Number(i.price) : undefined,
               subtotal: i.subtotal != null ? Number(i.subtotal) : undefined,
               image: i.product?.banner ? (i.product.banner.startsWith('http') || i.product.banner.startsWith('blob:') ? i.product.banner : `${BASE_URL.replace(/\/api$/, '')}${i.product.banner.startsWith('/') ? '' : '/'}${i.product.banner}`) : 'https://placehold.co/300x200?text=Product',
-              returnStatus: getItemStatusText(i.status || o.status, o.payment_status),
+              returnStatus: getItemStatusText(i.status || o.status, o.payment_status, o.refund_status),
               status: i.status || o.status,
               transportName: i.transport_name,
               trackingId: i.tracking_id,
@@ -216,7 +218,22 @@ export function OrdersPage() {
     const orderId = order.rawId || order.id;
     const isService = order.type === 'service' || (order.id && (order.id.startsWith('SRV') || order.id.startsWith('DRN') || order.id.startsWith('SBK') || order.id.startsWith('BKG')));
     const endpoint = isService ? `service/${orderId}` : `orders/${orderId}`;
-    fetch(`${BASE_URL.replace(/\/api$/, '')}/api/invoices/${endpoint}/download${token ? `?token=${encodeURIComponent(token)}` : ''}`, {
+    const downloadUrl = `${BASE_URL.replace(/\/api$/, '')}/api/invoices/${endpoint}/download${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+
+    if (Capacitor.isNativePlatform()) {
+      import('@capacitor/browser').then(({ Browser }) => {
+        Browser.open({ url: downloadUrl }).then(() => {
+          Toast.fire({ icon: 'success', title: 'Opening invoice download...' });
+        }).catch(err => {
+          console.warn('Native Browser open failed:', err);
+        });
+      }).catch(err => {
+        console.warn('Failed to load @capacitor/browser:', err);
+      });
+      return;
+    }
+
+    fetch(downloadUrl, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       credentials: 'include'
     })
@@ -390,7 +407,8 @@ export function OrdersPage() {
               </span>
               <div className="order-header-links">
                 <Link to={`/orders/${order.id}`} className="order-link">View order details</Link>
-                {order.hasInvoice && (order.type !== 'service' || ((order.remainingBalance === 0 || order.remainingBalancePaid) && (order.status === 'Completed' || order.status === 'COMPLETED'))) && (
+                {((order.type === 'service' && order.hasInvoice && (order.status === 'Completed' || order.status === 'COMPLETED') && (order.remainingBalance === 0 || order.remainingBalancePaid)) ||
+                  (order.type !== 'service' && (order.status === 'Delivered' || order.status === 'COMPLETED'))) && (
                   <>
                     <span style={{ color: '#d5d9d9', margin: '0 8px' }}>|</span>
                     <button className="order-link" onClick={(e) => handleInvoiceDownload(e, order)}>Invoice</button>

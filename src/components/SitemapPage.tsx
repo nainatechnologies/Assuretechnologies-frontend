@@ -135,7 +135,7 @@ export function SitemapPage() {
         { title: 'User Profile', path: '/profile', description: 'View personal details, contact info & verification status' },
         { title: 'Edit Profile & Addresses', path: '/profile/edit', description: 'Update profile information and manage saved delivery addresses' },
         { title: 'Order History', path: '/orders', description: 'Track order statuses, live dispatch updates & view receipts' },
-        { title: 'WhatsApp Live Support', path: 'https://wa.me/918639060213', description: 'Connect directly with technical support specialists on WhatsApp', isExternal: true }
+        { title: 'WhatsApp Live Support', path: 'https://wa.me/919505261283', description: 'Connect directly with technical support specialists on WhatsApp', isExternal: true }
       ]
     },
     {
