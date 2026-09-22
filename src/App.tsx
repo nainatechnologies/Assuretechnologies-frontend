@@ -1,5 +1,8 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
+import { SplashScreen } from '@capacitor/splash-screen';
 import { Navbar } from './components/Navbar';
 import { CategoryStrip } from './components/CategoryStrip';
 import { Footer } from './components/Footer';
@@ -54,6 +57,27 @@ function HomePage() {
 }
 
 function App() {
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      SplashScreen.hide().catch(() => {});
+
+      const backListener = CapApp.addListener('backButton', ({ canGoBack }) => {
+        const path = window.location.pathname;
+        if (path === '/' || path === '/login') {
+          CapApp.exitApp();
+        } else if (canGoBack) {
+          window.history.back();
+        } else {
+          CapApp.exitApp();
+        }
+      });
+
+      return () => {
+        backListener.then(handle => handle.remove()).catch(() => {});
+      };
+    }
+  }, []);
+
   return (
     <AuthProvider>
       <CartProvider>

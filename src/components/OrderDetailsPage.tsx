@@ -1,4 +1,14 @@
+function cleanCancellationReason(raw?: string): string {
+  if (!raw) return '';
+  const matchParen = raw.match(/^Rejected by [^()]+\((.+)\)$/i);
+  if (matchParen) return matchParen[1].trim();
+  const matchColon = raw.match(/^Rejected by [^:]+:\s*(.+)$/i);
+  if (matchColon) return matchColon[1].trim();
+  return raw;
+}
+
 import { BASE_URL, RAZORPAY_KEY_ID } from '../services/api';
+import { Capacitor } from '@capacitor/core';
 import { useState, useEffect } from "react";
 import { ordersApi } from "../api/ordersApi";
 import { getCustomerServiceBookings, updateExtraItemStatus } from '../api/serviceBookingApi';
@@ -28,6 +38,17 @@ export function OrderDetailsPage() {
     const token = localStorage.getItem('authToken');
     const endpoint = isServiceBooking ? `service/${orderId}` : `orders/${orderId}`;
     const downloadUrl = `${BASE_URL.replace(/\/api$/, '')}/api/invoices/${endpoint}/download${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const { Browser } = await import('@capacitor/browser');
+        await Browser.open({ url: downloadUrl });
+        Toast.fire({ icon: 'success', title: 'Opening invoice download...' });
+        return;
+      } catch (nativeErr) {
+        console.warn('Native Browser open failed, falling back to fetch:', nativeErr);
+      }
+    }
 
     try {
       const res = await fetch(downloadUrl, {
@@ -203,7 +224,7 @@ export function OrderDetailsPage() {
           const o = orderRes.value.data;
           const mapped = {
             id: o.order_number || o.id,
-            hasInvoice: o.payment_status === 'PAID' || o.status === 'COMPLETED' || o.status === 'Delivered' || !!o.has_invoice,
+            hasInvoice: (o.status === 'COMPLETED' || o.status === 'Delivered'),
             date: new Date(o.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
             total: '₹' + parseFloat(o.total_amount).toLocaleString("en-IN"),
             shipTo: o.customer_name || (o.customer ? o.customer.full_name : "Guest"),
@@ -239,12 +260,12 @@ export function OrderDetailsPage() {
             items: o.items ? o.items.map((i: any) => ({
               name: i.product ? i.product.name : "Unknown Product",
               qty: i.qty,
-              seller: i.vendor ? i.vendor.business_name : "Assure Technologies",
+              seller: "Assure Technologies",
               price: '₹' + parseFloat(i.price).toLocaleString("en-IN"),
               image: i.product?.banner ? (i.product.banner.startsWith('http') || i.product.banner.startsWith('blob:') ? i.product.banner : (BASE_URL.replace(/\/api$/, "") + (i.product.banner.startsWith('/') ? '' : '/') + i.product.banner)) : 'https://placehold.co/300x200?text=Product',
               type: "product",
               status: i.status || o.status,
-              returnStatus: getItemStatusText(i.status || o.status, o.payment_status),
+              returnStatus: getItemStatusText(i.status || o.status, o.payment_status, o.refund_status),
               trackingId: i.tracking_id || o.tracking_id || undefined,
               transportName: i.transport_name || o.transport_name || undefined,
               trackingUrl: i.tracking_url || o.tracking_url || undefined
@@ -398,7 +419,7 @@ export function OrderDetailsPage() {
               <button className="invoice-btn" onClick={handleInvoiceDownload}>Invoice</button>
             )
           ) : (
-            (orderDetails.status === 'Delivered' || orderDetails.status === 'COMPLETED' || orderDetails.hasInvoice) && (
+            (orderDetails.status === 'Delivered' || orderDetails.status === 'COMPLETED') && (
               <button className="invoice-btn" onClick={handleInvoiceDownload}>Invoice</button>
             )
           )}
@@ -512,7 +533,7 @@ export function OrderDetailsPage() {
           </div>
           {orderDetails.refundReason && (
             <p style={{ margin: '0 0 6px 0', fontSize: '0.9rem', color: '#334155' }}>
-              <strong>Cancellation Reason:</strong> {orderDetails.refundReason}
+              <strong>Cancellation Reason:</strong> {cleanCancellationReason(orderDetails.refundReason)}
             </p>
           )}
           {orderDetails.refundStatus === 'PROCESSED' && (

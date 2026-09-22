@@ -24,7 +24,7 @@ const SERVICE_STATUS_MAP: Record<string, string> = {
 export function getProductOrderStatus(status?: string, paymentStatus?: string): string {
   if (!status) return 'Pending';
   if (status === 'NEW') {
-    return paymentStatus === 'PAID' ? 'Pending' : 'Payment Pending';
+    return (paymentStatus === 'PAID' || paymentStatus === 'REFUND_PENDING') ? 'Pending' : 'Payment Pending';
   }
   return PRODUCT_STATUS_MAP[status] || status;
 }
@@ -68,14 +68,14 @@ export function getSafeTrackingUrl(url?: string): string | undefined {
 /**
  * Returns descriptive status text for an order item.
  */
-export function getItemStatusText(orderStatus?: string, paymentStatus?: string): string {
+export function getItemStatusText(orderStatus?: string, paymentStatus?: string, refundStatus?: string): string {
   const isCancelled = orderStatus === 'CANCELLED' || orderStatus === 'Cancelled' || orderStatus === 'REJECTED' || orderStatus === 'Rejected';
 
   if (isCancelled) {
     if (paymentStatus === 'REFUNDED') {
       return 'Cancelled • Refunded';
     }
-    if (paymentStatus === 'REFUND_PENDING') {
+    if (paymentStatus === 'REFUND_PENDING' || refundStatus === 'REQUESTED') {
       return 'Cancelled • Refund in Progress';
     }
     return (orderStatus === 'REJECTED' || orderStatus === 'Rejected') ? 'Order Rejected' : 'Order Cancelled';
