@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { SplashScreen } from '@capacitor/splash-screen';
+import { StatusBar, Style } from '@capacitor/status-bar';
 import { Navbar } from './components/Navbar';
 import { CategoryStrip } from './components/CategoryStrip';
 import { Footer } from './components/Footer';
@@ -60,6 +61,11 @@ function App() {
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       SplashScreen.hide().catch(() => {});
+
+      // Dedicated dark status bar above header (Option A)
+      StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
+      StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+      StatusBar.setBackgroundColor({ color: '#000000' }).catch(() => {});
 
       const backListener = CapApp.addListener('backButton', ({ canGoBack }) => {
         const path = window.location.pathname;

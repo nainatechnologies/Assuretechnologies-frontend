@@ -5,6 +5,7 @@
   z-index: 1000;
   background-color: #0d47a1;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .nav-content {
