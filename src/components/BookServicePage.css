@@ -512,6 +512,7 @@
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   user-select: none;
+  flex-shrink: 0;
 }
 
 .bs-qty-btn:hover {
@@ -539,6 +540,8 @@
   outline: none !important;
   box-shadow: none !important;
   margin: 0 !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
 }
 
 /* Chrome, Safari, Edge, Opera: Remove default spin buttons */
@@ -599,14 +602,22 @@
     width: 100%;
   }
   .bs-qty-control {
-    width: 100%;
+    width: auto;
+    max-width: 150px;
+    display: inline-flex;
   }
   .bs-qty-btn {
-    flex: 1;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    flex-shrink: 0;
   }
   .bs-qty-input {
-    flex: 2;
-    width: auto !important;
+    width: 60px !important;
+    min-width: 0 !important;
+    height: 42px !important;
+    flex: 0 0 60px;
+    box-sizing: border-box !important;
   }
 }
 
