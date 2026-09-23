@@ -82,7 +82,7 @@ export function OrdersPage() {
         const res = ordersResult.value;
         const rawList = Array.isArray(res.data) ? res.data : (Array.isArray(res.data?.data) ? res.data.data : []);
         mappedProducts = rawList
-          .filter((o: any) => !o.order_number?.startsWith('SBK'))
+          .filter((o: any) => !o.order_number?.startsWith('SBK') && !o.order_number?.startsWith('SR'))
           .map((o: any) => {
           return {
             id: o.order_number || o.id,
