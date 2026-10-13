@@ -68,7 +68,8 @@ export function SitemapPage() {
         { title: 'Shopping Cart', path: '/cart', description: 'Review selected items, compute delivery & proceed to secure checkout' },
         { title: 'Customer Login', path: '/login', description: 'Sign in to access personal service bookings, addresses & orders' },
         { title: 'Create Account', path: '/register', description: 'Register a new personal or corporate customer account' },
-        { title: 'Forgot Password', path: '/forgot-password', description: 'Password reset and customer account recovery assistance' }
+        { title: 'Forgot Password', path: '/forgot-password', description: 'Password reset and customer account recovery assistance' },
+        { title: 'Download Mobile Apps (APKs)', path: '/apks', description: 'Official Android APK downloads for customers, technicians, and partners' }
       ]
     },
     {
