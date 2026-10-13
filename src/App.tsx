@@ -35,6 +35,7 @@ const JobDetailsPage = lazy(() => import('./components/JobDetailsPage').then(m =
 const JobApplicationForm = lazy(() => import('./components/JobApplicationForm').then(m => ({ default: m.JobApplicationForm })));
 const SitemapPage = lazy(() => import('./components/SitemapPage').then(m => ({ default: m.SitemapPage })));
 const SearchPage = lazy(() => import('./components/SearchPage').then(m => ({ default: m.SearchPage })));
+const ApkDownloadsPage = lazy(() => import('./components/ApkDownloadsPage').then(m => ({ default: m.ApkDownloadsPage })));
 
 import { SEOHead } from './components/SEOHead';
 import { StructuredData } from './components/StructuredData';
@@ -106,6 +107,7 @@ function App() {
             <Route path="/career/jobdetails/:jobCode/apply" element={<JobApplicationForm />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/sitemap" element={<SitemapPage />} />
+            <Route path="/apks" element={<ApkDownloadsPage />} />
 
             {/* Protected Routes */}
             <Route path="/profile" element={
